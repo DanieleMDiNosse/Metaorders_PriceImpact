@@ -34,15 +34,17 @@ from utils import (
 # Config
 # ---------------------------------------------------------------------------
 LEVEL = "member"  # "member" or "client"
-PROPRIETARY = True  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
+PROPRIETARY = False  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
+PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
 RECOMPUTE = True
 N = None  # set to an integer to subsample ISIN files
 USE_MOT_DATA = False  # False -> use files without "MOT" in the name, True -> only files containing "MOT"
 
-PATH_DATA_FOLDER = "C:/Users/User01/Documents/di_nosse/FTSEMIB_MOT"
-PATH_NEW_DATA_FOLDER = "C:/Users/User01/Documents/di_nosse/FTSEMIB_MOT_NEW"
+PATH_DATA_FOLDER = "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data"
+PATH_NEW_DATA_FOLDER = "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data"
 OUT_DIR = "out_files"
-IMG_DIR = f"images/{LEVEL}"
+IMG_DIR = f"images/{LEVEL}_{PROPRIETARY_TAG}"
+
 
 os.makedirs(PATH_NEW_DATA_FOLDER, exist_ok=True)
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -60,15 +62,15 @@ COLUMN_POSITIONS = {
 }
 
 # Section toggles
-RUN_INTRO = True
-RUN_METAORDER_COMPUTATION = True
-RUN_SOME_STATISTICS_ABOUT_METAORDERS = True
-RUN_SIGNATURE_PLOTS = True
+RUN_INTRO = False
+RUN_METAORDER_COMPUTATION = False
+RUN_SOME_STATISTICS_ABOUT_METAORDERS = False
+RUN_SIGNATURE_PLOTS = False
 RUN_SQL_FITS = True
 RUN_WLS = True
-
-PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
-
+IMPACT_HORIZONS_MIN = (1, 3, 10, 30, 60)
+SECONDS_FILTER = 60  # minimum metaorder duration (seconds)
+MIN_QV = 1e-5  # minimum Q/V to keep a metaorder for fitting
 
 # ---------------------------------------------------------------------------
 # Functions
@@ -208,7 +210,19 @@ def split_metaorders_by_gap(metaorders: Dict[int, List[List[int]]], times: np.nd
     return new_dict
 
 
-def compute_metaorders_info(trades: pd.DataFrame, metaorders_dict: Dict[int, List[List[int]]]) -> List[Tuple]:
+def _last_price_at_or_before(target_ns: np.int64, ts_ns: np.ndarray, prices: np.ndarray) -> float:
+    """Return last traded price at or before target_ns, else NaN."""
+    idx = np.searchsorted(ts_ns, target_ns, side="right") - 1
+    if idx < 0 or idx >= len(prices):
+        return np.nan
+    return float(prices[idx])
+
+
+def compute_metaorders_info(
+    trades: pd.DataFrame,
+    metaorders_dict: Dict[int, List[List[int]]],
+    impact_horizons_min: Iterable[int] = IMPACT_HORIZONS_MIN,
+) -> List[Tuple]:
     tt: pd.Series = trades["Trade Time"]
     day_arr = tt.dt.date.values
     plc = trades["Price Last Contract"].to_numpy()
@@ -220,6 +234,9 @@ def compute_metaorders_info(trades: pd.DataFrame, metaorders_dict: Dict[int, Lis
     q_sell = trades["Total Quantity Sell"].to_numpy(dtype=float)
     vol_arr = q_buy + q_sell
     csum_vol = np.cumsum(vol_arr)
+    ts_ns = trades["Trade Time"].view("int64").to_numpy()
+    price_last = trades["Price Last Contract"].to_numpy(dtype=float)
+    horizon_ns = [np.int64(m * 60 * 1_000_000_000) for m in impact_horizons_min]
 
     daily_cache = build_daily_cache(trades)
 
@@ -239,6 +256,22 @@ def compute_metaorders_info(trades: pd.DataFrame, metaorders_dict: Dict[int, Lis
             qv = float(metaorder_volume / daily_volume) if daily_volume != 0 else np.nan
             eta = float(metaorder_volume / volume_during_metaorder) if volume_during_metaorder != 0 else np.inf
             n_child = len(idx_list)
+            start_log_price = np.log(pfc[s]) if pfc[s] > 0 else np.nan
+            impact_h_vals: List[float] = []
+            for h_ns in horizon_ns:
+                target_ns = ts_ns[e] + h_ns
+                p_t = _last_price_at_or_before(target_ns, ts_ns, price_last)
+                if (
+                    p_t > 0
+                    and np.isfinite(start_log_price)
+                    and np.isfinite(daily_vol)
+                    and daily_vol != 0
+                ):
+                    ret = np.log(p_t) - start_log_price
+                    imp = ret * direction / daily_vol
+                else:
+                    imp = np.nan
+                impact_h_vals.append(float(imp) if np.isfinite(imp) else np.nan)
             rows.append(
                 (
                     trades.iloc[0]["ISIN"],
@@ -252,9 +285,57 @@ def compute_metaorders_info(trades: pd.DataFrame, metaorders_dict: Dict[int, Lis
                     eta,
                     n_child,
                     [start_ts, end_ts],
+                    *impact_h_vals,
                 )
             )
     return rows
+
+
+def _period_duration_seconds(period) -> float:
+    """Return duration in seconds for a (start, end) tuple; NaN on malformed input."""
+    if period is None:
+        return np.nan
+    try:
+        start, end = period
+    except Exception:
+        return np.nan
+    delta = end - start
+    try:
+        return float(pd.to_timedelta(delta).total_seconds())
+    except Exception:
+        return np.nan
+
+
+def apply_metaorder_filters(
+    df: pd.DataFrame,
+    seconds_filter: float = SECONDS_FILTER,
+    min_qv: float = MIN_QV,
+) -> pd.DataFrame:
+    """
+    Apply all metaorder-level filters once, after metaorders are computed.
+    - Drop metaorders shorter than `seconds_filter`.
+    - Require Q/V > `min_qv`.
+    - Compute Impact = Price Change * Direction / Daily Vol.
+    - Drop rows with non-finite key fields.
+    """
+    if "Period" not in df.columns:
+        raise KeyError("Expected 'Period' column to compute durations for filtering.")
+    out = df.copy()
+    out["DurationSeconds"] = out["Period"].apply(_period_duration_seconds)
+    out = out[out["DurationSeconds"] >= seconds_filter].drop(columns=["DurationSeconds"])
+    out = out[out["Q/V"] > min_qv]
+
+    if {"Price Change", "Direction", "Daily Vol"} - set(out.columns):
+        missing = {"Price Change", "Direction", "Daily Vol"} - set(out.columns)
+        raise KeyError(f"Missing columns required to compute Impact: {missing}")
+    out["Impact"] = out["Price Change"] * out["Direction"] / out["Daily Vol"]
+
+    numeric_cols = [c for c in ["Q/V", "Impact", "Participation Rate", "Price Change", "Daily Vol", "Q"] if c in out.columns]
+    if numeric_cols:
+        out[numeric_cols] = out[numeric_cols].replace([np.inf, -np.inf], np.nan)
+
+    out = out.dropna(subset=["Q/V", "Impact"]).reset_index(drop=True)
+    return out
 
 
 def power_law(qv: np.ndarray, Y: float, gamma: float) -> np.ndarray:
@@ -342,11 +423,225 @@ def fit_power_law_logbins_wls(
     R2_lin = 1.0 - np.sum((binned["mean_imp"].to_numpy() - yhat) ** 2) / np.sum(
         (binned["mean_imp"].to_numpy() - ybar) ** 2
     )
-    return binned, (Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin)
+    params = (Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin)
+    return binned, params
+
+from typing import Tuple, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
+
+
+def power_law(x: np.ndarray, Y: float, gamma: float) -> np.ndarray:
+    """Simple power-law function: y = Y * x^gamma."""
+    return Y * np.power(x, gamma)
+
+
+def fit_power_law_logbins_wls_new(
+    subdf: pd.DataFrame,
+    n_logbins: int = 30,
+    min_count: int = 100,
+    use_median: bool = False,
+    control_cols: Optional[List[str]] = None,
+) -> Tuple[pd.DataFrame, Tuple[
+    float, float, float, float, float, float,
+    Optional[pd.Series], Optional[pd.Series]
+]]:
+    """
+    Fit a power-law impact curve using log-binned WLS, optionally with controls.
+
+    Parameters
+    ----------
+    subdf : DataFrame
+        Must contain columns:
+          - 'Q/V'     : participation/size proxy (phi)
+          - 'Impact'  : (signed) I/sigma or similar
+        And, if control_cols is not None: those columns as controls.
+    n_logbins : int
+        Number of logarithmic bins in Q/V.
+    min_count : int
+        Minimum number of metaorders per bin to keep the bin.
+    use_median : bool
+        If True, use the median impact per bin instead of the mean.
+    control_cols : list of str or None
+        Names of columns in subdf to be used as *bin-level controls*.
+        For each control, the bin-level mean is added to the WLS as a regressor.
+        If you want log-controls, precompute them in subdf before calling.
+
+    Returns
+    -------
+    binned : DataFrame
+        One row per retained bin, with:
+          - center_QV, mean_imp, std_imp, sem_imp, count,
+          - (and one column per control if control_cols is not None).
+    params : tuple
+        (Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin,
+         beta_controls, beta_controls_se)
+
+        - Y_hat, gamma_hat : power-law prefactor and exponent
+        - Y_se, gamma_se   : their standard errors
+        - R2_log           : R^2 in log space
+        - R2_lin           : R^2 in linear space
+        - beta_controls    : pd.Series of control coefficients (or None)
+        - beta_controls_se : pd.Series of control SEs (or None)
+    """
+    # 1) Filter valid rows
+    sub = subdf[(subdf["Q/V"] > 0) & np.isfinite(subdf["Impact"])].copy()
+    if control_cols is not None:
+        for c in control_cols:
+            sub = sub[np.isfinite(sub[c])]
+    if sub.empty:
+        raise ValueError("No valid rows (Q/V>0 and finite Impact/controls).")
+
+    x = sub["Q/V"].to_numpy()
+    y = sub["Impact"].to_numpy()
+
+    x_min = x.min()
+    x_max = x.max()
+    if not np.isfinite(x_min) or not np.isfinite(x_max) or x_max <= x_min:
+        raise ValueError("Invalid Q/V range for log binning.")
+
+    # 2) Log-binning in Q/V
+    edges = np.logspace(np.log10(x_min), np.log10(x_max), n_logbins + 1)
+    bin_idx = np.digitize(x, edges) - 1  # bins 0..n_logbins-1
+
+    mask = (bin_idx >= 0) & (bin_idx < n_logbins)
+    sub = sub.iloc[mask].copy()
+    sub["bin"] = bin_idx[mask]
+
+    # 3) Aggregate impact stats per bin
+    grp = sub.groupby("bin")
+    agg_imp = grp["Impact"].agg(
+        mean_imp="mean",
+        median_imp="median",
+        std_imp=lambda s: s.std(ddof=1),
+        count="size",
+    ).sort_index()
+
+    # If controls requested, aggregate their bin means
+    if control_cols is not None and len(control_cols) > 0:
+        agg_ctrl = grp[control_cols].mean().sort_index()
+        agg = agg_imp.join(agg_ctrl)
+    else:
+        agg = agg_imp
+
+    # Choose mean or median as y-stat
+    y_stat = agg["median_imp"] if use_median else agg["mean_imp"]
+    y_std = agg["std_imp"].to_numpy()
+    n = agg["count"].to_numpy()
+    sem = y_std / np.sqrt(np.maximum(n, 1))
+
+    bins_present = agg.index.to_numpy()
+    left_edges = edges[bins_present]
+    right_edges = edges[bins_present + 1]
+    x_center = np.sqrt(left_edges * right_edges)
+
+    # Build binned DataFrame
+    cols = {
+        "center_QV": x_center,
+        "mean_imp": y_stat.to_numpy(),
+        "std_imp": y_std,
+        "sem_imp": sem,
+        "count": n,
+    }
+    if control_cols is not None and len(control_cols) > 0:
+        for c in control_cols:
+            cols[c] = agg[c].to_numpy()
+
+    binned = pd.DataFrame(cols).sort_values("center_QV").reset_index(drop=True)
+
+    # 4) Filter bins
+    cond = (
+        (binned["count"] >= min_count)
+        & np.isfinite(binned["mean_imp"])
+        & np.isfinite(binned["sem_imp"])
+        & (binned["sem_imp"] > 0)
+        & (binned["mean_imp"] > 0)  # needed for log
+    )
+    if control_cols is not None:
+        for c in control_cols:
+            cond &= np.isfinite(binned[c])
+
+    binned = binned[cond].reset_index(drop=True)
+
+    if len(binned) < (2 + (len(control_cols) if control_cols else 0)):
+        raise ValueError(
+            f"Not enough valid bins after filtering (got {len(binned)}; "
+            f"need at least {2 + (len(control_cols) if control_cols else 0)})."
+        )
+
+    # 5) Build WLS in log space
+    X = np.log(binned["center_QV"].to_numpy())
+    Z = np.log(binned["mean_imp"].to_numpy())
+
+    # Var(log y) ≈ (sem / mean)^2  -> weights = 1 / var
+    var_logy = (binned["sem_imp"].to_numpy() / binned["mean_imp"].to_numpy()) ** 2
+    w = np.where(np.isfinite(var_logy) & (var_logy > 0), 1.0 / var_logy, 0.0)
+
+    # Design matrix: [1, log(Q/V), controls...]
+    A_cols = [np.ones_like(X), X]
+    control_names = []
+    if control_cols is not None and len(control_cols) > 0:
+        for c in control_cols:
+            A_cols.append(binned[c].to_numpy())
+            control_names.append(c)
+
+    A = np.vstack(A_cols).T  # shape (n_bins, 2 + n_controls)
+
+    # Weighted least squares via normal equations
+    sqrt_w = np.sqrt(w)
+    Aw = A * sqrt_w[:, None]
+    Zw = Z * sqrt_w
+
+    coef, _, _, _ = np.linalg.lstsq(Aw, Zw, rcond=None)
+    # coef[0] = a_hat, coef[1] = gamma_hat, coef[2:] = beta_controls
+
+    a_hat = float(coef[0])
+    gamma_hat = float(coef[1])
+    beta_controls = None
+    beta_controls_se = None
+
+    if len(control_names) > 0:
+        beta_controls = pd.Series(coef[2:], index=control_names)
+
+    Y_hat = float(np.exp(a_hat))
+
+    # 6) Covariance matrix and SEs
+    res = Z - (A @ coef)
+    RSS = np.sum(w * res**2)
+    dof = max(len(Z) - A.shape[1], 1)
+    s2 = RSS / dof
+    XtWX = A.T @ (w[:, None] * A)
+    cov = s2 * np.linalg.inv(XtWX)
+    se_all = np.sqrt(np.diag(cov))
+
+    a_se = float(se_all[0])
+    gamma_se = float(se_all[1])
+    Y_se = float(Y_hat * a_se)  # delta-method for exp(a_hat)
+
+    if len(control_names) > 0:
+        beta_controls_se = pd.Series(se_all[2:], index=control_names)
+
+    # 7) R^2 in log space
+    Zhat = A @ coef
+    Zbar = np.average(Z, weights=w)
+    R2_log = 1.0 - np.sum(w * (Z - Zhat) ** 2) / np.sum(w * (Z - Zbar) ** 2)
+
+    # 8) R^2 in linear space (only for the power-law part)
+    yhat = power_law(binned["center_QV"].to_numpy(), Y_hat, gamma_hat)
+    ybar = np.mean(binned["mean_imp"].to_numpy())
+    R2_lin = 1.0 - np.sum((binned["mean_imp"].to_numpy() - yhat) ** 2) / np.sum(
+        (binned["mean_imp"].to_numpy() - ybar) ** 2
+    )
+
+    params = (Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se)
+
+    return binned, params
+
 
 
 def plot_fit(ax, binned: pd.DataFrame, params, label_prefix=None, label_size: int = 16, legend_size: int = 14):
-    Y, Y_err, gamma, gamma_err, R2_log, R2_lin = params
+    Y, Y_err, gamma, gamma_err, R2_log, R2_lin, beta_controls, beta_controls_se = params
     ax.errorbar(
         binned["center_QV"],
         binned["mean_imp"],
@@ -379,6 +674,12 @@ def plot_fit(ax, binned: pd.DataFrame, params, label_prefix=None, label_size: in
 # ---------------------------------------------------------------------------
 if RUN_INTRO:
     print("[Intro] Ensuring parquet transforms are up to date...")
+    print(
+        "[Intro] Parameters — "
+        f"LEVEL={LEVEL}, PROPRIETARY={PROPRIETARY}, USE_MOT_DATA={USE_MOT_DATA}, "
+        f"IMPACT_HORIZONS_MIN={IMPACT_HORIZONS_MIN}, RECOMPUTE={RECOMPUTE}, N={N}, "
+        f"PATH_DATA_FOLDER={PATH_DATA_FOLDER}, PATH_NEW_DATA_FOLDER={PATH_NEW_DATA_FOLDER}"
+    )
     ensure_transforms()
     dfs_path_new = list_parquet_paths()
     dataset_label = "MOT" if USE_MOT_DATA else "non-MOT"
@@ -636,6 +937,7 @@ if RUN_SQL_FITS:
     dfs_path_new = list_parquet_paths()
     metaorders_dict_all = pickle.load(open(os.path.join(OUT_DIR, f"metaorders_dict_all_{LEVEL}_{PROPRIETARY_TAG}.pkl"), "rb"))
     metaorders_info_records: List[Tuple] = []
+    impact_cols = [f"Impact_{m}m" for m in IMPACT_HORIZONS_MIN]
     for i, path in enumerate(dfs_path_new):
         isin = os.path.splitext(os.path.basename(path))[0]
         print(f"({i+1}/{len(dfs_path_new)}) Building metaorders_info for {isin}")
@@ -658,14 +960,25 @@ if RUN_SQL_FITS:
             "Participation Rate",
             "N Child",
             "Period",
+            *impact_cols,
         ),
     )
-    metaorders_info_df_sameday = metaorders_info_df_sameday[
-        metaorders_info_df_sameday["Period"].apply(lambda p: (p[1] - p[0]).total_seconds() >= 60)
-    ].reset_index(drop=True)
-    info_path = os.path.join(OUT_DIR, f"metaorders_info_sameday_filtered_{LEVEL}_{PROPRIETARY_TAG}.parquet")
-    metaorders_info_df_sameday.to_parquet(info_path, index=False)
-    print(f"Saved {info_path}")
+    info_path_filtered = os.path.join(OUT_DIR, f"metaorders_info_sameday_filtered_{LEVEL}_{PROPRIETARY_TAG}.parquet")
+    info_path_unfiltered = os.path.join(OUT_DIR, f"metaorders_info_sameday_{LEVEL}_{PROPRIETARY_TAG}.parquet")
+
+    print("[SQL Fits] Saving unfiltered metaorders info dataframe...")
+    metaorders_info_df_sameday.to_parquet(info_path_unfiltered, index=False)
+    print(f"Saved {info_path_unfiltered}")
+
+    print(
+        f"[SQL Fits] Applying unified filters (duration >= {SECONDS_FILTER}s, Q/V > {MIN_QV}) "
+        "and computing Impact..."
+    )
+    metaorders_info_df_sameday_filtered = apply_metaorder_filters(
+        metaorders_info_df_sameday, seconds_filter=SECONDS_FILTER, min_qv=MIN_QV
+    )
+    metaorders_info_df_sameday_filtered.to_parquet(info_path_filtered, index=False)
+    print(f"Saved {info_path_filtered}")
 
 
 # ---------------------------------------------------------------------------
@@ -676,41 +989,18 @@ if RUN_WLS:
     info_path_filtered = os.path.join(OUT_DIR, f"metaorders_info_sameday_filtered_{LEVEL}_{PROPRIETARY_TAG}.parquet")
     info_path_unfiltered = os.path.join(OUT_DIR, f"metaorders_info_sameday_{LEVEL}_{PROPRIETARY_TAG}.parquet")
     if os.path.exists(info_path_filtered):
-        metaorders_info_df_sameday = pd.read_parquet(info_path_filtered)
+        df = pd.read_parquet(info_path_filtered)
     elif os.path.exists(info_path_unfiltered):
-        metaorders_info_df_sameday = pd.read_parquet(info_path_unfiltered)
+        print("[WLS] Filtered parquet missing; applying unified filters to unfiltered file...")
+        raw_df = pd.read_parquet(info_path_unfiltered)
+        df = apply_metaorder_filters(raw_df, seconds_filter=SECONDS_FILTER, min_qv=MIN_QV)
+        df.to_parquet(info_path_filtered, index=False)
+        print(f"[WLS] Saved filtered parquet to {info_path_filtered}")
     else:
         raise FileNotFoundError(
             "Missing metaorders info parquet: run the SQL fits section to generate the filtered dataset."
         )
 
-    df = metaorders_info_df_sameday.copy()
-
-    def _period_duration_seconds(period) -> float:
-        if period is None:
-            return np.nan
-        try:
-            start, end = period
-        except Exception:
-            return np.nan
-        delta = end - start
-        try:
-            return float(pd.to_timedelta(delta).total_seconds())
-        except Exception:
-            return np.nan
-
-    if "Period" in df.columns:
-        df["DurationSeconds"] = df["Period"].apply(_period_duration_seconds)
-        df = df[df["DurationSeconds"] >= 60].drop(columns=["DurationSeconds"]).reset_index(drop=True)
-    else:
-        raise KeyError("Expected 'Period' column to compute durations for filtering.")
-    df = df[df["Q/V"] > 1e-5]
-    df["Impact"] = df["Price Change"] * df["Direction"] / df["Daily Vol"]
-    
-    # Only replace in numeric columns to avoid issues with list columns like 'Period'
-    numeric_cols = ["Q/V", "Impact", "Participation Rate", "Price Change", "Daily Vol", "Q"]
-    df[numeric_cols] = df[numeric_cols].replace([np.inf, -np.inf], np.nan)
-    df = df.dropna(subset=["Q/V", "Impact"])
     LABEL_SIZE = 16
     LEGEND_SIZE = 14
     TITLE_SIZE = 18
@@ -723,7 +1013,9 @@ if RUN_WLS:
     )
     n_logbins = 30
     min_count = 20
-    binned_all, params_all = fit_power_law_logbins_wls(df, n_logbins=n_logbins, min_count=min_count, use_median=False)
+    # binned_all, params_all = fit_power_law_logbins_wls(df, n_logbins=n_logbins, min_count=min_count, use_median=False)
+    binned_all, params_all = fit_power_law_logbins_wls_new(df, n_logbins=n_logbins, min_count=min_count, use_median=False, control_cols=None)
+    Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se = params_all
     fig, ax = plt.subplots(figsize=(9, 6))
     plot_fit(ax, binned_all, params_all)
     ax.set_title("Power-law fit (aggregated)", fontsize=TITLE_SIZE)
@@ -731,9 +1023,9 @@ if RUN_WLS:
     plt.savefig(os.path.join(IMG_DIR, f"power_law_fit_overall_{LEVEL}.png"), dpi=300)
     plt.close()
     print("--- Overall (All) ---")
-    print(f"Y = {params_all[0]:.6g} +/- {params_all[1]:.3g}")
-    print(f"gamma = {params_all[2]:.6f} +/- {params_all[3]:.3g}")
-    print(f"R^2_log = {params_all[4]:.4f} | R^2_lin = {params_all[5]:.4f}")
+    print(f"Y = {Y_hat:.6g} +/- {Y_se:.3g}")
+    print(f"gamma = {gamma_hat:.6f} +/- {gamma_se:.3g}")
+    print(f"R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
     print(f"Bins used: {len(binned_all)} (min_count >= {min_count})")
 
     PR_CANDIDATES = "Participation Rate"
@@ -745,8 +1037,8 @@ if RUN_WLS:
     for label in df["PR_bin"].dropna().unique():
         sub = df[df["PR_bin"] == label]
         try:
-            binned_sub, params_sub = fit_power_law_logbins_wls(
-                sub, n_logbins=n_logbins, min_count=min_count, use_median=False
+            binned_sub, params_sub = fit_power_law_logbins_wls_new(
+                sub, n_logbins=n_logbins, min_count=min_count, use_median=False, control_cols=None
             )
         except Exception as e:
             print(f"[{label}] skipped: {e}")
@@ -758,5 +1050,7 @@ if RUN_WLS:
     plt.savefig(os.path.join(IMG_DIR, f"power_law_fits_by_participation_rate_{LEVEL}.png"), dpi=300)
     plt.close()
     print("--- Conditioned on Participation Rate ---")
-    for k, (Y, Y_se, gamma, gamma_se, R2_log, R2_lin) in fits_by_pr.items():
+    for k, (Y, Y_se, gamma, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se) in fits_by_pr.items():
         print(f"[PR {k}]  Y = {Y:.6g} +/- {Y_se:.3g} | gamma = {gamma:.6f} +/- {gamma_se:.3g} |")
+        print(f"Beta controls: {beta_controls}")
+        print(f"Beta controls SE: {beta_controls_se}")

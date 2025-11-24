@@ -215,5 +215,14 @@ out_files/
 # Metaorder scripts 
 metaorder_scripts/
 
-# CSVs
+# CSV, parquet, pkl, pickle
 *.csv
+*.parquet
+*.pkl
+*.pickle
+
+# notebooks
+*.ipynb
+
+# Zone.Identifier files
+*:Zone.Identifier
