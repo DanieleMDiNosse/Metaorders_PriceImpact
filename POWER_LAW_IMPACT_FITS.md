@@ -202,6 +202,16 @@ In log space, for \(\phi_i > 0\) and \(I_i > 0\),
 
 Because individual \(I_i\) are noisy and can be negative, the estimation is not performed directly on individual observations. Instead, the dataset is **log-binned in \(\phi\)**, and the regression is performed on **bin-level mean impacts**. This substantially reduces heteroskedasticity and noise, at the cost of aggregating data.
 
+### 3.3 Execution and aftermath impact paths
+
+Beyond the scalar end-of-execution impact \(I_i\), the script also tracks the **full impact path** of each metaorder, both during execution and in an aftermath window:
+
+- For each metaorder \(i\), the **partial impact path** records the normalized impact after each child trade in \(\mathcal{M}_i\) (same normalization as \(I_i\)).
+- The **aftermath impact path** samples the normalized impact at a fixed number of evenly spaced timestamps after the end of execution, up to a multiple of the metaorder duration (controlled by `AFTERMATH_DURATION_MULTIPLIER` and `AFTERMATH_NUM_SAMPLES`).
+- These two vectors are stored in the metaorders info table as columns `partial_impact` and `aftermath_impact`, one pair per metaorder.
+
+For large datasets, these paths are stored compactly as packed float32 byte blobs (one contiguous vector per metaorder) to keep memory usage under control. Downstream functions such as `plot_normalized_impact_path` transparently unpack these blobs, interpolate each path onto a common normalized time grid \(t \in [0, 1 + \text{duration\_multiplier}]\), and average across metaorders to produce the **normalized impact path** plot. This provides a time-resolved view of impact build-up during execution and its relaxation in the aftermath, complementary to the scalar power-law fits.
+
 ---
 
 ## 4. Filtering Stage Before Fitting

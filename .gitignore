@@ -221,6 +221,9 @@ metaorder_scripts/
 *.pkl
 *.pickle
 
+# pdfs
+*.pdf
+
 # notebooks
 *.ipynb
 

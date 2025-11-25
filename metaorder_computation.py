@@ -4,7 +4,8 @@
 import os
 import gc
 import pickle
-from typing import Dict, Iterable, List, Tuple
+import warnings
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +16,30 @@ from tqdm import tqdm
 import seaborn as sns
 
 sns.set_theme()
+
+def pack_path(path: Optional[List[float]]) -> Optional[bytes]:
+    """Convert a list of floats to packed float32 bytes (or None)."""
+    if path is None:
+        return None
+    if len(path) == 0:
+        return b""
+    arr = np.asarray(path, dtype=np.float32)
+    return arr.tobytes()
+
+
+def unpack_path(blob: Optional[Union[bytes, bytearray, memoryview, List[float], np.ndarray]]) -> Optional[np.ndarray]:
+    """
+    Convert packed bytes (or legacy list/ndarray) back to a float32 numpy array.
+    If the input is bytes-like, return a view using np.frombuffer.
+    If the input is a list/array (older saved files), convert it with np.asarray.
+    """
+    if blob is None:
+        return None
+    if isinstance(blob, (bytes, bytearray, memoryview)):
+        return np.frombuffer(blob, dtype=np.float32)
+    # Fallback for old saved data where the column might be a list or an array
+    return np.asarray(blob, dtype=np.float32)
+
 
 # Local helpers
 from utils import (
@@ -34,7 +59,7 @@ from utils import (
 # Config
 # ---------------------------------------------------------------------------
 LEVEL = "member"  # "member" or "client"
-PROPRIETARY = False  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
+PROPRIETARY = True  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
 PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
 RECOMPUTE = True
 N = None  # set to an integer to subsample ISIN files
@@ -50,6 +75,11 @@ os.makedirs(PATH_NEW_DATA_FOLDER, exist_ok=True)
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(IMG_DIR, exist_ok=True)
 os.makedirs(f"{IMG_DIR}/signature_plots", exist_ok=True)
+warnings.filterwarnings(
+    "ignore",
+    message="Series.view is deprecated and will be removed in a future version",
+    category=FutureWarning,
+)
 
 COLUMN_POSITIONS = {
     "Trade Time": 3,
@@ -62,15 +92,19 @@ COLUMN_POSITIONS = {
 }
 
 # Section toggles
-RUN_INTRO = False
+RUN_INTRO = True
 RUN_METAORDER_COMPUTATION = False
 RUN_SOME_STATISTICS_ABOUT_METAORDERS = False
 RUN_SIGNATURE_PLOTS = False
 RUN_SQL_FITS = True
 RUN_WLS = True
+RUN_IMPACT_PATH_PLOT = True
 IMPACT_HORIZONS_MIN = (1, 3, 10, 30, 60)
 SECONDS_FILTER = 60  # minimum metaorder duration (seconds)
 MIN_QV = 1e-5  # minimum Q/V to keep a metaorder for fitting
+COMPUTE_IMPACT_PATHS = True  # compute partial/aftermath impact vectors in the metaorders dataset
+AFTERMATH_DURATION_MULTIPLIER = 2.0  # horizon multiple (x duration) for aftermath impact sampling
+AFTERMATH_NUM_SAMPLES = 30  # number of evenly spaced samples in the aftermath window
 
 # ---------------------------------------------------------------------------
 # Functions
@@ -110,13 +144,14 @@ def list_parquet_paths() -> List[str]:
 
 def ensure_transforms():
     """Convert raw CSVs to parquet once for the selected dataset."""
-    for path in list_raw_csv_paths():
+    paths = list_raw_csv_paths()
+    for path in tqdm(paths, desc="Transforming CSV->parquet", dynamic_ncols=True):
         new_path = os.path.join(
             PATH_NEW_DATA_FOLDER, f"{os.path.splitext(os.path.basename(path))[0]}.parquet"
         )
         if os.path.exists(new_path):
             continue
-        print(f"Transforming {path} -> {new_path}")
+        tqdm.write(f"Transforming {path} -> {new_path}")
         df = pd.read_csv(path, sep=";")
         df_mapped = map_trade_codes(df)
         df_transformed = build_trades_view(df_mapped)
@@ -158,7 +193,7 @@ def compute_metaorders_per_isin(trades: pd.DataFrame, level: str) -> Dict[int, L
     act_dense = np.zeros(n_trades, dtype=np.int8)
 
     metaorders_dict: Dict[int, List[List[int]]] = {}
-    for aid in tqdm(indices_by_agent.keys(), desc="Agents"):
+    for aid in indices_by_agent.keys():
         idxs = indices_by_agent[aid]
         signs = act_by_agent[aid]
         if idxs.size == 0:
@@ -222,6 +257,9 @@ def compute_metaorders_info(
     trades: pd.DataFrame,
     metaorders_dict: Dict[int, List[List[int]]],
     impact_horizons_min: Iterable[int] = IMPACT_HORIZONS_MIN,
+    compute_paths: bool = COMPUTE_IMPACT_PATHS,
+    aftermath_num_samples: int = AFTERMATH_NUM_SAMPLES,
+    aftermath_duration_multiplier: float = AFTERMATH_DURATION_MULTIPLIER,
 ) -> List[Tuple]:
     tt: pd.Series = trades["Trade Time"]
     day_arr = tt.dt.date.values
@@ -257,21 +295,52 @@ def compute_metaorders_info(
             eta = float(metaorder_volume / volume_during_metaorder) if volume_during_metaorder != 0 else np.inf
             n_child = len(idx_list)
             start_log_price = np.log(pfc[s]) if pfc[s] > 0 else np.nan
+            valid_for_impacts = np.isfinite(start_log_price) and np.isfinite(daily_vol) and daily_vol != 0
+
+            partial_impacts: Optional[List[float]] = None
+            aftermath_impacts: Optional[List[float]] = None
+
+            if compute_paths:
+                partial_impacts = []
+                for child_idx in idx_list:
+                    p_child = price_last[child_idx]
+                    if p_child > 0 and valid_for_impacts:
+                        ret_child = np.log(p_child) - start_log_price
+                        imp_child = ret_child * direction / daily_vol
+                    else:
+                        imp_child = np.nan
+                    partial_impacts.append(float(imp_child) if np.isfinite(imp_child) else np.nan)
+
+                duration_ns = ts_ns[e] - ts_ns[s]
+                max_offset_ns = np.int64(max(aftermath_duration_multiplier * duration_ns, 0))
+                samples = max(int(aftermath_num_samples), 0)
+                aftermath_impacts = []
+                if samples > 0:
+                    if max_offset_ns > 0:
+                        offsets = np.linspace(0, max_offset_ns, samples).astype(np.int64)
+                    else:
+                        offsets = np.zeros(samples, dtype=np.int64)
+                    for offset in offsets:
+                        target_ns = ts_ns[e] + offset
+                        p_t = _last_price_at_or_before(target_ns, ts_ns, price_last)
+                        if p_t > 0 and valid_for_impacts:
+                            ret = np.log(p_t) - start_log_price
+                            imp = ret * direction / daily_vol
+                        else:
+                            imp = np.nan
+                        aftermath_impacts.append(float(imp) if np.isfinite(imp) else np.nan)
             impact_h_vals: List[float] = []
             for h_ns in horizon_ns:
                 target_ns = ts_ns[e] + h_ns
                 p_t = _last_price_at_or_before(target_ns, ts_ns, price_last)
-                if (
-                    p_t > 0
-                    and np.isfinite(start_log_price)
-                    and np.isfinite(daily_vol)
-                    and daily_vol != 0
-                ):
+                if p_t > 0 and valid_for_impacts:
                     ret = np.log(p_t) - start_log_price
                     imp = ret * direction / daily_vol
                 else:
                     imp = np.nan
                 impact_h_vals.append(float(imp) if np.isfinite(imp) else np.nan)
+            partial_blob = pack_path(partial_impacts) if compute_paths else None
+            aftermath_blob = pack_path(aftermath_impacts) if compute_paths else None
             rows.append(
                 (
                     trades.iloc[0]["ISIN"],
@@ -285,6 +354,8 @@ def compute_metaorders_info(
                     eta,
                     n_child,
                     [start_ts, end_ts],
+                    partial_blob,
+                    aftermath_blob,
                     *impact_h_vals,
                 )
             )
@@ -340,6 +411,52 @@ def apply_metaorder_filters(
 
 def power_law(qv: np.ndarray, Y: float, gamma: float) -> np.ndarray:
     return Y * np.power(qv, gamma)
+
+
+def _interpolate_impact_path(
+    partial: Optional[Iterable[float]],
+    aftermath: Optional[Iterable[float]],
+    time_grid: np.ndarray,
+    duration_multiplier: float,
+) -> Optional[np.ndarray]:
+    """Interpolate one metaorder impact path onto a common normalized grid."""
+    times: List[float] = []
+    values: List[float] = []
+
+    if partial is not None:
+        partial_arr = np.asarray(partial, dtype=float).ravel()
+        if partial_arr.size > 0:
+            times.extend(np.linspace(0.0, 1.0, partial_arr.size))
+            values.extend(partial_arr.tolist())
+    if aftermath is not None:
+        aftermath_arr = np.asarray(aftermath, dtype=float).ravel()
+        if aftermath_arr.size > 0:
+            times.extend(1.0 + np.linspace(0.0, duration_multiplier, aftermath_arr.size))
+            values.extend(aftermath_arr.tolist())
+
+    if not times or not values:
+        return None
+
+    t = np.asarray(times, dtype=float)
+    v = np.asarray(values, dtype=float)
+    mask = np.isfinite(t) & np.isfinite(v)
+    if mask.sum() < 2:
+        return None
+
+    t = t[mask]
+    v = v[mask]
+    order = np.argsort(t)
+    t_sorted = t[order]
+    v_sorted = v[order]
+
+    # Drop duplicate timestamps to keep np.interp stable
+    dedup_idx = np.concatenate(([0], np.where(np.diff(t_sorted) > 0)[0] + 1))
+    t_unique = t_sorted[dedup_idx]
+    v_unique = v_sorted[dedup_idx]
+    if t_unique.size < 2:
+        return None
+
+    return np.interp(time_grid, t_unique, v_unique)
 
 
 def fit_power_law_logbins_wls(
@@ -669,6 +786,57 @@ def plot_fit(ax, binned: pd.DataFrame, params, label_prefix=None, label_size: in
     ax.legend(loc="best", fontsize=legend_size)
 
 
+def plot_normalized_impact_path(
+    df: pd.DataFrame,
+    out_path: str,
+    duration_multiplier: float = AFTERMATH_DURATION_MULTIPLIER,
+    n_grid: int = 300,
+):
+    """
+    Build and plot the average normalized impact path (execution + aftermath).
+    t=1 marks the end of the metaorder, aftermath spans up to (1 + duration_multiplier).
+    """
+    grid = np.linspace(0.0, 1.0 + duration_multiplier, n_grid)
+    paths = []
+    iterator = tqdm(
+        df.itertuples(index=False),
+        total=len(df),
+        desc="Normalized impact paths",
+        dynamic_ncols=True,
+    )
+    for row in iterator:
+        partial_raw = getattr(row, "partial_impact", None)
+        aftermath_raw = getattr(row, "aftermath_impact", None)
+
+        partial = unpack_path(partial_raw)
+        aftermath = unpack_path(aftermath_raw)
+
+        path = _interpolate_impact_path(partial, aftermath, grid, duration_multiplier)
+        if path is not None:
+            paths.append(path)
+
+    if not paths:
+        tqdm.write("No valid impact paths to plot.")
+        return
+
+    arr = np.vstack(paths)
+    mean_path = np.nanmean(arr, axis=0)
+    p25 = np.nanpercentile(arr, 25, axis=0)
+    p75 = np.nanpercentile(arr, 75, axis=0)
+
+    plt.figure(figsize=(8, 4.5))
+    plt.plot(grid, mean_path, label="Mean impact path", color="black")
+    # plt.fill_between(grid, p25, p75, color="gray", alpha=0.25, label="IQR")
+    plt.axvline(1.0, color="black", linestyle="--", alpha=0.5)
+    plt.xlabel("Normalized time (T(Q)=1 at end of execution)")
+    plt.ylabel("Impact")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=300)
+    plt.close()
+    tqdm.write(f"Saved normalized impact path plot to {out_path}")
+
+
 # ---------------------------------------------------------------------------
 # Intro / transforms
 # ---------------------------------------------------------------------------
@@ -704,15 +872,14 @@ if RUN_METAORDER_COMPUTATION:
         metaorders_dict_all = pickle.load(open(unfiltered_path, "rb"))
     else:
         metaorders_dict_all: Dict[str, Dict[int, List[List[int]]]] = {}
-        for i, path in enumerate(dfs_path_new):
+        for path in tqdm(dfs_path_new, desc="Metaorders per ISIN", dynamic_ncols=True):
             isin = os.path.splitext(os.path.basename(path))[0]
-            print(f"({i+1}/{len(dfs_path_new)}) Computing metaorders for {isin}")
             trades = load_trades_filtered(path, PROPRIETARY)
             metaorders_dict_all[isin] = compute_metaorders_per_isin(trades, LEVEL)
             del trades
             gc.collect()
         pickle.dump(metaorders_dict_all, open(unfiltered_path, "wb"))
-        print(f"Saved {unfiltered_path}")
+        tqdm.write(f"Saved {unfiltered_path}")
 
     MAX_GAP = pd.Timedelta(hours=1)
     MIN_TRADES = 2
@@ -733,9 +900,8 @@ if RUN_METAORDER_COMPUTATION:
             max_gap_np = np.timedelta64(int(MAX_GAP.value), "ns")
 
         filtered_dict: Dict[str, Dict[int, List[List[int]]]] = {}
-        for i, path in enumerate(dfs_path_new):
+        for path in tqdm(dfs_path_new, desc="Filtering metaorders per ISIN", dynamic_ncols=True):
             isin = os.path.splitext(os.path.basename(path))[0]
-            print(f"({i+1}/{len(dfs_path_new)}) Filtering metaorders for {isin}")
             trades = load_trades_filtered(path, PROPRIETARY)
             tt = trades["Trade Time"]
             if tt.dt.tz is None:
@@ -757,7 +923,7 @@ if RUN_METAORDER_COMPUTATION:
             gc.collect()
         metaorders_dict_all = filtered_dict
         pickle.dump(metaorders_dict_all, open(filtered_path, "wb"))
-        print(f"Saved {filtered_path}")
+        tqdm.write(f"Saved {filtered_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -841,7 +1007,7 @@ if RUN_SOME_STATISTICS_ABOUT_METAORDERS:
 
     def _hist(data: List[float], title: str, xlabel: str, filename: str, logy: bool = True):
         if not data:
-            print(f"Skipping plot {title}: no data")
+            tqdm.write(f"Skipping plot {title}: no data")
             return
         plt.figure(figsize=(8, 3))
         plt.hist(data, bins=50, density=True, alpha=0.6, color="b")
@@ -877,9 +1043,8 @@ if RUN_SIGNATURE_PLOTS:
     dfs_path_new = list_parquet_paths()
     if N is not None:
         dfs_path_new = dfs_path_new[:N]
-    for path in dfs_path_new:
+    for path in tqdm(dfs_path_new, desc="Signature plots", dynamic_ncols=True):
         isin = os.path.splitext(os.path.basename(path))[0]
-        print(f"Computing signature plot for {isin}")
         trades = load_trades_filtered(path, PROPRIETARY)
         prices = trades[["Trade Time", "Price Last Contract"]]
         intervals_sec = list(range(1, 2000, 20))
@@ -938,9 +1103,8 @@ if RUN_SQL_FITS:
     metaorders_dict_all = pickle.load(open(os.path.join(OUT_DIR, f"metaorders_dict_all_{LEVEL}_{PROPRIETARY_TAG}.pkl"), "rb"))
     metaorders_info_records: List[Tuple] = []
     impact_cols = [f"Impact_{m}m" for m in IMPACT_HORIZONS_MIN]
-    for i, path in enumerate(dfs_path_new):
+    for path in tqdm(dfs_path_new, desc="Building metaorders info", dynamic_ncols=True):
         isin = os.path.splitext(os.path.basename(path))[0]
-        print(f"({i+1}/{len(dfs_path_new)}) Building metaorders_info for {isin}")
         trades = load_trades_filtered(path, PROPRIETARY)
         metaorders_dict = metaorders_dict_all.get(isin, {})
         metaorders_info_records.extend(compute_metaorders_info(trades, metaorders_dict))
@@ -960,6 +1124,8 @@ if RUN_SQL_FITS:
             "Participation Rate",
             "N Child",
             "Period",
+            "partial_impact",
+            "aftermath_impact",
             *impact_cols,
         ),
     )
@@ -968,7 +1134,7 @@ if RUN_SQL_FITS:
 
     print("[SQL Fits] Saving unfiltered metaorders info dataframe...")
     metaorders_info_df_sameday.to_parquet(info_path_unfiltered, index=False)
-    print(f"Saved {info_path_unfiltered}")
+    tqdm.write(f"Saved {info_path_unfiltered}")
 
     print(
         f"[SQL Fits] Applying unified filters (duration >= {SECONDS_FILTER}s, Q/V > {MIN_QV}) "
@@ -978,7 +1144,7 @@ if RUN_SQL_FITS:
         metaorders_info_df_sameday, seconds_filter=SECONDS_FILTER, min_qv=MIN_QV
     )
     metaorders_info_df_sameday_filtered.to_parquet(info_path_filtered, index=False)
-    print(f"Saved {info_path_filtered}")
+    tqdm.write(f"Saved {info_path_filtered}")
 
 
 # ---------------------------------------------------------------------------
@@ -1000,6 +1166,10 @@ if RUN_WLS:
         raise FileNotFoundError(
             "Missing metaorders info parquet: run the SQL fits section to generate the filtered dataset."
         )
+
+    if RUN_IMPACT_PATH_PLOT:
+        out_path = os.path.join(IMG_DIR, f"normalized_impact_path_{LEVEL}_{PROPRIETARY_TAG}.png")
+        plot_normalized_impact_path(df, out_path, duration_multiplier=AFTERMATH_DURATION_MULTIPLIER)
 
     LABEL_SIZE = 16
     LEGEND_SIZE = 14
