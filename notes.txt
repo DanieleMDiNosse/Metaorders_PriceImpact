@@ -1,0 +1,24 @@
+TODO:
+- Controllare Zarinelli et al. per confrontare tutto ciò che ottengo con ciò che è presente in letteratura
+
+- Controllare quali sono i valori tipici del participation rate in letterature.
+
+- Scrviere una literature review sulle diverse tipologie di metaordini, intese dal punto di vista della loro costruzione: clients metaorders, proprietary
+    metaorders, statistical detection, synthetic 
+    statistical: [10] E. Moro, J. Vicente, L. G. Moyano, A. Gerig, J. D. Farmer, G. Vaglica, F. Lillo, and R. N.
+                    Mantegna, “Market impact and trading profile of hidden orders in stock markets,” Physical
+                    Review E, vol. 80, no. 6, p. 066102, 2009.
+                [11] B. T´oth, F. Lillo, and J. Farmer, “Segmentation algorithm for non-stationary compound
+                    poisson processes. with an application to inventory time series of market members in a financial
+                    market,” European Physical Journal B, vol. 78, pp. 235–243, 2010
+
+
+
+DONE:
+- Valutare il numero di members per ISIN per evidenziare eventuali members che si concentrano maggiormente su un ISIN 
+    rispetto ad un altro.
+- I trade eseguiti per conto di una sezione dell'istituto finanziario che non ha accesso al mercato e che si rivolge alla sezione che lo ha, come vengono
+    etichettati? Li trovo come proprietari ma con un label clienti diverso da zero o li trovo come clienti? Ho un modo per distinguerli?
+    RISPOSTA: sono etichettati come client trades. Non ho modo di distinguerli.
+- Quanti trade non appartengono a metaordini? Potrebbe essere una buona misura della presenza dei retail 
+    RIPOSTA: 66%

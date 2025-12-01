@@ -1,6 +1,6 @@
-# Proprietary vs Non‑Proprietary Crowding in `prop_vs_nonprop.py`
+# Proprietary vs Non‑Proprietary Crowding in `metaorder_statistics.py`
 
-This document explains the mathematics and implementation of `prop_vs_nonprop.py`, and summarizes the empirical results obtained on the current dataset (`out_files/metaorders_info_sameday_filtered_member_proprietary.parquet` and `out_files/metaorders_info_sameday_filtered_member_non_proprietary.parquet`). The focus is on:
+This document explains the mathematics and implementation of `metaorder_statistics.py` (previously `prop_vs_nonprop.py`), and summarizes the empirical results obtained on the current dataset (`out_files/metaorders_info_sameday_filtered_member_proprietary.parquet` and `out_files/metaorders_info_sameday_filtered_member_non_proprietary.parquet`). The focus is on:
 
 - how **local** and **environmental** imbalances are defined,
 - how correlations and confidence intervals are computed,
@@ -13,7 +13,7 @@ Throughout, metaorders are already precomputed objects coming from the metaorder
 
 ## 1. Inputs and Notation
 
-The function `load_metaorders` (`prop_vs_nonprop.py:752`) loads a metaorder file (`.parquet`, `.csv` or `.pkl`) and ensures the presence of:
+The function `load_metaorders` in `metaorder_statistics.py` loads a metaorder file (`.parquet`, `.csv` or `.pkl`) and ensures the presence of:
 
 - `ISIN`: stock identifier;
 - `Date`: trading date (derived from `Period` if needed);
@@ -29,8 +29,7 @@ Two datasets are loaded:
 
 - **Proprietary** flow: `metaorders_proprietary` (flag `Group = "prop"`),
 - **Non‑proprietary (client)** flow: `metaorders_non_proprietary` (flag `Group = "client"`),
-
-in `main` (`prop_vs_nonprop.py:784–791`).
+loaded in the script’s `main` function.
 
 ---
 
@@ -38,7 +37,7 @@ in `main` (`prop_vs_nonprop.py:784–791`).
 
 ### 2.1 Definition
 
-The core object is the **local daily imbalance** built from *other* metaorders in the same ISIN and date. It is implemented in `add_daily_imbalance` (`prop_vs_nonprop.py:101`).
+The core object is the **local daily imbalance** built from *other* metaorders in the same ISIN and date. It is implemented in the helper `add_daily_imbalance`.
 
 For each metaorder \(i\) with:
 
@@ -65,7 +64,7 @@ Interpretation:
 - \(\text{imbalance}^{\text{local}}_i \approx -1\): other metaorders are mostly **sells**;
 - \(\text{imbalance}^{\text{local}}_i \approx 0\): buy and sell volumes roughly balance.
 
-If there is only one metaorder in \(\mathcal{G}_{k,d}\), the denominator is zero and the imbalance is set to `NaN`. This corresponds to days with no “other” flow and is handled explicitly in `analyze_flow` (`prop_vs_nonprop.py:161–165`).
+If there is only one metaorder in \(\mathcal{G}_{k,d}\), the denominator is zero and the imbalance is set to `NaN`. This corresponds to days with no “other” flow and is handled explicitly in `analyze_flow`.
 
 ### 2.2 Implementation sketch
 
@@ -86,9 +85,9 @@ If there is only one metaorder in \(\mathcal{G}_{k,d}\), the denominator is zero
       \text{NaN}, & \text{otherwise},
     \end{cases}
   \]
-  as in `prop_vs_nonprop.py:121–128`.
+  as implemented in `add_daily_imbalance`.
 
-This is applied separately to proprietary and client metaorders in `main` (`prop_vs_nonprop.py:793–795`).
+This is applied separately to proprietary and client metaorders in `main`.
 
 ---
 
@@ -96,7 +95,7 @@ This is applied separately to proprietary and client metaorders in `main` (`prop
 
 ### 3.1 Pearson correlation
 
-The function `corr_with_ci` (`prop_vs_nonprop.py:37`) computes the **Pearson correlation** between two vectors \(x\) and \(y\):
+The function `corr_with_ci` computes the **Pearson correlation** between two vectors \(x\) and \(y\):
 \[
 r = \text{Corr}(x, y)
   = \frac{\sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})}
@@ -129,7 +128,7 @@ For a sample correlation \(r\) computed from \(n\) observations, `corr_with_ci` 
    \[
    z_{\alpha/2} = \Phi^{-1}\bigl(1-\tfrac{\alpha}{2}\bigr),
    \]
-   where \(\Phi^{-1}\) is the quantile function of the standard normal (`scipy.stats.norm.ppf` in `prop_vs_nonprop.py:79–80`).
+   where \(\Phi^{-1}\) is the quantile function of the standard normal (`scipy.stats.norm.ppf` in the implementation).
 5. Then the CI in z‑space is
    \[
    [z_{\text{lo}}, z_{\text{hi}}]
@@ -148,7 +147,7 @@ The function returns \((r, r_{\text{lo}}, r_{\text{hi}}, n)\).
 
 ## 4. Global Imbalance Sanity Check
 
-In `analyze_flow` (`prop_vs_nonprop.py:208–225`), the script also computes a **global imbalance** correlation as a sanity check.
+In `analyze_flow`, the script also computes a **global imbalance** correlation as a sanity check.
 
 Let:
 
@@ -167,13 +166,13 @@ The script computes the correlation
 r^{\text{global}}
   = \text{Corr}\bigl(D_i,\ \text{imbalance}^{\text{global}}_i\bigr),
 \]
-again with Fisher‑based CIs. By construction, even if directions \(D_i\) were random, this correlation tends to be **negative** because each metaorder is subtracted from the total when forming its own “others” imbalance (see the explanatory printout in `prop_vs_nonprop.py:224–226`).
+again with Fisher‑based CIs. By construction, even if directions \(D_i\) were random, this correlation tends to be **negative** because each metaorder is subtracted from the total when forming its own “others” imbalance (see the explanatory printout in the script).
 
 ---
 
 ## 5. Daily Crowding Time Series (Within Group)
 
-The function `daily_crowding_ts` (`prop_vs_nonprop.py:233`) computes **daily correlations** between direction and an imbalance column.
+The function `daily_crowding_ts` computes **daily correlations** between direction and an imbalance column.
 
 For each calendar date \(d\), it groups metaorders and evaluates
 \[
@@ -181,12 +180,12 @@ r_d = \text{Corr}\bigl(D_i,\ \text{imbalance}_i\bigr),
 \]
 using only rows with that `Date`. For each date it also stores \((r_d, r_{d,\text{lo}}, r_{d,\text{hi}}, n_d)\).
 
-In `run_daily_crowding_analysis` (`prop_vs_nonprop.py:406`), this is applied separately to:
+In `run_daily_crowding_analysis`, this is applied separately to:
 
 - proprietary metaorders (`metaorders_proprietary`),
 - client metaorders (`metaorders_non_proprietary`),
 
-using local imbalance as the imbalance column. Days with fewer than `min_n` metaorders are dropped. When plotting is enabled, `plot_daily_crowding` (`prop_vs_nonprop.py:297`) generates:
+using local imbalance as the imbalance column. Days with fewer than `min_n` metaorders are dropped. When plotting is enabled, `plot_daily_crowding` generates:
 
 **Figures (within‑group crowding):**
 
@@ -199,13 +198,30 @@ These figures show how crowding changes over time for proprietary vs client flow
 
 ---
 
+### 5.3 Additional imbalance diagnostics
+
+Beyond the daily correlation time series, `metaorder_statistics.py` computes several complementary diagnostics based on the same metaorders:
+
+- **Imbalance distributions.** `plot_imbalance_distributions` builds PDFs of within‑group `imbalance_local` split by buy/sell and, when cross‑group imbalances are available, PDFs of environment imbalances (`imbalance_client_env`, `imbalance_prop_env`). The combined figure is saved as  
+  `images/prop_vs_nonprop/imbalance_distribution.png`.
+- **Participation vs |imbalance|.** Using `compute_binned_abs_imbalance` and `plot_participation_vs_abs_imbalance`, the script bins metaorders by `Participation Rate` and plots the average absolute imbalance \(\mathbb{E}[|\text{imbalance}_i|]\) per bin for proprietary vs client flow:  
+  `images/prop_vs_nonprop/participation_vs_abs_imbalance.png`.
+- **Autocorrelation of metaorder signs.** `plot_direction_autocorrelation` and `plot_direction_autocorrelation_per_isin` compute autocorrelation functions of `Direction` (globally and per ISIN), with bootstrap noise bands indicating the range expected under shuffled signs. The per‑ISIN plots live under `images/prop_vs_nonprop/acf/`, and the aggregate view under  
+  `images/prop_vs_nonprop/direction_autocorrelation.png`.
+- **Imbalance vs daily returns.** When `ATTACH_DAILY_RETURNS` and `PLOT_IMBALANCE_VS_RETURNS` are enabled, the script attaches close‑to‑close daily log returns per \((\text{ISIN}, \text{Date})\) and plots a scatter of imbalance versus daily returns for both groups:  
+  `images/prop_vs_nonprop/imbalance_vs_daily_returns.png`.
+
+These diagnostics quantify how crowding depends on participation, how persistent metaorder directions are through time, and how strongly imbalance co‑moves with subsequent daily price changes.
+
+---
+
 ## 6. Cross‑Group Crowding: Prop vs Client Environments
 
 ### 6.1 Environment imbalance
 
 To study **cross‑group crowding**, the script first computes, for each group, an **environment imbalance** built from the *other* group only.
 
-`compute_environment_imbalance` (`prop_vs_nonprop.py:255`) takes a source DataFrame (e.g. client metaorders) and for each \((\text{ISIN}, \text{Date})\) computes:
+`compute_environment_imbalance` takes a source DataFrame (e.g. client metaorders) and for each \((\text{ISIN}, \text{Date})\) computes:
 \[
 \text{imbalance}^{\text{env}}_{k,d}
   = \frac{\sum_{j \in \mathcal{G}^{\text{src}}_{k,d}} Q_j D_j}
@@ -213,9 +229,9 @@ To study **cross‑group crowding**, the script first computes, for each group, 
 \]
 where \(\mathcal{G}^{\text{src}}_{k,d}\) is the set of source‑group metaorders on stock \(k\) and date \(d\). This produces a per‑day, per‑ISIN imbalance for the environment group.
 
-`attach_environment_imbalance` (`prop_vs_nonprop.py:278`) then merges this quantity into a **target** DataFrame so that each target metaorder \(i\) inherits the environment imbalance on its own \((k,d)\).
+`attach_environment_imbalance` then merges this quantity into a **target** DataFrame so that each target metaorder \(i\) inherits the environment imbalance on its own \((k,d)\).
 
-Concretely, in `run_cross_group_crowding_analysis` (`prop_vs_nonprop.py:461`):
+Concretely, in `run_cross_group_crowding_analysis`:
 
 - proprietary metaorders obtain `imbalance_client_env` built from client flow;
 - client metaorders obtain `imbalance_prop_env` built from proprietary flow.
@@ -242,7 +258,7 @@ These figures quantify whether one group tends to trade **with** or **against** 
 
 ## 7. Crowding vs All Others (Combined Prop + Client)
 
-In `run_all_vs_all_crowding_analysis` (`prop_vs_nonprop.py:532`), the two groups are concatenated into a single DataFrame:
+In `run_all_vs_all_crowding_analysis`, the two groups are concatenated into a single DataFrame:
 \[
 \text{combined} = \text{proprietary} \cup \text{client}.
 \]
@@ -277,7 +293,7 @@ These series measure how each group’s trade directions align with the **overal
 
 The script also compares how many metaorders each group executes per day, independently of size and sign.
 
-`compute_daily_metaorder_counts` (`prop_vs_nonprop.py:602`) builds a DataFrame indexed by `Date` with:
+`compute_daily_metaorder_counts` builds a DataFrame indexed by `Date` with:
 
 - `Proprietary(d)`: number of proprietary metaorders on day \(d\),
 - `Client(d)`: number of client metaorders on day \(d\).
@@ -295,7 +311,7 @@ By construction:
 - values near \(-1\) mean almost all are client,
 - values near \(0\) mean similar counts in both groups.
 
-`run_daily_count_imbalance_analysis` (`prop_vs_nonprop.py:602–647`) prints summary statistics and, when plots are enabled, `plot_daily_count_imbalance` saves:
+`run_daily_count_imbalance_analysis` prints summary statistics and, when plots are enabled, `plot_daily_count_imbalance` saves:
 
 **Figures (daily count imbalance):**
 
@@ -308,13 +324,7 @@ By construction:
 
 ## 9. Empirical Results on the Current Dataset
 
-Running
-
-```bash
-python prop_vs_nonprop.py --no-plots
-```
-
-on the current dataset yields the following key findings.
+Running `metaorder_statistics.py` (with the configuration flags at the top of the script left at their default values) on the current dataset yields the following key findings.
 
 ### 9.1 Sample sizes and basic stats
 
@@ -421,7 +431,7 @@ This indicates that, on a typical day, proprietary metaorders are substantially 
 
 ## 10. Summary
 
-- `prop_vs_nonprop.py` constructs **local** and **environmental** volume‑weighted imbalances of metaorders and studies how trade directions correlate with these imbalances at both the global and daily level.
+- `metaorder_statistics.py` constructs **local** and **environmental** volume‑weighted imbalances of metaorders and studies how trade directions correlate with these imbalances at both the global and daily level.
 - Mathematically, local imbalance is a self‑excluded signed‑volume average over other metaorders on the same ISIN and day; cross‑group and all‑vs‑all analyses reuse the same structure with different environments.
 - **Empirically, client flow exhibits stronger positive crowding (trading with the daily imbalance) than proprietary flow, while both groups slightly lean against the imbalance created by the other group.**
 - **Daily count imbalances reveal that proprietary metaorders are both more numerous and, on average, less strongly crowded than client metaorders.**

@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import builtins
+import logging
 import os
 import gc
 import pickle
 import warnings
 from typing import Dict, Iterable, List, Optional, Tuple, Union
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,32 +17,50 @@ from scipy.optimize import curve_fit
 from tqdm import tqdm
 
 import seaborn as sns
-
 sns.set_theme()
 
-def pack_path(path: Optional[List[float]]) -> Optional[bytes]:
-    """Convert a list of floats to packed float32 bytes (or None)."""
-    if path is None:
-        return None
-    if len(path) == 0:
-        return b""
-    arr = np.asarray(path, dtype=np.float32)
-    return arr.tobytes()
+# Sizes tuned for paper-ready readability
+TICK_FONT_SIZE = 12
+LABEL_FONT_SIZE = 14
+TITLE_FONT_SIZE = 15
+LEGEND_FONT_SIZE = 12
+DEFAULT_FIGSIZE = (9, 5.5)
+
+plt.rcParams.update({
+    "font.size": TICK_FONT_SIZE,
+    "xtick.labelsize": TICK_FONT_SIZE,
+    "ytick.labelsize": TICK_FONT_SIZE,
+    "axes.labelsize": LABEL_FONT_SIZE,
+    "axes.titlesize": TITLE_FONT_SIZE,
+    "legend.fontsize": LEGEND_FONT_SIZE,
+    "figure.figsize": DEFAULT_FIGSIZE,
+})
+
+# ---------------------------------------------------------------------------
+# Logging helpers
+# ---------------------------------------------------------------------------
+LOG_PATH = Path(__file__).with_suffix(".log") if "__file__" in globals() else Path("metaorder_computation.log")
+logger = logging.getLogger(Path(__file__).stem if "__file__" in globals() else "metaorder_computation")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    _formatter = logging.Formatter("%(asctime)s - %(message)s")
+    _file_handler = logging.FileHandler(LOG_PATH, mode="a")
+    _file_handler.setFormatter(_formatter)
+    logger.addHandler(_file_handler)
+
+_original_print = builtins.print
 
 
-def unpack_path(blob: Optional[Union[bytes, bytearray, memoryview, List[float], np.ndarray]]) -> Optional[np.ndarray]:
-    """
-    Convert packed bytes (or legacy list/ndarray) back to a float32 numpy array.
-    If the input is bytes-like, return a view using np.frombuffer.
-    If the input is a list/array (older saved files), convert it with np.asarray.
-    """
-    if blob is None:
-        return None
-    if isinstance(blob, (bytes, bytearray, memoryview)):
-        return np.frombuffer(blob, dtype=np.float32)
-    # Fallback for old saved data where the column might be a list or an array
-    return np.asarray(blob, dtype=np.float32)
+def log_print(*args, **kwargs):
+    """Print to stdout and append the same message to the script log file."""
+    sep = kwargs.get("sep", " ")
+    message = sep.join(str(a) for a in args)
+    logger.info(message)
+    _original_print(*args, **kwargs)
 
+
+builtins.print = log_print
 
 # Local helpers
 from utils import (
@@ -54,12 +75,13 @@ from utils import (
     build_daily_cache,
 )
 
+sns.set_theme()
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 LEVEL = "member"  # "member" or "client"
-PROPRIETARY = True  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
+PROPRIETARY = False  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
 PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
 RECOMPUTE = True
 N = None  # set to an integer to subsample ISIN files
@@ -94,21 +116,48 @@ COLUMN_POSITIONS = {
 # Section toggles
 RUN_INTRO = True
 RUN_METAORDER_COMPUTATION = False
-RUN_SOME_STATISTICS_ABOUT_METAORDERS = False
 RUN_SIGNATURE_PLOTS = False
 RUN_SQL_FITS = True
 RUN_WLS = True
-RUN_IMPACT_PATH_PLOT = True
+RUN_IMPACT_PATH_PLOT = False
 IMPACT_HORIZONS_MIN = (1, 3, 10, 30, 60)
-SECONDS_FILTER = 60  # minimum metaorder duration (seconds)
+SECONDS_FILTER = 120  # minimum metaorder duration (seconds)
 MIN_QV = 1e-5  # minimum Q/V to keep a metaorder for fitting
-COMPUTE_IMPACT_PATHS = True  # compute partial/aftermath impact vectors in the metaorders dataset
+COMPUTE_IMPACT_PATHS = False  # compute partial/aftermath impact vectors in the metaorders dataset
 AFTERMATH_DURATION_MULTIPLIER = 2.0  # horizon multiple (x duration) for aftermath impact sampling
 AFTERMATH_NUM_SAMPLES = 30  # number of evenly spaced samples in the aftermath window
+MAX_GAP = pd.Timedelta(hours=1)
+MIN_TRADES = 5
+RESAMPLE_FREQ = "1000s"
 
 # ---------------------------------------------------------------------------
 # Functions
 # ---------------------------------------------------------------------------
+
+def pack_path(path: Optional[List[float]]) -> Optional[bytes]:
+    """Convert a list of floats to packed float32 bytes (or None)."""
+    if path is None:
+        return None
+    if len(path) == 0:
+        return b""
+    arr = np.asarray(path, dtype=np.float32)
+    return arr.tobytes()
+
+
+def unpack_path(blob: Optional[Union[bytes, bytearray, memoryview, List[float], np.ndarray]]) -> Optional[np.ndarray]:
+    """
+    Convert packed bytes (or legacy list/ndarray) back to a float32 numpy array.
+    If the input is bytes-like, return a view using np.frombuffer.
+    If the input is a list/array (older saved files), convert it with np.asarray.
+    """
+    if blob is None:
+        return None
+    if isinstance(blob, (bytes, bytearray, memoryview)):
+        return np.frombuffer(blob, dtype=np.float32)
+    # Fallback for old saved data where the column might be a list or an array
+    return np.asarray(blob, dtype=np.float32)
+
+
 def _is_mot_name(name: str) -> bool:
     return "MOT" in name.upper()
 
@@ -176,7 +225,30 @@ def load_trades_filtered(path: str, proprietary: bool) -> pd.DataFrame:
     return df
 
 
-def compute_metaorders_per_isin(trades: pd.DataFrame, level: str) -> Dict[int, List[List[int]]]:
+def _split_by_gap(
+    meta_idx_list: List[int],
+    times: np.ndarray,
+    max_gap_ns: np.timedelta64,
+) -> List[List[int]]:
+    """Split a metaorder by gaps greater than max_gap_ns."""
+    idx_arr = np.asarray(meta_idx_list, dtype=np.int64)
+    ts = times[idx_arr]
+    if ts.size < 2:
+        return []
+    diffs = ts[1:] - ts[:-1]
+    split_idx = np.flatnonzero(diffs > max_gap_ns)
+    parts = [idx_arr] if split_idx.size == 0 else np.split(idx_arr, split_idx + 1)
+    return [p.tolist() for p in parts]
+
+
+def compute_metaorders_per_isin(
+    trades: pd.DataFrame,
+    level: str,
+    max_gap_ns: np.timedelta64,
+    min_trades: int,
+    min_duration_seconds: float,
+    counts_acc: Optional[Dict[str, int]] = None,
+) -> Dict[int, List[List[int]]]:
     trades_np = trades.to_numpy()
     positions = {
         "Trade Time": trades.columns.get_loc("Trade Time"),
@@ -191,8 +263,12 @@ def compute_metaorders_per_isin(trades: pd.DataFrame, level: str) -> Dict[int, L
     indices_by_agent, act_by_agent = agents_activity_sparse(trades_np, positions, level=level)
     n_trades = len(trades_np)
     act_dense = np.zeros(n_trades, dtype=np.int8)
+    times_arr = trades["Trade Time"].to_numpy()
 
     metaorders_dict: Dict[int, List[List[int]]] = {}
+    raw_count = 0
+    after_trades_count = 0
+    after_duration_count = 0
     for aid in indices_by_agent.keys():
         idxs = indices_by_agent[aid]
         signs = act_by_agent[aid]
@@ -215,34 +291,29 @@ def compute_metaorders_per_isin(trades: pd.DataFrame, level: str) -> Dict[int, L
             clients = np.unique(trades_np[meta_idx_list, positions["ID Client"]])
             if len(clients) > 1:
                 continue
-            kept.append(meta_idx_list)
+            segments = _split_by_gap(
+                meta_idx_list,
+                times_arr,
+                max_gap_ns=max_gap_ns,
+            )
+            raw_count += len(segments)
+            for segment in segments:
+                if len(segment) < min_trades:
+                    continue
+                after_trades_count += 1
+                duration_seconds = (times_arr[segment[-1]] - times_arr[segment[0]]) / np.timedelta64(1, "s")
+                if duration_seconds < min_duration_seconds:
+                    continue
+                after_duration_count += 1
+                kept.append(segment)
         if kept:
             metaorders_dict[aid] = kept
         act_dense[idxs] = 0
+    if counts_acc is not None:
+        counts_acc["raw"] = counts_acc.get("raw", 0) + raw_count
+        counts_acc["after_trades"] = counts_acc.get("after_trades", 0) + after_trades_count
+        counts_acc["after_duration"] = counts_acc.get("after_duration", 0) + after_duration_count
     return metaorders_dict
-
-
-def split_metaorders_by_gap(metaorders: Dict[int, List[List[int]]], times: np.ndarray, max_gap_ns: np.int64, min_trades: int) -> Dict[int, List[List[int]]]:
-    new_dict: Dict[int, List[List[int]]] = {}
-    for member_id, meta_list in metaorders.items():
-        split_list: List[List[int]] = []
-        for meta in meta_list:
-            if len(meta) < 2:
-                split_list.append(meta)
-                continue
-            idx_arr = np.asarray(meta, dtype=np.int64)
-            ts = times[idx_arr]
-            diffs = ts[1:] - ts[:-1]
-            split_idx = np.flatnonzero(diffs > max_gap_ns)
-            if split_idx.size == 0:
-                parts = [idx_arr]
-            else:
-                parts = np.split(idx_arr, split_idx + 1)
-            for part in parts:
-                if part.size >= min_trades:
-                    split_list.append(part.tolist())
-        new_dict[member_id] = split_list
-    return new_dict
 
 
 def _last_price_at_or_before(target_ns: np.int64, ts_ns: np.ndarray, prices: np.ndarray) -> float:
@@ -276,7 +347,7 @@ def compute_metaorders_info(
     price_last = trades["Price Last Contract"].to_numpy(dtype=float)
     horizon_ns = [np.int64(m * 60 * 1_000_000_000) for m in impact_horizons_min]
 
-    daily_cache = build_daily_cache(trades)
+    daily_cache = build_daily_cache(trades, resample_freq=RESAMPLE_FREQ)
 
     rows: List[Tuple] = []
     for agent_id, meta_list in metaorders_dict.items():
@@ -360,53 +431,6 @@ def compute_metaorders_info(
                 )
             )
     return rows
-
-
-def _period_duration_seconds(period) -> float:
-    """Return duration in seconds for a (start, end) tuple; NaN on malformed input."""
-    if period is None:
-        return np.nan
-    try:
-        start, end = period
-    except Exception:
-        return np.nan
-    delta = end - start
-    try:
-        return float(pd.to_timedelta(delta).total_seconds())
-    except Exception:
-        return np.nan
-
-
-def apply_metaorder_filters(
-    df: pd.DataFrame,
-    seconds_filter: float = SECONDS_FILTER,
-    min_qv: float = MIN_QV,
-) -> pd.DataFrame:
-    """
-    Apply all metaorder-level filters once, after metaorders are computed.
-    - Drop metaorders shorter than `seconds_filter`.
-    - Require Q/V > `min_qv`.
-    - Compute Impact = Price Change * Direction / Daily Vol.
-    - Drop rows with non-finite key fields.
-    """
-    if "Period" not in df.columns:
-        raise KeyError("Expected 'Period' column to compute durations for filtering.")
-    out = df.copy()
-    out["DurationSeconds"] = out["Period"].apply(_period_duration_seconds)
-    out = out[out["DurationSeconds"] >= seconds_filter].drop(columns=["DurationSeconds"])
-    out = out[out["Q/V"] > min_qv]
-
-    if {"Price Change", "Direction", "Daily Vol"} - set(out.columns):
-        missing = {"Price Change", "Direction", "Daily Vol"} - set(out.columns)
-        raise KeyError(f"Missing columns required to compute Impact: {missing}")
-    out["Impact"] = out["Price Change"] * out["Direction"] / out["Daily Vol"]
-
-    numeric_cols = [c for c in ["Q/V", "Impact", "Participation Rate", "Price Change", "Daily Vol", "Q"] if c in out.columns]
-    if numeric_cols:
-        out[numeric_cols] = out[numeric_cols].replace([np.inf, -np.inf], np.nan)
-
-    out = out.dropna(subset=["Q/V", "Impact"]).reset_index(drop=True)
-    return out
 
 
 def power_law(qv: np.ndarray, Y: float, gamma: float) -> np.ndarray:
@@ -543,15 +567,21 @@ def fit_power_law_logbins_wls(
     params = (Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin)
     return binned, params
 
-from typing import Tuple, Dict, List, Optional
-
-import numpy as np
-import pandas as pd
-
 
 def power_law(x: np.ndarray, Y: float, gamma: float) -> np.ndarray:
     """Simple power-law function: y = Y * x^gamma."""
     return Y * np.power(x, gamma)
+
+
+def logarithmic_impact(x: np.ndarray, a: float, b: float) -> np.ndarray:
+    """
+    Logarithmic impact function:
+
+        I / sigma = a * log10(1 + b * Q/V)
+
+    where `x` corresponds to Q/V.
+    """
+    return a * np.log10(1.0 + b * x)
 
 
 def fit_power_law_logbins_wls_new(
@@ -756,8 +786,98 @@ def fit_power_law_logbins_wls_new(
     return binned, params
 
 
+def fit_logarithmic_from_binned(
+    binned: pd.DataFrame,
+) -> Tuple[float, float, float, float, float]:
+    """
+    Fit a logarithmic impact curve on already log-binned data via WLS:
 
-def plot_fit(ax, binned: pd.DataFrame, params, label_prefix=None, label_size: int = 16, legend_size: int = 14):
+        mean_imp_k ≈ a * log10(1 + b * center_QV_k)
+
+    using bin-level standard errors as weights.
+
+    Returns
+    -------
+    (a_hat, a_se, b_hat, b_se, R2_lin)
+    """
+    if binned.empty:
+        raise ValueError("No bins available for logarithmic fit.")
+
+    x = binned["center_QV"].to_numpy()
+    y = binned["mean_imp"].to_numpy()
+    sem = binned["sem_imp"].to_numpy()
+
+    if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
+        raise ValueError("Non-finite values encountered in binned data for logarithmic fit.")
+
+    sigma = sem
+    if not np.all(np.isfinite(sigma)) or np.any(sigma <= 0):
+        raise ValueError("Non-positive or non-finite SEM values encountered for logarithmic fit.")
+
+    # Initial guesses: b0 > 0, a0 chosen to roughly match the largest point
+    x_pos = x[x > 0]
+    y_pos = y[y > 0]
+    if x_pos.size >= 1 and y_pos.size >= 1:
+        b0 = 1.0
+        try:
+            a0 = float(y_pos.max() / np.log10(1.0 + b0 * x_pos.max()))
+        except ZeroDivisionError:
+            a0 = float(y_pos.mean())
+    else:
+        a0, b0 = 1.0, 1.0
+
+    def _log_model(xx, a, b):
+        return logarithmic_impact(xx, a, b)
+
+    try:
+        popt, pcov = curve_fit(
+            _log_model,
+            x,
+            y,
+            p0=(a0, b0),
+            sigma=sigma,
+            absolute_sigma=True,
+            maxfev=20000,
+            bounds=(
+                (0.0, 0.0),   # a >= 0, b >= 0
+                (np.inf, np.inf),
+            ),
+        )
+    except Exception as e:
+        raise ValueError(f"Nonlinear logarithmic fit failed: {e}") from e
+
+    a_hat = float(popt[0])
+    b_hat = float(popt[1])
+
+    if pcov is None or not np.all(np.isfinite(pcov)):
+        a_se = float("nan")
+        b_se = float("nan")
+    else:
+        perr = np.sqrt(np.diag(pcov))
+        a_se = float(perr[0])
+        b_se = float(perr[1])
+
+    # Goodness-of-fit in linear space
+    yhat = _log_model(x, a_hat, b_hat)
+    ybar = np.mean(y)
+    denom = np.sum((y - ybar) ** 2)
+    if denom <= 0:
+        R2_lin = float("nan")
+    else:
+        R2_lin = 1.0 - np.sum((y - yhat) ** 2) / denom
+
+    return a_hat, a_se, b_hat, b_se, R2_lin
+
+
+def plot_fit(
+    ax,
+    binned: pd.DataFrame,
+    params,
+    label_prefix=None,
+    label_size: int = 16,
+    legend_size: int = 14,
+    log_params: Optional[Tuple[float, float, float, float, float]] = None,
+):
     Y, Y_err, gamma, gamma_err, R2_log, R2_lin, beta_controls, beta_controls_se = params
     ax.errorbar(
         binned["center_QV"],
@@ -770,6 +890,8 @@ def plot_fit(ax, binned: pd.DataFrame, params, label_prefix=None, label_size: in
     )
     x_min, x_max = binned["center_QV"].min(), binned["center_QV"].max()
     x_grid = np.logspace(np.log10(x_min), np.log10(x_max), 300)
+
+    # Power-law fit line
     ax.plot(
         x_grid,
         power_law(x_grid, Y, gamma),
@@ -778,6 +900,18 @@ def plot_fit(ax, binned: pd.DataFrame, params, label_prefix=None, label_size: in
             rf"$I/\sigma = ({Y:.3g}\pm{Y_err:.2g})(Q/V)^{{{gamma:.3f}\pm{gamma_err:.3f}}}$"
         ),
     )
+
+    # Optional logarithmic fit overlay: I/sigma = a * log10(1 + b * Q/V)
+    if log_params is not None:
+        a_hat, a_se, b_hat, b_se, _ = log_params
+        ax.plot(
+            x_grid,
+            logarithmic_impact(x_grid, a_hat, b_hat),
+            label=(
+                rf'{" " if label_prefix is None else label_prefix + ": "}'
+                rf"$I/\sigma = ({a_hat:.3g}\pm{a_se:.2g})\log_{{10}}(1 + ({b_hat:.3g}\pm{b_se:.2g})\,Q/V)$"
+            ),
+        )
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel("Q/V", fontsize=label_size)
@@ -824,11 +958,11 @@ def plot_normalized_impact_path(
     p25 = np.nanpercentile(arr, 25, axis=0)
     p75 = np.nanpercentile(arr, 75, axis=0)
 
-    plt.figure(figsize=(8, 4.5))
+    plt.figure(figsize=(12, 7))
     plt.plot(grid, mean_path, label="Mean impact path", color="black")
     # plt.fill_between(grid, p25, p75, color="gray", alpha=0.25, label="IQR")
     plt.axvline(1.0, color="black", linestyle="--", alpha=0.5)
-    plt.xlabel("Normalized time (T(Q)=1 at end of execution)")
+    plt.xlabel("Normalized time")
     plt.ylabel("Impact")
     plt.legend()
     plt.tight_layout()
@@ -864,175 +998,41 @@ if RUN_METAORDER_COMPUTATION:
     if N is not None:
         dfs_path_new = dfs_path_new[:N]
 
-    unfiltered_path = os.path.join(OUT_DIR, f"metaorders_dict_all_nofilter_{LEVEL}_{PROPRIETARY_TAG}.pkl")
     filtered_path = os.path.join(OUT_DIR, f"metaorders_dict_all_{LEVEL}_{PROPRIETARY_TAG}.pkl")
-
-    if os.path.exists(unfiltered_path) and not RECOMPUTE:
-        print(f"Loading {unfiltered_path}")
-        metaorders_dict_all = pickle.load(open(unfiltered_path, "rb"))
-    else:
-        metaorders_dict_all: Dict[str, Dict[int, List[List[int]]]] = {}
-        for path in tqdm(dfs_path_new, desc="Metaorders per ISIN", dynamic_ncols=True):
-            isin = os.path.splitext(os.path.basename(path))[0]
-            trades = load_trades_filtered(path, PROPRIETARY)
-            metaorders_dict_all[isin] = compute_metaorders_per_isin(trades, LEVEL)
-            del trades
-            gc.collect()
-        pickle.dump(metaorders_dict_all, open(unfiltered_path, "wb"))
-        tqdm.write(f"Saved {unfiltered_path}")
-
-    MAX_GAP = pd.Timedelta(hours=1)
-    MIN_TRADES = 2
 
     if os.path.exists(filtered_path) and not RECOMPUTE:
         print(f"Loading {filtered_path}")
         metaorders_dict_all = pickle.load(open(filtered_path, "rb"))
     else:
-        S_NS = np.int64(1_000_000_000)
-        M_NS = np.int64(60) * S_NS
-        H_NS = np.int64(60) * M_NS
-        DAY_NS = np.int64(24) * H_NS
-        START_NS = np.int64(9) * H_NS + np.int64(30) * M_NS
-        END_NS = np.int64(17) * H_NS + np.int64(30) * M_NS
         try:
             max_gap_np = MAX_GAP.to_numpy()
         except AttributeError:
             max_gap_np = np.timedelta64(int(MAX_GAP.value), "ns")
 
         filtered_dict: Dict[str, Dict[int, List[List[int]]]] = {}
-        for path in tqdm(dfs_path_new, desc="Filtering metaorders per ISIN", dynamic_ncols=True):
+        metaorder_counts = {"raw": 0, "after_trades": 0, "after_duration": 0}
+        for path in tqdm(dfs_path_new, desc="Metaorders per ISIN (filtered)", dynamic_ncols=True):
             isin = os.path.splitext(os.path.basename(path))[0]
             trades = load_trades_filtered(path, PROPRIETARY)
-            tt = trades["Trade Time"]
-            if tt.dt.tz is None:
-                ns_since_midnight = (tt.view("i8") % DAY_NS).astype(np.int64)
-            else:
-                ns_since_midnight = (
-                    tt.dt.hour.astype(np.int64) * H_NS
-                    + tt.dt.minute.astype(np.int64) * M_NS
-                    + tt.dt.second.astype(np.int64) * S_NS
-                    + tt.dt.microsecond.astype(np.int64) * np.int64(1_000)
-                    + tt.dt.nanosecond.astype(np.int64)
-                )
-            in_hours = (ns_since_midnight >= START_NS) & (ns_since_midnight <= END_NS)
-            trades = trades.loc[in_hours].copy()
-            times_arr = trades["Trade Time"].to_numpy()
-            unfiltered_isin = metaorders_dict_all.get(isin, {})
-            filtered_dict[isin] = split_metaorders_by_gap(unfiltered_isin, times_arr, max_gap_np, MIN_TRADES)
+            filtered_dict[isin] = compute_metaorders_per_isin(
+                trades,
+                LEVEL,
+                max_gap_ns=max_gap_np,
+                min_trades=MIN_TRADES,
+                min_duration_seconds=SECONDS_FILTER,
+                counts_acc=metaorder_counts,
+            )
             del trades
             gc.collect()
         metaorders_dict_all = filtered_dict
         pickle.dump(metaorders_dict_all, open(filtered_path, "wb"))
         tqdm.write(f"Saved {filtered_path}")
-
-
-# ---------------------------------------------------------------------------
-# Aggregated statistics and plots
-# ---------------------------------------------------------------------------
-if RUN_SOME_STATISTICS_ABOUT_METAORDERS:
-    print("[Stats] Building aggregated statistics and histograms...")
-    metaorders_dict_all = pickle.load(open(os.path.join(OUT_DIR, f"metaorders_dict_all_{LEVEL}_{PROPRIETARY_TAG}.pkl"), "rb"))
-    dfs_path_new = list_parquet_paths()
-    total_metaorders = 0
-    counts_by_member: Dict[int, int] = {}
-    durations: List[float] = []
-    inter_arrivals: List[float] = []
-    meta_volumes: List[float] = []
-    q_over_v: List[float] = []
-    participation_rates: List[float] = []
-
-    for path in tqdm(dfs_path_new, desc="ISINs"):
-        isin = os.path.splitext(os.path.basename(path))[0]
-        trades = load_trades_filtered(path, PROPRIETARY)
-        
-        # Optimization: Pre-compute numpy arrays
-        times = trades["Trade Time"].to_numpy()
-        q_buy = trades["Total Quantity Buy"].to_numpy()
-        q_sell = trades["Total Quantity Sell"].to_numpy()
-        
-        # Pre-calculate daily volumes
-        daily_vols = trades.groupby(trades["Trade Time"].dt.date)[["Total Quantity Buy", "Total Quantity Sell"]].sum().sum(axis=1).to_dict()
-
-        metaorders_dict = metaorders_dict_all.get(isin, {})
-        total_metaorders += sum(len(v) for v in metaorders_dict.values())
-        # counts
-        for member, metas in metaorders_dict.items():
-            counts_by_member[member] = counts_by_member.get(member, 0) + len(metas)
-        # durations and inter-arrivals, volumes, q/v, participation
-        for metas in metaorders_dict.values():
-            for meta in metas:
-                if not meta:
-                    continue
-                start_idx, end_idx = meta[0], meta[-1]
-                
-                start_time_np = times[start_idx]
-                end_time_np = times[end_idx]
-                
-                dur_seconds = (end_time_np - start_time_np) / np.timedelta64(1, 's')
-                durations.append(float(dur_seconds))
-                
-                meta_indices = np.array(meta)
-                vols = float(q_buy[meta_indices].sum() + q_sell[meta_indices].sum())
-                meta_volumes.append(vols)
-                
-                start_date = pd.Timestamp(start_time_np).date()
-                day_volume = daily_vols.get(start_date, 0.0)
-                
-                if day_volume != 0:
-                    q_over_v.append(float(vols / day_volume))
-                
-                slice_volume = float(q_buy[start_idx : end_idx + 1].sum() + q_sell[start_idx : end_idx + 1].sum())
-                if slice_volume != 0:
-                    participation_rates.append(float(vols / slice_volume))
-                
-                if len(meta) > 1:
-                    meta_times = times[meta_indices]
-                    diffs = (meta_times[1:] - meta_times[:-1]) / np.timedelta64(1, 's')
-                    inter_arrivals.extend(diffs.tolist())
-        del trades
-        gc.collect()
-
-    print(f"Total metaorders (all ISINs): {total_metaorders}")
-    if counts_by_member:
-        members, counts = zip(*sorted(counts_by_member.items(), key=lambda x: x[1], reverse=True))
-        plt.figure(figsize=(10, 4))
-        plt.bar([str(m) for m in members], counts)
-        plt.xlabel("Member ID")
-        plt.ylabel("Number of metaorders")
-        plt.title("Metaorders per member (aggregated)")
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig(os.path.join(IMG_DIR, "metaorders_per_member_all.png"))
-        plt.close()
-
-    def _hist(data: List[float], title: str, xlabel: str, filename: str, logy: bool = True):
-        if not data:
-            tqdm.write(f"Skipping plot {title}: no data")
-            return
-        plt.figure(figsize=(8, 3))
-        plt.hist(data, bins=50, density=True, alpha=0.6, color="b")
-        plt.axvline(np.mean(data), color="r", linestyle="dashed", linewidth=1, label=f"Mean: {np.mean(data):.2f}")
-        plt.axvline(np.median(data), color="g", linestyle="dashed", linewidth=1, label=f"Median: {np.median(data):.2f}")
-        plt.xlabel(xlabel)
-        plt.ylabel("Density")
-        if logy:
-            plt.yscale("log")
-        plt.title(title)
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(os.path.join(IMG_DIR, filename))
-        plt.close()
-
-    _hist([d / 60 for d in durations], "Metaorder duration (all ISINs)", "Minutes", "metaorder_duration_all.png")
-    _hist([t / 60 for t in inter_arrivals], "Inter-arrival times (all ISINs)", "Minutes", "interarrival_all.png")
-    _hist(meta_volumes, "Metaorder volumes (all ISINs)", "Volume", "volumes_all.png")
-    _hist([100 * q for q in q_over_v], "Q/V (all ISINs)", "Q/V (%)", "q_over_v_all.png")
-    _hist(
-        [100 * r for r in participation_rates],
-        "Participation rate (all ISINs)",
-        "Metaorder volume / volume during metaorder (%)",
-        "participation_rate_all.png",
-    )
+        print(
+            "[Metaorders][ALL] raw (gap<{MAX_GAP}): "
+            f"{metaorder_counts['raw']} -> after min trades ({MIN_TRADES}): "
+            f"{metaorder_counts['after_trades']} -> after duration ({SECONDS_FILTER}s): "
+            f"{metaorder_counts['after_duration']}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1069,7 +1069,7 @@ if RUN_SIGNATURE_PLOTS:
             m, s = _mean_se(bpvs); mean_bpv.append(m); se_bpv.append(s)
             m, s = _mean_se(rks); mean_rk.append(m); se_rk.append(s)
 
-        fig, axs = plt.subplots(1, 3, figsize=(18, 4), tight_layout=True)
+        fig, axs = plt.subplots(1, 3, figsize=(15, 5), tight_layout=True)
         axs[0].errorbar(intervals_sec, mean_rv, yerr=2 * np.array(se_rv), fmt="o", label="RV +/- 2SE")
         axs[0].set_title("Realized Variance")
         axs[0].set_xlabel("Delta (sec)")
@@ -1136,12 +1136,22 @@ if RUN_SQL_FITS:
     metaorders_info_df_sameday.to_parquet(info_path_unfiltered, index=False)
     tqdm.write(f"Saved {info_path_unfiltered}")
 
-    print(
-        f"[SQL Fits] Applying unified filters (duration >= {SECONDS_FILTER}s, Q/V > {MIN_QV}) "
-        "and computing Impact..."
+    print(f"[SQL Fits] Applying filters (Q/V > {MIN_QV}) and computing Impact...")
+    metaorders_info_df_sameday_filtered = metaorders_info_df_sameday[
+        metaorders_info_df_sameday["Q/V"] > MIN_QV
+    ].copy()
+    metaorders_info_df_sameday_filtered["Impact"] = (
+        metaorders_info_df_sameday_filtered["Price Change"]
+        * metaorders_info_df_sameday_filtered["Direction"]
+        / metaorders_info_df_sameday_filtered["Daily Vol"]
     )
-    metaorders_info_df_sameday_filtered = apply_metaorder_filters(
-        metaorders_info_df_sameday, seconds_filter=SECONDS_FILTER, min_qv=MIN_QV
+    numeric_cols = [c for c in ["Q/V", "Impact", "Participation Rate", "Price Change", "Daily Vol", "Q"] if c in metaorders_info_df_sameday_filtered.columns]
+    if numeric_cols:
+        metaorders_info_df_sameday_filtered[numeric_cols] = metaorders_info_df_sameday_filtered[numeric_cols].replace([np.inf, -np.inf], np.nan)
+    metaorders_info_df_sameday_filtered = metaorders_info_df_sameday_filtered.dropna(subset=["Q/V", "Impact"]).reset_index(drop=True)
+    print(
+        f"[SQL Fits] Metaorders before Q/V filter: {len(metaorders_info_df_sameday)} | "
+        f"after Q/V filter: {len(metaorders_info_df_sameday_filtered)}"
     )
     metaorders_info_df_sameday_filtered.to_parquet(info_path_filtered, index=False)
     tqdm.write(f"Saved {info_path_filtered}")
@@ -1159,7 +1169,16 @@ if RUN_WLS:
     elif os.path.exists(info_path_unfiltered):
         print("[WLS] Filtered parquet missing; applying unified filters to unfiltered file...")
         raw_df = pd.read_parquet(info_path_unfiltered)
-        df = apply_metaorder_filters(raw_df, seconds_filter=SECONDS_FILTER, min_qv=MIN_QV)
+        df = raw_df[raw_df["Q/V"] > MIN_QV].copy()
+        df["Impact"] = df["Price Change"] * df["Direction"] / df["Daily Vol"]
+        numeric_cols = [c for c in ["Q/V", "Impact", "Participation Rate", "Price Change", "Daily Vol", "Q"] if c in df.columns]
+        if numeric_cols:
+            df[numeric_cols] = df[numeric_cols].replace([np.inf, -np.inf], np.nan)
+        df = df.dropna(subset=["Q/V", "Impact"]).reset_index(drop=True)
+        print(
+            f"[WLS] Metaorders before Q/V filter: {len(raw_df)} | "
+            f"after Q/V filter: {len(df)}"
+        )
         df.to_parquet(info_path_filtered, index=False)
         print(f"[WLS] Saved filtered parquet to {info_path_filtered}")
     else:
@@ -1186,23 +1205,26 @@ if RUN_WLS:
     # binned_all, params_all = fit_power_law_logbins_wls(df, n_logbins=n_logbins, min_count=min_count, use_median=False)
     binned_all, params_all = fit_power_law_logbins_wls_new(df, n_logbins=n_logbins, min_count=min_count, use_median=False, control_cols=None)
     Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se = params_all
-    fig, ax = plt.subplots(figsize=(9, 6))
-    plot_fit(ax, binned_all, params_all)
-    ax.set_title("Power-law fit (aggregated)", fontsize=TITLE_SIZE)
+    log_params_all = fit_logarithmic_from_binned(binned_all)
+    a_hat, a_se, b_hat, b_se, R2_lin_log = log_params_all
+    fig, ax = plt.subplots(figsize=(12, 8))
+    plot_fit(ax, binned_all, params_all, log_params=log_params_all)
+    ax.set_title("Impact fits (power-law and logarithmic, aggregated)", fontsize=TITLE_SIZE)
     plt.tight_layout()
     plt.savefig(os.path.join(IMG_DIR, f"power_law_fit_overall_{LEVEL}.png"), dpi=300)
     plt.close()
     print("--- Overall (All) ---")
-    print(f"Y = {Y_hat:.6g} +/- {Y_se:.3g}")
-    print(f"gamma = {gamma_hat:.6f} +/- {gamma_se:.3g}")
-    print(f"R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
+    print(f"Power law: Y = {Y_hat:.6g} +/- {Y_se:.3g}")
+    print(f"Power law: gamma = {gamma_hat:.6f} +/- {gamma_se:.3g}")
+    print(f"Power law: R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
+    print(f"Logarithmic: a = {a_hat:.6g} +/- {a_se:.3g} | b = {b_hat:.6g} +/- {b_se:.3g} | R^2_lin = {R2_lin_log:.4f}")
     print(f"Bins used: {len(binned_all)} (min_count >= {min_count})")
 
     PR_CANDIDATES = "Participation Rate"
     pr_nbins = 2
     labels = [f"Q{j+1}" for j in range(pr_nbins)]
     df["PR_bin"] = pd.qcut(df[PR_CANDIDATES], q=pr_nbins, labels=labels, duplicates="drop")
-    fig, ax = plt.subplots(figsize=(9, 6))
+    fig, ax = plt.subplots(figsize=(12, 8))
     fits_by_pr = {}
     for label in df["PR_bin"].dropna().unique():
         sub = df[df["PR_bin"] == label]
@@ -1213,14 +1235,17 @@ if RUN_WLS:
         except Exception as e:
             print(f"[{label}] skipped: {e}")
             continue
+        # Only power-law fits when conditioning on participation rate
         plot_fit(ax, binned_sub, params_sub, label_prefix=f"PR {label}")
         fits_by_pr[str(label)] = params_sub
     ax.set_title("Power-law fits conditioned on participation rate (aggregated)", fontsize=TITLE_SIZE)
     plt.tight_layout()
     plt.savefig(os.path.join(IMG_DIR, f"power_law_fits_by_participation_rate_{LEVEL}.png"), dpi=300)
     plt.close()
-    print("--- Conditioned on Participation Rate ---")
-    for k, (Y, Y_se, gamma, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se) in fits_by_pr.items():
-        print(f"[PR {k}]  Y = {Y:.6g} +/- {Y_se:.3g} | gamma = {gamma:.6f} +/- {gamma_se:.3g} |")
-        print(f"Beta controls: {beta_controls}")
-        print(f"Beta controls SE: {beta_controls_se}")
+    print("--- Conditioned on Participation Rate (power-law only) ---")
+    for k, power_params in fits_by_pr.items():
+        Y, Y_se, gamma, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se = power_params
+        print(f"[PR {k}] Y = {Y:.6g} +/- {Y_se:.3g} | gamma = {gamma:.6f} +/- {gamma_se:.3g} |")
+        print(f"[PR {k}] R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
+        print(f"[PR {k}] Beta controls: {beta_controls}")
+        print(f"[PR {k}] Beta controls SE: {beta_controls_se}")

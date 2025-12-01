@@ -78,14 +78,14 @@ defined as the sign of the last trade in the run (coinciding with the run sign).
 
 ### 1.3 Splitting by inactivity and trading session
 
-Even after initial detection, very long or overnight sequences are undesirable. The script further refines the metaorders using `split_metaorders_by_gap` and a time-of-day filter:
+Even after initial detection, very long or overnight sequences are undesirable. In `compute_metaorders_per_isin` the script further refines the metaorders using an internal gap‑splitting helper (`_split_by_gap`) together with a time‑of‑day filter:
 
 - Let \(t_j\) be the timestamp of trade \(j\). Define the inter-trade gaps within a metaorder
   \[
   \Delta t_k = t_{j_{k+1}} - t_{j_k}.
   \]
 - If \(\Delta t_k > \texttt{MAX\_GAP} = 1 \text{ hour}\), the metaorder is split at that point into separate child metaorders.
-- Child metaorders with fewer than `MIN_TRADES = 2` trades are discarded.
+- Child metaorders with fewer than `MIN_TRADES` trades (default `MIN_TRADES = 5`) are discarded.
 - Only trades within a stricter trading session
   \[
   t_j \in [09{:}30,\,17{:}30]
@@ -113,7 +113,7 @@ where \(q_j\) is the traded quantity of trade \(j\) (buy plus sell quantities).
 Let \(P_t\) be the last traded price process during day \(d\). The construction is:
 
 1. Restrict to trades in \([d, d+1)\) and build a price series \(P_{t_\ell}\) with **unique timestamps**, keeping the last trade per timestamp.
-2. Resample this series every \(\Delta = 120\) seconds using last-tick interpolation and forward-fill within the day:
+2. Resample this series every \(\Delta = 1000\) seconds using last-tick interpolation and forward-fill within the day:
    \[
    P_{t_0}, P_{t_1}, \dots, P_{t_n}, \qquad t_{\ell+1} - t_\ell = \Delta.
    \]
@@ -212,30 +212,42 @@ Beyond the scalar end-of-execution impact \(I_i\), the script also tracks the **
 
 For large datasets, these paths are stored compactly as packed float32 byte blobs (one contiguous vector per metaorder) to keep memory usage under control. Downstream functions such as `plot_normalized_impact_path` transparently unpack these blobs, interpolate each path onto a common normalized time grid \(t \in [0, 1 + \text{duration\_multiplier}]\), and average across metaorders to produce the **normalized impact path** plot. This provides a time-resolved view of impact build-up during execution and its relaxation in the aftermath, complementary to the scalar power-law fits.
 
+### 3.4 Logarithmic impact model
+Alongside the power-law specification, the implementation also fits a **logarithmic impact model** on the same binned data:
+\[
+\mathbb{E}[I_i \mid \phi_i]
+  \approx a \,\log_{10}\!\bigl(1 + b\,\phi_i\bigr),
+\]
+with parameters \(a, b > 0\). This is implemented via the helper `logarithmic_impact` and a separate fit routine that works on the bin-level statistics.
+
+Practically, plots such as `power_law_fit_overall_*.png` overlay:
+
+- the power-law curve \(Y \phi^\gamma\), and
+- the logarithmic curve \(a \log_{10}(1 + b \phi)\),
+
+so that deviations between the two functional forms (especially at very small or large \(\phi\)) are visually apparent.
+
 ---
 
 ## 4. Filtering Stage Before Fitting
 
-After metaorders are computed and their summary dataframe is built, all filters are applied via `apply_metaorder_filters` in `metaorder_computation.py`. The resulting filtered dataset is saved to `out_files/metaorders_info_sameday_filtered_*.parquet` and reused directly by the WLS step (no re-filtering there).
+After metaorders are computed and their summary dataframe is built, the SQL‑fits block in `metaorder_computation.py` applies the final filters and impact construction. The resulting filtered dataset is saved to `out_files/metaorders_info_sameday_filtered_*.parquet` and reused directly by the WLS step (no re-filtering there).
 
 ### 4.1 Structural filters (enforced during construction)
 
 - Trade-level filters: intraday trades only (09:30-17:30) and the chosen proprietary/non-proprietary subset.
 - Metaorder construction: same-sign runs, at least two trades, same day, single client, no inactivity gaps above 1 hour (splits runs; short fragments are dropped).
+- Additional construction-time floors: each child metaorder must have at least `MIN_TRADES` trades (default 5) and execution duration at least `SECONDS_FILTER` (default 120 seconds).
 
-### 4.2 Unified post-computation filter (`apply_metaorder_filters`)
+### 4.2 Unified post-computation filter (SQL-fits stage)
 
 Let \(\phi_i = Q_i / V_{d(i)}\) and \(I_i = \varepsilon_i \Delta p_i / \widehat{\sigma}_{d(i)}\). The unified filter performs:
 
-1. **Duration floor.** Keep metaorders with execution time
-   \[
-   T_i \geq \texttt{SECONDS\_FILTER} = 60\ \text{s}.
-   \]
-2. **Minimum relative size.** Require
+1. **Minimum relative size.** Require
    \[
    \phi_i > \texttt{MIN\_QV} = 10^{-5}.
    \]
-3. **Impact computation and cleanup.** Compute \(I_i\); replace \(\pm\infty\) in numeric columns with NaN; drop rows with non-finite `Q/V` or `Impact`.
+2. **Impact computation and cleanup.** Compute \(I_i\); replace \(\pm\infty\) in numeric columns with NaN; drop rows with non-finite `Q/V` or `Impact`.
 
 This yields a clean table with well-defined \((\phi_i, I_i)\) pairs and auxiliary fields such as participation rate, ready for binning.
 
@@ -289,9 +301,9 @@ Goodness-of-fit metrics:
 
 ## 6. Summary
 
-- Metaorders: same-sign, same-day, single-client sequences with at least two trades; split on inactivity \(>1\) hour; trade-level intraday and proprietary/non-proprietary filters.
+- Metaorders: same-sign, same-day, single-client sequences with at least two trades; split on inactivity \(>1\) hour; short fragments and short-duration sequences are dropped; trade-level intraday and proprietary/non-proprietary filters.
 - Normalization: size proxy \(\phi_i = Q_i / V_{d(i)}\); impact \(I_i = \varepsilon_i \Delta p_i / \widehat{\sigma}_{d(i)}\).
-- Single post-computation filter (`apply_metaorder_filters`): duration \(\ge 60\)s, \(\phi_i > 10^{-5}\), finite `Impact`/`Q/V`.
-- Estimation: log-binned WLS of \(I\) on \(\phi\) (plus optional controls), with bin-level guards and delta-method weights; report \(\widehat{Y}\), \(\widehat{\gamma}\), standard errors, and \(R^2\) diagnostics.
+- Single post-computation filter (SQL-fits stage): \(\phi_i > 10^{-5}\) and finite `Impact`/`Q/V`.
+- Estimation: log-binned WLS of \(I\) on \(\phi\) (plus optional controls), with bin-level guards and delta-method weights; report \(\widehat{Y}\), \(\widehat{\gamma}\), standard errors, and \(R^2\) diagnostics. A logarithmic benchmark \(I \approx a \log_{10}(1 + b \phi)\) is fitted and reported alongside the power-law.
 
 This pipeline concentrates all filtering before fitting, minimizing repeated conditioning while preserving the econometric rigor of the power-law impact estimation.

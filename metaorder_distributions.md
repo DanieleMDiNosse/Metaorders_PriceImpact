@@ -153,7 +153,26 @@ Each figure has three panels:
 - middle: bipower variation vs \(\Delta\),
 - right: realized kernel vs \(\Delta\).
 
-## Impact vs size: power‑law fits
+## Normalized impact paths
+
+Beyond scalar summaries, `metaorder_computation.py` can also track the **full normalized impact path** of each metaorder:
+
+- During execution, the script records the normalized impact after each child trade (partial path).
+- After execution, it samples the normalized impact at a fixed number of evenly spaced timestamps up to a multiple of the execution duration (aftermath path).
+
+These paths are stored in compact form in the metaorders info parquet and are later unpacked and interpolated on a common time grid to build an average **normalized impact path**. This plot shows how, on average:
+
+- impact accumulates during the execution window,
+- and how it subsequently relaxes (or overshoots) in the aftermath.
+
+Example figures:
+
+- Non‑proprietary: ![Normalized impact path (non‑prop)](images/member_non_proprietary/normalized_impact_path_member_non_proprietary.png)
+- Proprietary: ![Normalized impact path (prop)](images/member_proprietary/normalized_impact_path_member_proprietary.png)
+
+The exact construction of these paths (packing/unpacking, interpolation, and normalization) is described in more detail in `POWER_LAW_IMPACT_FITS.md`.
+
+## Impact vs size: power‑law and logarithmic fits
 
 Finally, in the **WLS fits** section, the script studies the relationship between price impact and relative size \(Q/V\).
 
@@ -176,13 +195,19 @@ The script then:
 
 1. **Filters** metaorders (minimum duration, minimum \(Q/V\), finite values).
 2. **Bins** \(\log_{10}(Q/V)\) into logarithmic bins; in each bin it computes the mean impact and its standard error.
-3. **Fits** a weighted least‑squares regression in log‑space to the model
+3. **Fits** a weighted least‑squares regression in log‑space to the **power‑law** model
    \[
    \frac{I}{\sigma_{\text{day}}} \approx Y \left(\frac{Q}{V_{\text{day}}}\right)^{\gamma},
    \]
    where \(Y\) and \(\gamma\) are estimated together with their standard errors and goodness‑of‑fit measures (\(R^2\) in log‑ and linear space).
 
-The resulting empirical relationship and its binned points are shown in:
+In addition to this baseline specification, the script also fits a **logarithmic impact model**
+\[
+\frac{I}{\sigma_{\text{day}}} \approx a \,\log_{10}\!\bigl(1 + b\,Q/V_{\text{day}}\bigr),
+\]
+using the same binned \((Q/V, I)\) data. Both curves are overlaid on the same figure, providing a direct visual comparison between a pure power‑law and a concave logarithmic benchmark.
+
+The resulting empirical relationship, together with the binned points, is shown in:
 
 - Non‑proprietary: ![Power‑law fit (non‑prop)](images/member_non_proprietary/power_law_fit_overall_member.png)
 - Proprietary: ![Power‑law fit (prop)](images/member_proprietary/power_law_fit_overall_member.png)

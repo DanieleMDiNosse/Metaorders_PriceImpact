@@ -386,7 +386,7 @@ def sum_contiguous(csum: np.ndarray, start: int, end_exclusive: int) -> float:
         return float(csum[end_exclusive - 1])
     return float(csum[end_exclusive - 1] - csum[start - 1])
 
-def build_daily_cache(trades_members: pd.DataFrame):
+def build_daily_cache(trades_members: pd.DataFrame, resample_freq: str = "120s") -> Dict[pd.Timestamp, Tuple[float, float]]:
     """
     Precompute per-day:
       - daily volatility via realized_kernel_fast on 120s resampled PLC
@@ -438,7 +438,7 @@ def build_daily_cache(trades_members: pd.DataFrame):
             continue
 
         # 120s resample by last observed, forward-fill across gaps after the first tick
-        resampled = plc_series.resample("120s").last().ffill().dropna()
+        resampled = plc_series.resample(resample_freq).last().ffill().dropna()
 
         if resampled.size < 2:
             daily_vol = np.nan
