@@ -29,7 +29,7 @@ import builtins
 import logging
 import pickle
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from tqdm import tqdm
 
 import numpy as np
@@ -364,14 +364,16 @@ def list_metaorder_parquet_paths(data_dir: Path, use_mot_data: bool) -> List[Pat
 
 def load_trades_filtered_for_stats(
     path: Path,
-    proprietary: bool,
+    proprietary: Optional[bool],
     trading_hours: Tuple[str, str] = ("09:30:00", "17:30:00"),
 ) -> pd.DataFrame:
+    """Load trades for stats, optionally filtering by proprietary flag."""
     trades = pd.read_parquet(path)
-    if proprietary:
+    if proprietary is True:
         trades = trades[trades["Trade Type Aggressive"] == "Dealing_on_own_account"].copy()
-    else:
+    elif proprietary is False:
         trades = trades[trades["Trade Type Aggressive"] != "Dealing_on_own_account"].copy()
+    # proprietary=None -> no filter (full tape)
     start, end = trading_hours
     trades = trades[
         (trades["Trade Time"].dt.time >= pd.to_datetime(start).time())
@@ -419,15 +421,31 @@ def run_metaorder_dict_statistics(
     q_over_v: List[float] = []
     participation_rates: List[float] = []
 
+    def _volume_over_window(ts_ns: np.ndarray, csum_vol: np.ndarray, start_ns: np.int64, end_ns: np.int64) -> float:
+        start_idx = np.searchsorted(ts_ns, start_ns, side="left")
+        end_idx = np.searchsorted(ts_ns, end_ns, side="right") - 1
+        if end_idx < start_idx or end_idx < 0 or start_idx >= ts_ns.size:
+            return 0.0
+        prev = csum_vol[start_idx - 1] if start_idx > 0 else 0.0
+        return float(csum_vol[end_idx] - prev)
+
     for path in tqdm(parquet_paths, desc="ISINs"):
+        trades_full = load_trades_filtered_for_stats(path, proprietary=None, trading_hours=trading_hours)
         trades = load_trades_filtered_for_stats(path, proprietary=proprietary, trading_hours=trading_hours)
 
         times = trades["Trade Time"].to_numpy()
         q_buy = trades["Total Quantity Buy"].to_numpy()
         q_sell = trades["Total Quantity Sell"].to_numpy()
 
+        times_full_ns = trades_full["Trade Time"].to_numpy("int64")
+        vol_full = (
+            trades_full["Total Quantity Buy"].to_numpy(dtype=float)
+            + trades_full["Total Quantity Sell"].to_numpy(dtype=float)
+        )
+        csum_vol_full = np.cumsum(vol_full)
+
         daily_vols = (
-            trades.groupby(trades["Trade Time"].dt.date)[["Total Quantity Buy", "Total Quantity Sell"]]
+            trades_full.groupby(trades_full["Trade Time"].dt.date)[["Total Quantity Buy", "Total Quantity Sell"]]
             .sum()
             .sum(axis=1)
             .to_dict()
@@ -460,7 +478,9 @@ def run_metaorder_dict_statistics(
                 if day_volume != 0:
                     q_over_v.append(float(vols / day_volume))
 
-                slice_volume = float(q_buy[start_idx : end_idx + 1].sum() + q_sell[start_idx : end_idx + 1].sum())
+                start_ns = np.int64(pd.Timestamp(start_time_np).value)
+                end_ns = np.int64(pd.Timestamp(end_time_np).value)
+                slice_volume = _volume_over_window(times_full_ns, csum_vol_full, start_ns, end_ns)
                 if slice_volume != 0:
                     participation_rates.append(float(vols / slice_volume))
 

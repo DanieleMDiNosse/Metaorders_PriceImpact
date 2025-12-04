@@ -81,11 +81,11 @@ sns.set_theme()
 # Config
 # ---------------------------------------------------------------------------
 LEVEL = "member"  # "member" or "client"
-PROPRIETARY = False  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
+PROPRIETARY = True  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
 PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
 RECOMPUTE = True
-N = None  # set to an integer to subsample ISIN files
 USE_MOT_DATA = False  # False -> use files without "MOT" in the name, True -> only files containing "MOT"
+TRADING_HOURS = ("09:30:00", "17:30:00")
 
 PATH_DATA_FOLDER = "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data"
 PATH_NEW_DATA_FOLDER = "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data"
@@ -115,20 +115,20 @@ COLUMN_POSITIONS = {
 
 # Section toggles
 RUN_INTRO = True
-RUN_METAORDER_COMPUTATION = False
+RUN_METAORDER_COMPUTATION = True
 RUN_SIGNATURE_PLOTS = False
 RUN_SQL_FITS = True
 RUN_WLS = True
-RUN_IMPACT_PATH_PLOT = False
+RUN_IMPACT_PATH_PLOT = True
 IMPACT_HORIZONS_MIN = (1, 3, 10, 30, 60)
 SECONDS_FILTER = 120  # minimum metaorder duration (seconds)
 MIN_QV = 1e-5  # minimum Q/V to keep a metaorder for fitting
-COMPUTE_IMPACT_PATHS = False  # compute partial/aftermath impact vectors in the metaorders dataset
+COMPUTE_IMPACT_PATHS = True  # compute partial/aftermath impact vectors in the metaorders dataset
 AFTERMATH_DURATION_MULTIPLIER = 2.0  # horizon multiple (x duration) for aftermath impact sampling
 AFTERMATH_NUM_SAMPLES = 30  # number of evenly spaced samples in the aftermath window
 MAX_GAP = pd.Timedelta(hours=1)
 MIN_TRADES = 5
-RESAMPLE_FREQ = "1000s"
+RESAMPLE_FREQ = "1000s"  # frequency for daily cache of vol/volatility
 
 # ---------------------------------------------------------------------------
 # Functions
@@ -207,15 +207,13 @@ def ensure_transforms():
         df_transformed.to_parquet(new_path)
 
 
-def load_trades_filtered(path: str, proprietary: bool) -> pd.DataFrame:
+def load_trades_base(path: str, trading_hours: Tuple[str, str] = TRADING_HOURS) -> pd.DataFrame:
+    """Load one ISIN parquet, apply trading-hours filter, sort, and tag ISIN."""
     df = pd.read_parquet(path)
-    if proprietary:
-        df = df[df["Trade Type Aggressive"] == "Dealing_on_own_account"].copy()
-    else:
-        df = df[df["Trade Type Aggressive"] != "Dealing_on_own_account"].copy()
+    start, end = trading_hours
     df = df[
-        (df["Trade Time"].dt.time >= pd.to_datetime("09:30:00").time())
-        & (df["Trade Time"].dt.time <= pd.to_datetime("17:30:00").time())
+        (df["Trade Time"].dt.time >= pd.to_datetime(start).time())
+        & (df["Trade Time"].dt.time <= pd.to_datetime(end).time())
     ].copy()
     df = df.reset_index(drop=True)
     df["__row_id__"] = np.arange(len(df), dtype=np.int64)
@@ -223,6 +221,28 @@ def load_trades_filtered(path: str, proprietary: bool) -> pd.DataFrame:
     df.reset_index(drop=True, inplace=True)
     df["ISIN"] = os.path.splitext(os.path.basename(path))[0]
     return df
+
+
+def filter_trades_by_group(trades: pd.DataFrame, proprietary: bool) -> pd.DataFrame:
+    """Return a view filtered to prop or non-prop trades, preserving order."""
+    if proprietary:
+        mask = trades["Trade Type Aggressive"] == "Dealing_on_own_account"
+    else:
+        mask = trades["Trade Type Aggressive"] != "Dealing_on_own_account"
+    out = trades.loc[mask].copy()
+    out.reset_index(drop=True, inplace=True)
+    return out
+
+
+def load_trades_full(path: str, trading_hours: Tuple[str, str] = TRADING_HOURS) -> pd.DataFrame:
+    """Load full (unfiltered) tape for the ISIN within trading hours."""
+    return load_trades_base(path, trading_hours=trading_hours)
+
+
+def load_trades_filtered(path: str, proprietary: bool, trading_hours: Tuple[str, str] = TRADING_HOURS) -> pd.DataFrame:
+    """Load filtered tape for metaorder detection (prop vs non-prop)."""
+    trades = load_trades_base(path, trading_hours=trading_hours)
+    return filter_trades_by_group(trades, proprietary)
 
 
 def _split_by_gap(
@@ -324,16 +344,39 @@ def _last_price_at_or_before(target_ns: np.int64, ts_ns: np.ndarray, prices: np.
     return float(prices[idx])
 
 
+def _volume_over_window(
+    ts_ns: np.ndarray,
+    csum_vol: np.ndarray,
+    start_ns: np.int64,
+    end_ns: np.int64,
+) -> float:
+    """
+    Sum volume between [start_ns, end_ns] using cumulative volume array built on
+    the *full* tape.
+    """
+    start_idx = np.searchsorted(ts_ns, start_ns, side="left")
+    end_idx = np.searchsorted(ts_ns, end_ns, side="right") - 1
+    if end_idx < start_idx or end_idx < 0 or start_idx >= ts_ns.size:
+        return 0.0
+    prev = csum_vol[start_idx - 1] if start_idx > 0 else 0.0
+    return float(csum_vol[end_idx] - prev)
+
+
 def compute_metaorders_info(
     trades: pd.DataFrame,
     metaorders_dict: Dict[int, List[List[int]]],
+    trades_full: pd.DataFrame,
     impact_horizons_min: Iterable[int] = IMPACT_HORIZONS_MIN,
     compute_paths: bool = COMPUTE_IMPACT_PATHS,
     aftermath_num_samples: int = AFTERMATH_NUM_SAMPLES,
     aftermath_duration_multiplier: float = AFTERMATH_DURATION_MULTIPLIER,
 ) -> List[Tuple]:
-    tt: pd.Series = trades["Trade Time"]
-    day_arr = tt.dt.date.values
+    if trades_full is None:
+        raise ValueError("trades_full must be provided (full tape needed for denominators and prices).")
+    full_trades = trades_full
+
+    tt_meta: pd.Series = trades["Trade Time"]
+    day_arr = tt_meta.dt.date.values
     plc = trades["Price Last Contract"].to_numpy()
     pfc = trades["Price First Contract"].to_numpy()
     direction_arr = trades["Direction"].to_numpy()
@@ -342,22 +385,32 @@ def compute_metaorders_info(
     q_buy = trades["Total Quantity Buy"].to_numpy(dtype=float)
     q_sell = trades["Total Quantity Sell"].to_numpy(dtype=float)
     vol_arr = q_buy + q_sell
-    csum_vol = np.cumsum(vol_arr)
-    ts_ns = trades["Trade Time"].view("int64").to_numpy()
-    price_last = trades["Price Last Contract"].to_numpy(dtype=float)
+    price_last_meta = trades["Price Last Contract"].to_numpy(dtype=float)
+    ts_meta_ns = trades["Trade Time"].view("int64").to_numpy()
+
+    ts_full_ns = full_trades["Trade Time"].view("int64").to_numpy()
+    price_last_full = full_trades["Price Last Contract"].to_numpy(dtype=float)
+    full_vol_arr = (
+        full_trades["Total Quantity Buy"].to_numpy(dtype=float)
+        + full_trades["Total Quantity Sell"].to_numpy(dtype=float)
+    )
+    csum_vol_full = np.cumsum(full_vol_arr)
+
     horizon_ns = [np.int64(m * 60 * 1_000_000_000) for m in impact_horizons_min]
 
-    daily_cache = build_daily_cache(trades, resample_freq=RESAMPLE_FREQ)
+    daily_cache = build_daily_cache(full_trades, resample_freq=RESAMPLE_FREQ)
 
     rows: List[Tuple] = []
     for agent_id, meta_list in metaorders_dict.items():
         for idx_meta, idx_list in enumerate(meta_list):
             s = idx_list[0]
             e = idx_list[-1]
-            start_ts = tt.iloc[s]
-            end_ts = tt.iloc[e]
+            start_ts = tt_meta.iloc[s]
+            end_ts = tt_meta.iloc[e]
             metaorder_volume = float(vol_arr[np.asarray(idx_list, dtype=int)].sum())
-            volume_during_metaorder = float(csum_vol[e] - (csum_vol[s - 1] if s > 0 else 0.0))
+            start_ns = np.int64(pd.Timestamp(start_ts).value)
+            end_ns = np.int64(pd.Timestamp(end_ts).value)
+            volume_during_metaorder = _volume_over_window(ts_full_ns, csum_vol_full, start_ns, end_ns)
             direction = direction_arr[e]
             current_day = day_arr[s]
             daily_vol, daily_volume = daily_cache.get(current_day, (np.nan, 0.0))
@@ -374,7 +427,7 @@ def compute_metaorders_info(
             if compute_paths:
                 partial_impacts = []
                 for child_idx in idx_list:
-                    p_child = price_last[child_idx]
+                    p_child = price_last_meta[child_idx]
                     if p_child > 0 and valid_for_impacts:
                         ret_child = np.log(p_child) - start_log_price
                         imp_child = ret_child * direction / daily_vol
@@ -382,7 +435,7 @@ def compute_metaorders_info(
                         imp_child = np.nan
                     partial_impacts.append(float(imp_child) if np.isfinite(imp_child) else np.nan)
 
-                duration_ns = ts_ns[e] - ts_ns[s]
+                duration_ns = ts_meta_ns[e] - ts_meta_ns[s]
                 max_offset_ns = np.int64(max(aftermath_duration_multiplier * duration_ns, 0))
                 samples = max(int(aftermath_num_samples), 0)
                 aftermath_impacts = []
@@ -392,8 +445,8 @@ def compute_metaorders_info(
                     else:
                         offsets = np.zeros(samples, dtype=np.int64)
                     for offset in offsets:
-                        target_ns = ts_ns[e] + offset
-                        p_t = _last_price_at_or_before(target_ns, ts_ns, price_last)
+                        target_ns = ts_meta_ns[e] + offset
+                        p_t = _last_price_at_or_before(target_ns, ts_full_ns, price_last_full)
                         if p_t > 0 and valid_for_impacts:
                             ret = np.log(p_t) - start_log_price
                             imp = ret * direction / daily_vol
@@ -402,8 +455,8 @@ def compute_metaorders_info(
                         aftermath_impacts.append(float(imp) if np.isfinite(imp) else np.nan)
             impact_h_vals: List[float] = []
             for h_ns in horizon_ns:
-                target_ns = ts_ns[e] + h_ns
-                p_t = _last_price_at_or_before(target_ns, ts_ns, price_last)
+                target_ns = ts_meta_ns[e] + h_ns
+                p_t = _last_price_at_or_before(target_ns, ts_full_ns, price_last_full)
                 if p_t > 0 and valid_for_impacts:
                     ret = np.log(p_t) - start_log_price
                     imp = ret * direction / daily_vol
@@ -979,7 +1032,7 @@ if RUN_INTRO:
     print(
         "[Intro] Parameters — "
         f"LEVEL={LEVEL}, PROPRIETARY={PROPRIETARY}, USE_MOT_DATA={USE_MOT_DATA}, "
-        f"IMPACT_HORIZONS_MIN={IMPACT_HORIZONS_MIN}, RECOMPUTE={RECOMPUTE}, N={N}, "
+        f"IMPACT_HORIZONS_MIN={IMPACT_HORIZONS_MIN}, RECOMPUTE={RECOMPUTE}, "
         f"PATH_DATA_FOLDER={PATH_DATA_FOLDER}, PATH_NEW_DATA_FOLDER={PATH_NEW_DATA_FOLDER}"
     )
     ensure_transforms()
@@ -995,8 +1048,6 @@ if RUN_METAORDER_COMPUTATION:
     dataset_label = "MOT" if USE_MOT_DATA else "non-MOT"
     print(f"[Metaorders] Computing metaorders across all ISINs ({dataset_label})...")
     dfs_path_new = list_parquet_paths()
-    if N is not None:
-        dfs_path_new = dfs_path_new[:N]
 
     filtered_path = os.path.join(OUT_DIR, f"metaorders_dict_all_{LEVEL}_{PROPRIETARY_TAG}.pkl")
 
@@ -1007,13 +1058,15 @@ if RUN_METAORDER_COMPUTATION:
         try:
             max_gap_np = MAX_GAP.to_numpy()
         except AttributeError:
+            print(f"Warning: MAX_GAP {MAX_GAP} could not be converted to numpy timedelta64; assuming nanoseconds.")
             max_gap_np = np.timedelta64(int(MAX_GAP.value), "ns")
 
         filtered_dict: Dict[str, Dict[int, List[List[int]]]] = {}
         metaorder_counts = {"raw": 0, "after_trades": 0, "after_duration": 0}
         for path in tqdm(dfs_path_new, desc="Metaorders per ISIN (filtered)", dynamic_ncols=True):
             isin = os.path.splitext(os.path.basename(path))[0]
-            trades = load_trades_filtered(path, PROPRIETARY)
+            trades_full = load_trades_full(path, trading_hours=TRADING_HOURS)
+            trades = filter_trades_by_group(trades_full, PROPRIETARY)
             filtered_dict[isin] = compute_metaorders_per_isin(
                 trades,
                 LEVEL,
@@ -1023,6 +1076,7 @@ if RUN_METAORDER_COMPUTATION:
                 counts_acc=metaorder_counts,
             )
             del trades
+            del trades_full
             gc.collect()
         metaorders_dict_all = filtered_dict
         pickle.dump(metaorders_dict_all, open(filtered_path, "wb"))
@@ -1045,7 +1099,7 @@ if RUN_SIGNATURE_PLOTS:
         dfs_path_new = dfs_path_new[:N]
     for path in tqdm(dfs_path_new, desc="Signature plots", dynamic_ncols=True):
         isin = os.path.splitext(os.path.basename(path))[0]
-        trades = load_trades_filtered(path, PROPRIETARY)
+        trades = load_trades_full(path, trading_hours=TRADING_HOURS)
         prices = trades[["Trade Time", "Price Last Contract"]]
         intervals_sec = list(range(1, 2000, 20))
         mean_rv, se_rv = [], []
@@ -1105,10 +1159,14 @@ if RUN_SQL_FITS:
     impact_cols = [f"Impact_{m}m" for m in IMPACT_HORIZONS_MIN]
     for path in tqdm(dfs_path_new, desc="Building metaorders info", dynamic_ncols=True):
         isin = os.path.splitext(os.path.basename(path))[0]
-        trades = load_trades_filtered(path, PROPRIETARY)
+        trades_full = load_trades_full(path, trading_hours=TRADING_HOURS)
+        trades = filter_trades_by_group(trades_full, PROPRIETARY)
         metaorders_dict = metaorders_dict_all.get(isin, {})
-        metaorders_info_records.extend(compute_metaorders_info(trades, metaorders_dict))
+        metaorders_info_records.extend(
+            compute_metaorders_info(trades, metaorders_dict, trades_full=trades_full)
+        )
         del trades
+        del trades_full
         gc.collect()
     metaorders_info_df_sameday = pd.DataFrame(
         metaorders_info_records,

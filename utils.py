@@ -437,7 +437,7 @@ def build_daily_cache(trades_members: pd.DataFrame, resample_freq: str = "120s")
             cache[d] = (np.nan, daily_volume)
             continue
 
-        # 120s resample by last observed, forward-fill across gaps after the first tick
+        # resample by last observed, forward-fill across gaps after the first tick
         resampled = plc_series.resample(resample_freq).last().ffill().dropna()
 
         if resampled.size < 2:
