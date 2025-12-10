@@ -9,12 +9,15 @@ import pickle
 import warnings
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 from pathlib import Path
+from bisect import bisect_right
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 from tqdm import tqdm
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  # needed for 3D plots
 
 import seaborn as sns
 sns.set_theme()
@@ -81,11 +84,23 @@ sns.set_theme()
 # Config
 # ---------------------------------------------------------------------------
 LEVEL = "member"  # "member" or "client"
-PROPRIETARY = True  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
+PROPRIETARY = False  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
 PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
 RECOMPUTE = True
 USE_MOT_DATA = False  # False -> use files without "MOT" in the name, True -> only files containing "MOT"
 TRADING_HOURS = ("09:30:00", "17:30:00")
+
+# How to choose the daily volume used in Q/V:
+#   - "same_day"  : use volume on the metaorder day (default, original behavior)
+#   - "prev_day"  : use volume of the previous trading day (if available)
+#   - "avg_5d"    : use the average daily volume over the last up to 5 trading days
+Q_V_DENOMINATOR_MODE = "avg_5d"
+
+# How to choose the daily volatility used in impact normalization:
+#   - "same_day" : use volatility on the metaorder day (legacy behavior)
+#   - "prev_day" : use volatility of the previous trading day (if available)
+#   - "avg_5d"   : use the average daily volatility over the last up to 5 trading days
+DAILY_VOL_MODE = "avg_5d"
 
 PATH_DATA_FOLDER = "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data"
 PATH_NEW_DATA_FOLDER = "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data"
@@ -129,6 +144,11 @@ AFTERMATH_NUM_SAMPLES = 30  # number of evenly spaced samples in the aftermath w
 MAX_GAP = pd.Timedelta(hours=1)
 MIN_TRADES = 5
 RESAMPLE_FREQ = "1000s"  # frequency for daily cache of vol/volatility
+N_LOGBIN = 30 # number of log-spaced bins for power-law fitting
+MIN_COUNT = 20 # minimum number of metaorders per bin for power-law fitting
+MIN_COUNT_SURFACE = 10  # minimum number per 2D bin for impact surface/heatmap
+MAX_PARTICIPATION_RATE = 1.0  # filter metaorders with participation rate < this value
+N_PR_BINS_SURFACE = 30  # number of participation-rate bins for impact surface/heatmap
 
 # ---------------------------------------------------------------------------
 # Functions
@@ -362,6 +382,46 @@ def _volume_over_window(
     return float(csum_vol[end_idx] - prev)
 
 
+def _select_daily_metric(
+    daily_cache: Dict[pd.Timestamp, Tuple[float, float]],
+    daily_cache_days: List[pd.Timestamp],
+    current_day,
+    mode: str,
+    value_index: int,
+) -> float:
+    """
+    Pick a daily metric (volatility or volume) from the cache according to `mode`.
+    value_index: 0 -> volatility, 1 -> volume.
+    """
+    default_entry = (np.nan, 0.0)
+
+    if mode == "same_day":
+        return daily_cache.get(current_day, default_entry)[value_index]
+
+    if not daily_cache_days:
+        return np.nan
+
+    # Position of the last available trading day not after current_day
+    idx = bisect_right(daily_cache_days, current_day) - 1
+    if idx < 0:
+        return np.nan
+
+    if mode == "prev_day":
+        if idx == 0:
+            return np.nan
+        ref_day = daily_cache_days[idx - 1]
+        return daily_cache.get(ref_day, default_entry)[value_index]
+
+    if mode == "avg_5d":
+        start_idx = max(0, idx - 4)
+        window_days = daily_cache_days[start_idx : idx + 1]
+        vals = [daily_cache.get(d, default_entry)[value_index] for d in window_days]
+        return float(np.mean(vals)) if len(vals) > 0 else np.nan
+
+    # Fallback to same-day metric if mode is unrecognized
+    return daily_cache.get(current_day, default_entry)[value_index]
+
+
 def compute_metaorders_info(
     trades: pd.DataFrame,
     metaorders_dict: Dict[int, List[List[int]]],
@@ -399,6 +459,8 @@ def compute_metaorders_info(
     horizon_ns = [np.int64(m * 60 * 1_000_000_000) for m in impact_horizons_min]
 
     daily_cache = build_daily_cache(full_trades, resample_freq=RESAMPLE_FREQ)
+    # Sorted list of days available in the cache (trading days)
+    daily_cache_days = sorted(daily_cache.keys())
 
     rows: List[Tuple] = []
     for agent_id, meta_list in metaorders_dict.items():
@@ -413,13 +475,25 @@ def compute_metaorders_info(
             volume_during_metaorder = _volume_over_window(ts_full_ns, csum_vol_full, start_ns, end_ns)
             direction = direction_arr[e]
             current_day = day_arr[s]
-            daily_vol, daily_volume = daily_cache.get(current_day, (np.nan, 0.0))
+            # Select daily volatility for impact normalization and volume for Q/V
+            daily_volatility = _select_daily_metric(
+                daily_cache, daily_cache_days, current_day, DAILY_VOL_MODE, value_index=0
+            )
+            denom_volume = _select_daily_metric(
+                daily_cache, daily_cache_days, current_day, Q_V_DENOMINATOR_MODE, value_index=1
+            )
+
             delta_p = float(np.log(plc[e]) - np.log(pfc[s]))
-            qv = float(metaorder_volume / daily_volume) if daily_volume != 0 else np.nan
+            if denom_volume is not None and np.isfinite(denom_volume) and denom_volume > 0:
+                qv = float(metaorder_volume / denom_volume)
+            else:
+                qv = np.nan
             eta = float(metaorder_volume / volume_during_metaorder) if volume_during_metaorder != 0 else np.inf
             n_child = len(idx_list)
             start_log_price = np.log(pfc[s]) if pfc[s] > 0 else np.nan
-            valid_for_impacts = np.isfinite(start_log_price) and np.isfinite(daily_vol) and daily_vol != 0
+            valid_for_impacts = (
+                np.isfinite(start_log_price) and np.isfinite(daily_volatility) and daily_volatility != 0
+            )
 
             partial_impacts: Optional[List[float]] = None
             aftermath_impacts: Optional[List[float]] = None
@@ -430,7 +504,7 @@ def compute_metaorders_info(
                     p_child = price_last_meta[child_idx]
                     if p_child > 0 and valid_for_impacts:
                         ret_child = np.log(p_child) - start_log_price
-                        imp_child = ret_child * direction / daily_vol
+                        imp_child = ret_child * direction / daily_volatility
                     else:
                         imp_child = np.nan
                     partial_impacts.append(float(imp_child) if np.isfinite(imp_child) else np.nan)
@@ -449,7 +523,7 @@ def compute_metaorders_info(
                         p_t = _last_price_at_or_before(target_ns, ts_full_ns, price_last_full)
                         if p_t > 0 and valid_for_impacts:
                             ret = np.log(p_t) - start_log_price
-                            imp = ret * direction / daily_vol
+                            imp = ret * direction / daily_volatility
                         else:
                             imp = np.nan
                         aftermath_impacts.append(float(imp) if np.isfinite(imp) else np.nan)
@@ -459,7 +533,7 @@ def compute_metaorders_info(
                 p_t = _last_price_at_or_before(target_ns, ts_full_ns, price_last_full)
                 if p_t > 0 and valid_for_impacts:
                     ret = np.log(p_t) - start_log_price
-                    imp = ret * direction / daily_vol
+                    imp = ret * direction / daily_volatility
                 else:
                     imp = np.nan
                 impact_h_vals.append(float(imp) if np.isfinite(imp) else np.nan)
@@ -472,7 +546,7 @@ def compute_metaorders_info(
                     client_id_arr[e],
                     direction,
                     delta_p,
-                    daily_vol,
+                    daily_volatility,
                     float(metaorder_volume),
                     qv,
                     eta,
@@ -534,6 +608,240 @@ def _interpolate_impact_path(
         return None
 
     return np.interp(time_grid, t_unique, v_unique)
+
+
+def compute_impact_surface(
+    df: pd.DataFrame,
+    n_qv_bins: int,
+    n_pr_bins: int,
+    min_count: int,
+    qv_col: str = "Q/V",
+    impact_col: str = "Impact",
+    pr_col: str = "Participation Rate",
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Compute a 2D surface of mean impact as a function of Q/V and participation rate.
+
+    Both the Q/V axis and the participation rate axis are log-binned.
+
+    Returns
+    -------
+    qv_edges : np.ndarray
+        Bin edges for Q/V (log-spaced).
+    pr_edges : np.ndarray
+        Bin edges for participation rate (log-spaced).
+    impact_grid : np.ndarray
+        Array of shape (n_pr_bins, n_qv_bins) with mean impact per 2D bin
+        (NaN where the bin has fewer than `min_count` observations).
+    count_grid : np.ndarray
+        Array of shape (n_pr_bins, n_qv_bins) with counts per 2D bin.
+    """
+    required_cols = {qv_col, impact_col, pr_col}
+    if not required_cols.issubset(df.columns):
+        missing = required_cols.difference(df.columns)
+        raise ValueError(f"Missing required columns for surface computation: {missing}")
+
+    sub = df[[qv_col, impact_col, pr_col]].copy()
+    # Apply basic validity filters and cap participation rate; require PR > 0 for logs.
+    # Enforce Q/V > MIN_QV, consistent with SQL/WLS fits.
+    sub = sub[
+        (sub[qv_col] > MIN_QV)
+        & np.isfinite(sub[impact_col])
+        & np.isfinite(sub[pr_col])
+        & (sub[pr_col] > 0)
+        & (sub[pr_col] < MAX_PARTICIPATION_RATE)
+    ]
+    if sub.empty:
+        raise ValueError(
+            f"No valid rows (Q/V>{MIN_QV}, finite Impact and Participation Rate)."
+        )
+
+    qv = sub[qv_col].to_numpy()
+    imp = sub[impact_col].to_numpy()
+    pr = sub[pr_col].to_numpy()
+
+    qv_min = qv.min()
+    qv_max = qv.max()
+    if not np.isfinite(qv_min) or not np.isfinite(qv_max) or qv_max <= qv_min:
+        raise ValueError("Invalid Q/V range for log binning (surface).")
+
+    pr_min = pr.min()
+    pr_max = pr.max()
+    if not np.isfinite(pr_min) or not np.isfinite(pr_max) or pr_max <= pr_min:
+        raise ValueError("Invalid Participation Rate range for log binning (surface).")
+
+    qv_edges = np.logspace(np.log10(qv_min), np.log10(qv_max), n_qv_bins + 1)
+    pr_edges = np.logspace(np.log10(pr_min), np.log10(pr_max), n_pr_bins + 1)
+
+    qv_idx = np.digitize(qv, qv_edges) - 1
+    pr_idx = np.digitize(pr, pr_edges) - 1
+
+    mask = (
+        (qv_idx >= 0) & (qv_idx < n_qv_bins) &
+        (pr_idx >= 0) & (pr_idx < n_pr_bins)
+    )
+    qv_idx = qv_idx[mask]
+    pr_idx = pr_idx[mask]
+    imp = imp[mask]
+
+    df_bins = pd.DataFrame(
+        {"qv_bin": qv_idx, "pr_bin": pr_idx, "Impact": imp}
+    )
+    agg = (
+        df_bins.groupby(["qv_bin", "pr_bin"])["Impact"]
+        .agg(["mean", "count"])
+        .reset_index()
+    )
+
+    impact_grid = np.full((n_pr_bins, n_qv_bins), np.nan, dtype=float)
+    count_grid = np.zeros((n_pr_bins, n_qv_bins), dtype=int)
+
+    for row in agg.itertuples(index=False):
+        q_bin = int(row.qv_bin)
+        p_bin = int(row.pr_bin)
+        cnt = int(row.count)
+        if cnt >= min_count:
+            impact_grid[p_bin, q_bin] = float(row.mean)
+            count_grid[p_bin, q_bin] = cnt
+
+    return qv_edges, pr_edges, impact_grid, count_grid
+
+
+def plot_impact_surface_and_heatmap(
+    df: pd.DataFrame,
+    out_prefix: str,
+    n_qv_bins: int,
+    n_pr_bins: int,
+    min_count: int,
+) -> None:
+    """
+    Produce a 3D surface plot and a 2D heatmap of mean normalized impact
+    as a function of Q/V and participation rate.
+    """
+    try:
+        qv_edges, pr_edges, impact_grid, count_grid = compute_impact_surface(
+            df,
+            n_qv_bins=n_qv_bins,
+            n_pr_bins=n_pr_bins,
+            min_count=min_count,
+        )
+    except Exception as e:
+        print(f"[Surface] Skipping surface/heatmap plot: {e}")
+        return
+
+    # Require strictly positive mean impacts for log-scaling on the z-axis
+    valid_mask = np.isfinite(impact_grid) & (impact_grid > 0)
+    if valid_mask.sum() < 3:
+        print("[Surface] Not enough populated 2D bins to plot surface/heatmap.")
+        return
+
+    qv_centers = np.sqrt(qv_edges[:-1] * qv_edges[1:])
+    pr_centers = 0.5 * (pr_edges[:-1] + pr_edges[1:])
+    QV_grid, PR_grid = np.meshgrid(qv_centers, pr_centers)
+
+    # Use linear Q/V and participation values, with log-scaled axes
+    impact_for_plot = np.full_like(impact_grid, np.nan, dtype=float)
+    impact_for_plot[valid_mask] = impact_grid[valid_mask]
+
+    # 3D surface: Q/V and participation rate on log-scaled axes,
+    # with impact on a log-scaled z-axis
+    fig = plt.figure(figsize=(12, 8))
+    ax3d = fig.add_subplot(111, projection="3d")
+    surf = ax3d.plot_surface(
+        QV_grid,
+        PR_grid,
+        impact_for_plot,
+        cmap="viridis",
+        linewidth=0,
+        antialiased=True,
+    )
+    # Log scales on the Q/V, participation, and impact axes (like SQL fits)
+    try:
+        ax3d.set_xscale("log")
+        ax3d.set_yscale("log")
+        ax3d.set_zscale("log")
+    except Exception:
+        # If 3D log scales are unavailable, fall back silently to linear.
+        pass
+    ax3d.set_xlabel("Q/V")
+    ax3d.set_ylabel("Participation Rate")
+    ax3d.set_zlabel("Mean normalized impact")
+    fig.colorbar(surf, ax=ax3d, shrink=0.7, label="Mean normalized impact")
+    ax3d.set_title("Impact surface: mean normalized impact vs Q/V and participation rate")
+    plt.tight_layout()
+    out_path_3d = os.path.join(IMG_DIR, f"{out_prefix}_3d_surface_{LEVEL}_{PROPRIETARY_TAG}.png")
+    plt.savefig(out_path_3d, dpi=300)
+    plt.close(fig)
+
+    # 2D heatmap with log-scaled Q/V and participation axes
+    # and a log-scaled colorbar for impact
+    fig, ax = plt.subplots(figsize=(12, 8))
+    # Determine color normalization in log space based on positive impacts
+    positive_impacts = impact_for_plot[np.isfinite(impact_for_plot) & (impact_for_plot > 0)]
+    if positive_impacts.size == 0:
+        print("[Surface] No positive impacts to plot in heatmap.")
+        return
+    norm = LogNorm(vmin=positive_impacts.min(), vmax=positive_impacts.max())
+
+    hm = ax.pcolormesh(
+        qv_edges,
+        pr_edges,
+        impact_for_plot,
+        shading="auto",
+        cmap="viridis",
+        norm=norm,
+    )
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("Q/V")
+    ax.set_ylabel("Participation Rate")
+    cbar = fig.colorbar(hm, ax=ax)
+    cbar.set_label("Mean normalized impact (log scale)")
+    ax.set_title("Impact heatmap: mean normalized impact vs Q/V and participation rate")
+    plt.tight_layout()
+    out_path_hm = os.path.join(IMG_DIR, f"{out_prefix}_heatmap_{LEVEL}_{PROPRIETARY_TAG}.png")
+    plt.savefig(out_path_hm, dpi=300)
+    plt.close(fig)
+
+    print(
+        f"[Surface] Saved 3D surface to {out_path_3d} "
+        f"and heatmap to {out_path_hm} "
+        f"(min_count per 2D bin = {min_count})"
+    )
+
+    # Optional interactive HTML 3D surface (browser-rotatable)
+    try:
+        import plotly.graph_objects as go
+
+        fig_html = go.Figure(
+            data=[
+                go.Surface(
+                    x=QV_grid,
+                    y=PR_grid,
+                    z=impact_for_plot,
+                    colorscale="Viridis",
+                    colorbar={"title": "Mean normalized impact"},
+                )
+            ]
+        )
+        fig_html.update_layout(
+            scene=dict(
+                xaxis_title="Q/V",
+                yaxis_title="Participation Rate",
+                zaxis_title="Mean normalized impact",
+                xaxis=dict(type="log"),
+                yaxis=dict(type="log"),
+                zaxis=dict(type="log"),
+            ),
+            title="Impact surface: mean normalized impact vs Q/V and participation rate",
+        )
+        out_path_html = os.path.join(
+            IMG_DIR, f"{out_prefix}_3d_surface_{LEVEL}_{PROPRIETARY_TAG}.html"
+        )
+        fig_html.write_html(out_path_html, include_plotlyjs="cdn")
+        print(f"[Surface] Saved interactive 3D HTML surface to {out_path_html}")
+    except ImportError:
+        print("[Surface] plotly is not installed; skipping interactive HTML 3D surface.")
 
 
 def fit_power_law_logbins_wls(
@@ -1244,6 +1552,15 @@ if RUN_WLS:
             "Missing metaorders info parquet: run the SQL fits section to generate the filtered dataset."
         )
 
+    # Apply participation-rate filter for all subsequent fits and surfaces
+    if "Participation Rate" in df.columns:
+        before_pr = len(df)
+        df = df[df["Participation Rate"] < MAX_PARTICIPATION_RATE].reset_index(drop=True)
+        print(
+            f"[WLS] After participation-rate filter (PR < {MAX_PARTICIPATION_RATE}): "
+            f"{before_pr} -> {len(df)} metaorders"
+        )
+
     if RUN_IMPACT_PATH_PLOT:
         out_path = os.path.join(IMG_DIR, f"normalized_impact_path_{LEVEL}_{PROPRIETARY_TAG}.png")
         plot_normalized_impact_path(df, out_path, duration_multiplier=AFTERMATH_DURATION_MULTIPLIER)
@@ -1258,10 +1575,9 @@ if RUN_WLS:
             "legend.fontsize": LEGEND_SIZE,
         }
     )
-    n_logbins = 30
-    min_count = 20
+    
     # binned_all, params_all = fit_power_law_logbins_wls(df, n_logbins=n_logbins, min_count=min_count, use_median=False)
-    binned_all, params_all = fit_power_law_logbins_wls_new(df, n_logbins=n_logbins, min_count=min_count, use_median=False, control_cols=None)
+    binned_all, params_all = fit_power_law_logbins_wls_new(df, n_logbins=N_LOGBIN, min_count=MIN_COUNT, use_median=False, control_cols=None)
     Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se = params_all
     log_params_all = fit_logarithmic_from_binned(binned_all)
     a_hat, a_se, b_hat, b_se, R2_lin_log = log_params_all
@@ -1276,7 +1592,7 @@ if RUN_WLS:
     print(f"Power law: gamma = {gamma_hat:.6f} +/- {gamma_se:.3g}")
     print(f"Power law: R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
     print(f"Logarithmic: a = {a_hat:.6g} +/- {a_se:.3g} | b = {b_hat:.6g} +/- {b_se:.3g} | R^2_lin = {R2_lin_log:.4f}")
-    print(f"Bins used: {len(binned_all)} (min_count >= {min_count})")
+    print(f"Bins used: {len(binned_all)} (min_count >= {MIN_COUNT})")
 
     PR_CANDIDATES = "Participation Rate"
     pr_nbins = 2
@@ -1288,7 +1604,7 @@ if RUN_WLS:
         sub = df[df["PR_bin"] == label]
         try:
             binned_sub, params_sub = fit_power_law_logbins_wls_new(
-                sub, n_logbins=n_logbins, min_count=min_count, use_median=False, control_cols=None
+                sub, n_logbins=N_LOGBIN, min_count=MIN_COUNT, use_median=False, control_cols=None
             )
         except Exception as e:
             print(f"[{label}] skipped: {e}")
@@ -1307,3 +1623,14 @@ if RUN_WLS:
         print(f"[PR {k}] R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
         print(f"[PR {k}] Beta controls: {beta_controls}")
         print(f"[PR {k}] Beta controls SE: {beta_controls_se}")
+
+    # -----------------------------------------------------------------------
+    # 3D surface / heatmap of mean impact vs Q/V and participation rate
+    # -----------------------------------------------------------------------
+    plot_impact_surface_and_heatmap(
+        df,
+        out_prefix="impact_surface_qv_participation",
+        n_qv_bins=N_LOGBIN,
+        n_pr_bins=N_PR_BINS_SURFACE,
+        min_count=MIN_COUNT_SURFACE,
+    )

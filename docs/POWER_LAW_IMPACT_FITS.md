@@ -78,7 +78,7 @@ defined as the sign of the last trade in the run (coinciding with the run sign).
 
 ### 1.3 Splitting by inactivity and trading session
 
-Even after initial detection, very long or overnight sequences are undesirable. In `compute_metaorders_per_isin` the script further refines the metaorders using an internal gap‑splitting helper (`_split_by_gap`) together with a time‑of‑day filter:
+Even after initial detection, very long or overnight sequences are undesirable. In `compute_metaorders_per_isin` the script further refines the metaorders using an internal gap-splitting helper (`_split_by_gap`) together with a time-of-day filter:
 
 - Let \(t_j\) be the timestamp of trade \(j\). Define the inter-trade gaps within a metaorder
   \[
@@ -161,6 +161,26 @@ For a metaorder \(i\) occurring on day \(d(i)\), with trade index set \(\mathcal
   \]
   stored as `Participation Rate`. This is used for conditioning (e.g. stratifying fits by participation quantiles) but not as a regressor in the baseline model.
 
+### 2.4 Daily-volume denominator choice for \(Q/V\)
+
+The denominator in \(Q/V\) is configurable via `Q_V_DENOMINATOR_MODE`:
+
+- `"same_day"`: use \(V_{d(i)}\) on the metaorder day (legacy behavior).
+- `"prev_day"`: use the previous trading day's volume when available.
+- `"avg_5d"`: use the average daily volume over the last up to 5 trading days (default).
+
+The chosen denominator is stored in `Q/V` and carried through to the filtered parquet that feeds the WLS step.
+
+### 2.5 Daily-volatility choice for impact
+
+The volatility used to normalize impact is controlled by `DAILY_VOL_MODE`:
+
+- `"same_day"`: use \(\widehat{\sigma}_{d(i)}\) on the metaorder day (default).
+- `"prev_day"`: use the previous trading day's volatility when available.
+- `"avg_5d"`: use the average daily volatility over the last up to 5 trading days.
+
+The selected value is stored in `Daily Vol` and used throughout the impact-path computation and SQL/WLS fits.
+
 ---
 
 ## 3. Impact Definition and Model Specification
@@ -172,7 +192,7 @@ Let \(P^{\text{start}}_i\) be the price at the first trade of metaorder \(i\), a
 \Delta p_i = \log P^{\text{end}}_i - \log P^{\text{start}}_i.
 \]
 
-Let \(\varepsilon_i \in \{+1,-1\}\) be the **direction** of the metaorder (buy \(+1\), sell \(-1\)). The daily volatility on the same day is \(\widehat{\sigma}_{d(i)}\). The (instantaneous) impact of metaorder \(i\) in volatility units is defined as
+Let \(\varepsilon_i \in \{+1,-1\}\) be the **direction** of the metaorder (buy \(+1\), sell \(-1\)). The daily volatility used for normalization is \(\widehat{\sigma}_{d(i)}\), selected according to Section 2.5 (same-day by default). The (instantaneous) impact of metaorder \(i\) in volatility units is defined as
 \[
 I_i \equiv \frac{\varepsilon_i \, \Delta p_i}{\widehat{\sigma}_{d(i)}}.
 \]
@@ -231,7 +251,7 @@ so that deviations between the two functional forms (especially at very small or
 
 ## 4. Filtering Stage Before Fitting
 
-After metaorders are computed and their summary dataframe is built, the SQL‑fits block in `metaorder_computation.py` applies the final filters and impact construction. The resulting filtered dataset is saved to `out_files/metaorders_info_sameday_filtered_*.parquet` and reused directly by the WLS step (no re-filtering there).
+After metaorders are computed and their summary dataframe is built, the SQL-fits block in `metaorder_computation.py` applies the final filters and impact construction. The resulting filtered dataset is saved to `out_files/metaorders_info_sameday_filtered_*.parquet` and reused directly by the WLS step (no re-filtering there).
 
 ### 4.1 Structural filters (enforced during construction)
 
@@ -240,6 +260,11 @@ After metaorders are computed and their summary dataframe is built, the SQL‑fi
 - Additional construction-time floors: each child metaorder must have at least `MIN_TRADES` trades (default 5) and execution duration at least `SECONDS_FILTER` (default 120 seconds).
 
 ### 4.2 Unified post-computation filter (SQL-fits stage)
+
+The SQL-fits block saves two parquet files per run:
+
+- unfiltered metaorders info: `out_files/metaorders_info_sameday_{LEVEL}_{PROPRIETARY_TAG}.parquet`,
+- filtered version used by the WLS fits: `out_files/metaorders_info_sameday_filtered_{LEVEL}_{PROPRIETARY_TAG}.parquet`.
 
 Let \(\phi_i = Q_i / V_{d(i)}\) and \(I_i = \varepsilon_i \Delta p_i / \widehat{\sigma}_{d(i)}\). The unified filter performs:
 
@@ -262,6 +287,8 @@ This yields a clean table with well-defined \((\phi_i, I_i)\) pairs and auxiliar
 ---
 
 ## 5. Weighted Least-Squares in Log Space
+
+In the default run (`metaorder_computation.py` WLS block), the fit uses `n_logbins=30`, `min_count=20`, mean impacts (not medians), and no control regressors. The helper `fit_power_law_logbins_wls_new` implements the weighting and optional controls described below.
 
 ### 5.1 Regression model on binned data
 
@@ -302,8 +329,9 @@ Goodness-of-fit metrics:
 ## 6. Summary
 
 - Metaorders: same-sign, same-day, single-client sequences with at least two trades; split on inactivity \(>1\) hour; short fragments and short-duration sequences are dropped; trade-level intraday and proprietary/non-proprietary filters.
-- Normalization: size proxy \(\phi_i = Q_i / V_{d(i)}\); impact \(I_i = \varepsilon_i \Delta p_i / \widehat{\sigma}_{d(i)}\).
-- Single post-computation filter (SQL-fits stage): \(\phi_i > 10^{-5}\) and finite `Impact`/`Q/V`.
-- Estimation: log-binned WLS of \(I\) on \(\phi\) (plus optional controls), with bin-level guards and delta-method weights; report \(\widehat{Y}\), \(\widehat{\gamma}\), standard errors, and \(R^2\) diagnostics. A logarithmic benchmark \(I \approx a \log_{10}(1 + b \phi)\) is fitted and reported alongside the power-law.
+- Normalization: size proxy \(\phi_i = Q_i / V_{d(i)}\) using the chosen `Q_V_DENOMINATOR_MODE` (default average of the last up to 5 days); impact \(I_i = \varepsilon_i \Delta p_i / \widehat{\sigma}_{d(i)}\).
+- Persistence and filters: unfiltered and filtered metaorder-info parquets are written to `out_files/`; the filtered file keeps \(\phi_i > 10^{-5}\) and finite `Impact`/`Q/V`.
+- Estimation: log-binned WLS of \(I\) on \(\phi\) (plus optional controls), with bin-level guards and delta-method weights; default `n_logbins=30`, `min_count=20`; report \(\widehat{Y}\), \(\widehat{\gamma}\), standard errors, and \(R^2\) diagnostics. A logarithmic benchmark \(I \approx a \log_{10}(1 + b \phi)\) is fitted and reported alongside the power-law.
+- Execution and aftermath paths: partial and aftermath impact vectors are packed as float32 blobs in the parquet files and can be unpacked to build the normalized impact-path plot.
 
 This pipeline concentrates all filtering before fitting, minimizing repeated conditioning while preserving the econometric rigor of the power-law impact estimation.

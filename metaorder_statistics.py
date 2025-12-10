@@ -91,8 +91,11 @@ PROP_PATH = Path("out_files/metaorders_info_sameday_filtered_member_proprietary.
 CLIENT_PATH = Path("out_files/metaorders_info_sameday_filtered_member_non_proprietary.parquet")
 
 ALPHA = 0.05 # significance level for confidence intervals
+BOOTSTRAP_RUNS = 1000  # number of permutation/bootstraps for p-values
+P_VALUE_THRESHOLD = 0.05  # significance cutoff used for filtering plotted correlations
 MIN_N = 100 # minimum number of metaorders per day to include in the analysis
 SMOOTHING_DAYS = 5 # number of days to smooth the correlation
+MIN_METAORDERS_PER_MEMBER = 50  # minimum number of metaorders per member for member-level stats
 PLOT_DIR = Path("/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/prop_vs_nonprop")
 
 # Daily returns / imbalance-return scatter
@@ -135,7 +138,8 @@ def corr_with_ci(
     alpha: float = 0.05,
 ) -> Tuple[float, float, float, int]:
     """
-    Compute Pearson correlation r and a (1 - alpha) CI using Fisher's z-transform.
+    Compute Pearson correlation r and a (1 - alpha) CI using
+    a non-parametric bootstrap (percentile interval) over (x, y) pairs.
 
     Returns
     -------
@@ -156,30 +160,76 @@ def corr_with_ci(
     y = y[mask]
     n = x.size
 
-    if n < 3:
+    # For very small samples, treat correlation and CI as undefined to avoid
+    # unstable bootstrap behavior.
+    if n <= 3:
         return float("nan"), float("nan"), float("nan"), n
 
+    # Point estimate
     r = float(np.corrcoef(x, y)[0, 1])
 
-    # Guard against |r|=1 which would blow up Fisher's transform
-    r_clipped = max(min(r, 0.999999), -0.999999)
+    # Bootstrap percentile CI
+    if BOOTSTRAP_RUNS <= 0 or not np.isfinite(r):
+        return r, float("nan"), float("nan"), n
 
-    # Fisher z-transform
-    z = 0.5 * math.log((1.0 + r_clipped) / (1.0 - r_clipped))
-    se = 1.0 / math.sqrt(n - 3)
+    rng = np.random.default_rng()
+    boot_rs = np.empty(BOOTSTRAP_RUNS, dtype=float)
+    for i in range(BOOTSTRAP_RUNS):
+        idx = rng.integers(0, n, size=n)
+        xb = x[idx]
+        yb = y[idx]
+        # If the bootstrap sample is degenerate, mark as NaN
+        if np.all(xb == xb[0]) or np.all(yb == yb[0]):
+            boot_rs[i] = np.nan
+        else:
+            boot_rs[i] = np.corrcoef(xb, yb)[0, 1]
 
-    # z critical value for two-sided CI; alpha=0.05 -> ~1.96
-    from scipy.stats import norm
-    z_crit = norm.ppf(1.0 - alpha / 2.0)
-
-    z_lo = z - z_crit * se
-    z_hi = z + z_crit * se
-
-    # Back-transform to r
-    lo = math.tanh(z_lo)
-    hi = math.tanh(z_hi)
+    valid = boot_rs[~np.isnan(boot_rs)]
+    if valid.size == 0:
+        lo = hi = float("nan")
+    else:
+        lo = float(np.quantile(valid, alpha / 2.0))
+        hi = float(np.quantile(valid, 1.0 - alpha / 2.0))
 
     return r, lo, hi, n
+
+
+def corr_with_bootstrap_p(
+    x: Iterable[float],
+    y: Iterable[float],
+    n_bootstrap: int = BOOTSTRAP_RUNS,
+) -> Tuple[float, float, int]:
+    """
+    Compute Pearson correlation and a two-sided permutation p-value by shuffling y.
+    Returns (r, p_value, n). If n_bootstrap <= 0, p_value is NaN.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    mask = ~np.isnan(x) & ~np.isnan(y)
+    x = x[mask]
+    y = y[mask]
+    n = x.size
+    if n < 3:
+        return float("nan"), float("nan"), n
+    r = float(np.corrcoef(x, y)[0, 1])
+    if n_bootstrap <= 0 or not np.isfinite(r):
+        return r, float("nan"), n
+
+    rng = np.random.default_rng()
+    perm_rs = np.empty(n_bootstrap, dtype=float)
+    for i in range(n_bootstrap):
+        y_perm = rng.permutation(y)
+        perm_rs[i] = np.corrcoef(x, y_perm)[0, 1]
+
+    # Two-sided p-value
+    if np.isnan(perm_rs).all():
+        p_val = float("nan")
+    else:
+        greater = np.mean(perm_rs >= r)
+        smaller = np.mean(perm_rs <= r)
+        p_val = 2 * min(greater, smaller)
+        p_val = min(1.0, p_val)
+    return r, float(p_val), n
 
 
 def extract_date(period_list):
@@ -628,13 +678,14 @@ def analyze_flow(
     x = df[side_col].astype(float).to_numpy()
     y = df[imb_col].astype(float).to_numpy()
     r_loc, lo_loc, hi_loc, n_loc = corr_with_ci(x, y, alpha=alpha)
+    r_loc_p, p_loc, _ = corr_with_bootstrap_p(x, y, n_bootstrap=BOOTSTRAP_RUNS)
 
     if math.isnan(r_loc):
         print("\nCorr(Direction, local imbalance): not enough data (n < 3).")
     else:
         print(
             f"\nCorr({side_col}, {imb_col}) = {r_loc:.3f} "
-            f"(95% CI [{lo_loc:.3f}, {hi_loc:.3f}], n={n_loc})"
+            f"(p (bootstrap) = {p_loc:.3f}, 95% CI [{lo_loc:.3f}, {hi_loc:.3f}], n={n_loc})"
         )
 
     # Conditional means of local imbalance
@@ -706,7 +757,8 @@ def daily_crowding_ts(
         x = g[side_col].to_numpy(dtype=float)
         y = g[imb_col].to_numpy(dtype=float)
         r, lo, hi, n = corr_with_ci(x, y, alpha=alpha)
-        rows.append({"Date": d, "r": r, "lo": lo, "hi": hi, "n": n})
+        r_b, p_val, _ = corr_with_bootstrap_p(x, y, n_bootstrap=BOOTSTRAP_RUNS)
+        rows.append({"Date": d, "r": r, "lo": lo, "hi": hi, "p": p_val, "n": n})
 
     out = pd.DataFrame(rows).sort_values("Date").reset_index(drop=True)
     return out
@@ -753,6 +805,34 @@ def attach_environment_imbalance(
     )
     target_clean = target_df.drop(columns=[new_col], errors="ignore")
     return target_clean.merge(env_imb, on=list(group_cols), how="left", sort=False)
+
+
+def attach_member_client_imbalance(
+    metaorders_proprietary: pd.DataFrame,
+    metaorders_non_proprietary: pd.DataFrame,
+    new_col: str = "imbalance_client_member_env",
+    member_col: str = "Member",
+    date_col: str = "Date",
+    side_col: str = "Direction",
+    vol_col: str = "Q",
+) -> pd.DataFrame:
+    """
+    Attach client-flow imbalance aggregated at the (Member, Date) level
+    to each proprietary metaorder.
+
+    For each (Member, Date), we compute the signed-volume imbalance using only
+    client metaorders (across all ISINs for that member/day), and merge it onto
+    the proprietary dataframe keyed by (Member, Date).
+    """
+    env_imb = compute_environment_imbalance(
+        metaorders_non_proprietary,
+        group_cols=(member_col, date_col),
+        side_col=side_col,
+        vol_col=vol_col,
+        new_col=new_col,
+    )
+    target_clean = metaorders_proprietary.drop(columns=[new_col], errors="ignore")
+    return target_clean.merge(env_imb, on=[member_col, date_col], how="left", sort=False)
 
 
 def plot_daily_crowding(
@@ -1058,6 +1138,269 @@ def run_all_vs_all_crowding_analysis(
         )
     else:
         print("\n[All-others plots] Skipped plot generation (no data after filtering or disabled).")
+
+
+def run_member_level_prop_client_crowding_analysis(
+    metaorders_proprietary: pd.DataFrame,
+    metaorders_non_proprietary: pd.DataFrame,
+    env_col: str = "imbalance_client_member_env",
+    alpha: float = 0.05,
+    min_metaorders_per_member: int = MIN_METAORDERS_PER_MEMBER,
+    out_prefix: str = "member_prop_client_crowding",
+    make_plots: bool = True,
+) -> None:
+    """
+    Member-level crowding between proprietary direction and client flow:
+    Corr(Direction_prop, client imbalance aggregated at (Member, Date)).
+    """
+    print("\n" + "=" * 80)
+    print("Member-level crowding (prop vs own clients)")
+    print("=" * 80)
+
+    required_cols = {"Member", "Direction", env_col, "Date"}
+    missing = required_cols - set(metaorders_proprietary.columns)
+    if missing:
+        print(
+            f"\n[Member crowding] Missing required columns in proprietary dataframe; "
+            f"skipping member-level analysis. Missing: {missing}"
+        )
+        return
+    if env_col not in metaorders_proprietary.columns:
+        print(
+            f"\n[Member crowding] Column '{env_col}' not found in proprietary dataframe; "
+            "skipping member-level analysis."
+        )
+        return
+
+    df = metaorders_proprietary[list(required_cols)].copy()
+    df["Direction"] = pd.to_numeric(df["Direction"], errors="coerce")
+    df[env_col] = pd.to_numeric(df[env_col], errors="coerce")
+    df = df.replace([np.inf, -np.inf], np.nan)
+
+    # Global correlation across all proprietary metaorders
+    r_global, lo_global, hi_global, n_global = corr_with_ci(
+        df["Direction"],
+        df[env_col],
+        alpha=alpha,
+    )
+    r_global_b, p_global, _ = corr_with_bootstrap_p(
+        df["Direction"],
+        df[env_col],
+        n_bootstrap=BOOTSTRAP_RUNS,
+    )
+    if math.isnan(r_global):
+        print("\n[Member crowding] Global Corr(Direction_prop, client member-imbalance): not enough data (n < 3).")
+    else:
+        print(
+            f"\nGlobal Corr(Direction_prop, {env_col}) = {r_global:.3f} "
+            f"(p (bootstrap) = {p_global:.3f}, 95% CI [{lo_global:.3f}, {hi_global:.3f}], n={n_global})"
+        )
+
+    # Per-member correlations
+    rows = []
+    for member, g in df.groupby("Member", sort=True):
+        r_m, lo_m, hi_m, n_m = corr_with_ci(g["Direction"], g[env_col], alpha=alpha)
+        r_m_b, p_m, _ = corr_with_bootstrap_p(g["Direction"], g[env_col], n_bootstrap=BOOTSTRAP_RUNS)
+        rows.append(
+            {
+                "Member": member,
+                "r": r_m,
+                "lo": lo_m,
+                "hi": hi_m,
+                "p": p_m,
+                "n": n_m,
+            }
+        )
+
+    stats = pd.DataFrame(rows)
+    if stats.empty:
+        print("\n[Member crowding] No proprietary metaorders available for member-level analysis.")
+        return
+
+    stats = stats.sort_values("Member").reset_index(drop=True)
+
+    # Add total client-metaorder counts per member and apply symmetric thresholds
+    client_counts_total = (
+        metaorders_non_proprietary.groupby("Member").size().rename("n_client_total")
+        if not metaorders_non_proprietary.empty
+        else pd.Series(dtype=int)
+    )
+    stats = stats.merge(
+        client_counts_total.reset_index(),
+        on="Member",
+        how="left",
+    )
+    stats["n_client_total"] = stats["n_client_total"].fillna(0).astype(int)
+
+    stats_filtered = stats[
+        (stats["n"] >= min_metaorders_per_member)
+        & (stats["n_client_total"] >= min_metaorders_per_member)
+    ].reset_index(drop=True)
+
+    print(
+        f"\n[Member crowding] Members with n_prop >= {min_metaorders_per_member} "
+        f"and n_client >= {min_metaorders_per_member}: "
+        f"{len(stats_filtered)} (out of {len(stats)})"
+    )
+    if not stats_filtered.empty:
+        mean_r = stats_filtered["r"].mean(skipna=True)
+        print(f"[Member crowding] Mean per-member correlation (n >= {min_metaorders_per_member}): {mean_r:.3f}")
+    else:
+        print("[Member crowding] No members pass the minimum metaorder threshold; skipping exports.")
+        return
+
+    out_prefix_path = Path(out_prefix)
+    out_prefix_path.parent.mkdir(parents=True, exist_ok=True)
+
+    parquet_path = out_prefix_path.parent / f"{out_prefix_path.name}_per_member.parquet"
+    stats_filtered.to_parquet(parquet_path, index=False)
+    print(f"[Member crowding] Saved per-member statistics to: {parquet_path}")
+
+    if make_plots:
+        r_vals = stats_filtered["r"].dropna()
+        if r_vals.empty:
+            print("[Member crowding] No finite per-member correlations to plot per-member bar chart.")
+        else:
+            # Sort members by correlation for a more informative plot
+            plot_df = stats_filtered.dropna(subset=["r"]).copy()
+            plot_df = plot_df.sort_values("r").reset_index(drop=True)
+            members = plot_df["Member"].astype(str).tolist()
+            r_sorted = plot_df["r"].to_numpy()
+            x = np.arange(len(members))
+
+            fig, ax = plt.subplots(
+                figsize=(max(12, 0.3 * len(members)), 7)
+            )
+            ax.bar(x, r_sorted, color="tab:blue", alpha=0.7, edgecolor="black")
+            ax.axhline(0.0, color="black", linestyle=":", linewidth=1)
+            ax.set_xticks(x)
+            ax.set_xticklabels(members, rotation=90)
+            ax.set_xlabel("Member")
+            ax.set_ylabel("Corr(Direction_prop, client imbalance (Member, Date))")
+            ax.set_title("Per-member prop/client crowding correlations")
+            plt.tight_layout()
+            bar_path = out_prefix_path.parent / f"{out_prefix_path.name}_hist.png"
+            fig.savefig(bar_path, bbox_inches="tight")
+            plt.close(fig)
+            print(f"[Member crowding] Saved per-member correlation bar chart to: {bar_path}")
+
+        # Member–window (5-day, non-overlapping) heatmap with minimum counts
+        # Build non-overlapping 5-day windows from the union of prop+client dates
+        all_dates = sorted(
+            set(pd.to_datetime(metaorders_proprietary["Date"]).dt.date.dropna()).union(
+                set(pd.to_datetime(metaorders_non_proprietary.get("Date", pd.Series([], dtype=object))).dt.date.dropna())
+            )
+        )
+        if not all_dates:
+            print("[Member crowding] No dates available to build member–window heatmap.")
+            return
+
+        window_labels: dict = {}
+        window_order: list[str] = []
+        for idx in range(0, len(all_dates), 5):
+            chunk = all_dates[idx : idx + 5]
+            start = chunk[0]
+            end = chunk[-1]
+            label = f"{start}_to_{end}"
+            window_order.append(label)
+            for d in chunk:
+                window_labels[d] = label
+
+        # Assign windows to proprietary metaorders
+        df_win = df.copy()
+        df_win["__Date_dt__"] = pd.to_datetime(df_win["Date"]).dt.date
+        df_win["Window"] = df_win["__Date_dt__"].map(window_labels)
+        df_win = df_win.dropna(subset=["Window"])
+
+        # Prop counts per (Member, Window)
+        prop_counts = (
+            df_win.groupby(["Member", "Window"], sort=False)
+            .size()
+            .rename("n_prop")
+            .reset_index()
+        )
+
+        # Client counts per (Member, Window)
+        client_dates = metaorders_non_proprietary.copy()
+        client_dates["__Date_dt__"] = pd.to_datetime(client_dates["Date"]).dt.date
+        client_dates["Window"] = client_dates["__Date_dt__"].map(window_labels)
+        client_counts = (
+            client_dates.dropna(subset=["Window"])
+            .groupby(["Member", "Window"], sort=False)
+            .size()
+            .rename("n_client")
+            .reset_index()
+        )
+
+        # Merge counts into prop data for filtering
+        df_win = df_win.merge(prop_counts, on=["Member", "Window"], how="left")
+        df_win = df_win.merge(client_counts, on=["Member", "Window"], how="left")
+        df_win["n_client"] = df_win["n_client"].fillna(0).astype(int)
+
+        # Compute correlations per (Member, Window) with minimum counts and p-value filtering
+        window_rows = []
+        grouped_win = df_win.groupby(["Member", "Window"], sort=True)
+        for (member, window_label), g in grouped_win:
+            n_prop = int(g["n_prop"].iloc[0]) if "n_prop" in g else len(g)
+            n_client = int(g["n_client"].iloc[0]) if "n_client" in g else 0
+            r_win = float("nan")
+            p_win = float("nan")
+            n_win = len(g)
+            if n_prop >= 10 and n_client >= 10:
+                r_win_b, p_win, n_win = corr_with_bootstrap_p(
+                    g["Direction"], g[env_col], n_bootstrap=BOOTSTRAP_RUNS
+                )
+                if p_win > P_VALUE_THRESHOLD:
+                    r_win = float("nan")
+                else:
+                    r_win = r_win_b
+            window_rows.append(
+                {
+                    "Member": member,
+                    "Window": window_label,
+                    "r": r_win,
+                    "p": p_win,
+                    "n_prop": n_prop,
+                    "n_client": n_client,
+                    "n_used": n_win,
+                }
+            )
+
+        window_stats = pd.DataFrame(window_rows)
+        if window_stats.empty:
+            print("[Member crowding] No data available to build member–window heatmap.")
+        else:
+            # Order windows by their start date using window_order
+            window_cat = pd.CategoricalDtype(categories=window_order, ordered=True)
+            window_stats["Window"] = window_stats["Window"].astype(window_cat)
+            pivot = window_stats.pivot(index="Window", columns="Member", values="r")
+            pivot = pivot.sort_index()
+
+            if pivot.empty:
+                print("[Member crowding] Member–window heatmap pivot is empty; skipping plot.")
+            else:
+                n_windows, n_members = pivot.shape
+                fig_width = max(12, 0.3 * n_members)
+                fig_height = max(6, 0.2 * n_windows)
+
+                fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+                sns.heatmap(
+                    pivot,
+                    ax=ax,
+                    cmap="coolwarm",
+                    vmin=-1.0,
+                    vmax=1.0,
+                    center=0.0,
+                    cbar_kws={"label": "Corr(Direction_prop, client imbalance)"},
+                )
+                ax.set_xlabel("Member")
+                ax.set_ylabel("5-day window (non-overlapping)")
+                ax.set_title("Member-level prop vs client crowding (5-day blocks, n_prop>=10 & n_client>=10)")
+                plt.tight_layout()
+                heatmap_path = out_prefix_path.parent / f"{out_prefix_path.name}_heatmap.png"
+                fig.savefig(heatmap_path, bbox_inches="tight")
+                plt.close(fig)
+                print(f"[Member crowding] Saved member–window heatmap to: {heatmap_path}")
 
 
 def compute_daily_metaorder_counts(
@@ -1686,6 +2029,17 @@ def main() -> None:
         )
         client_updated = True
 
+    member_env_col = "imbalance_client_member_env"
+    if member_env_col in metaorders_proprietary.columns:
+        print("\n[Prop vs Non-Prop] Member-level client imbalance already present in proprietary metaorders dataframe. Skipping member-environment calculation.")
+    else:
+        metaorders_proprietary = attach_member_client_imbalance(
+            metaorders_proprietary,
+            metaorders_non_proprietary,
+            new_col=member_env_col,
+        )
+        prop_updated = True
+
     if ATTACH_DAILY_RETURNS:
         all_isins: List[str] = sorted(
             set(metaorders_proprietary["ISIN"].astype(str)).union(metaorders_non_proprietary["ISIN"].astype(str))
@@ -1800,6 +2154,16 @@ def main() -> None:
         out_prefix=str(PLOT_DIR / "all_vs_all_crowding"),
         make_plots=True,
         smoothing_days=SMOOTHING_DAYS,
+    )
+
+    run_member_level_prop_client_crowding_analysis(
+        metaorders_proprietary,
+        metaorders_non_proprietary,
+        env_col="imbalance_client_member_env",
+        alpha=ALPHA,
+        min_metaorders_per_member=MIN_METAORDERS_PER_MEMBER,
+        out_prefix=str(PLOT_DIR / "member_prop_client_crowding"),
+        make_plots=True,
     )
 
     run_daily_count_imbalance_analysis(

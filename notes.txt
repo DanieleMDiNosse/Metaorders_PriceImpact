@@ -11,8 +11,8 @@ TODO:
                 [11] B. T´oth, F. Lillo, and J. Farmer, “Segmentation algorithm for non-stationary compound
                     poisson processes. with an application to inventory time series of market members in a financial
                     market,” European Physical Journal B, vol. 78, pp. 235–243, 2010
-
-
+- Controllare la questione del valore di aspettazione dell'imbalance, che a detta di Fabrizio dipende solamente dal
+    rapporto fra buy and sell metaorder
 
 DONE:
 - Valutare il numero di members per ISIN per evidenziare eventuali members che si concentrano maggiormente su un ISIN 
@@ -22,3 +22,15 @@ DONE:
     RISPOSTA: sono etichettati come client trades. Non ho modo di distinguerli.
 - Quanti trade non appartengono a metaordini? Potrebbe essere una buona misura della presenza dei retail 
     RIPOSTA: 66%
+
+
+BROKER:
+- Quanti sono
+- Quanti trade per broker (proprietary and client)
+- Distribuzione dei broker across ISIN (quanti broker per isin and quanti isin per broker)
+- distribuzione attivita' broker lungo tutto il periodo (heatmap: asse x broker, asse y giorni, color proprotional to the number of trades in that day)
+
+
+Ciao Francesco, scusa il disturbo, avrei un'altra domanda a farti riguardo gli ID dei member nel mio dataset. Su 116 broker e 41 ISIN diversi, mi trovo che 57 broker hanno
+operato su tutti gli ISIN tranne uno (IT0000062072, Generali Assicurazione spa) e i restati 59 hanno operato solamente su un ISIN (sempre IT0000062072). Mi sembra molto strano.
+La cosa ti torna? 
