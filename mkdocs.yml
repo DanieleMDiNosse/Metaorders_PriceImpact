@@ -34,6 +34,10 @@ theme:
 
 plugins:
   - search
+  - redirects:
+      redirect_maps:
+        power-law-impact-fits.md: POWER_LAW_IMPACT_FITS.md
+        metaorder-distributions.md: metaorder_distributions.md
 
 markdown_extensions:
   - admonition
