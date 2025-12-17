@@ -6,13 +6,13 @@ import logging
 import os
 import gc
 import pickle
-import warnings
+import yaml
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 from pathlib import Path
 from bisect import bisect_right
 
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm, TwoSlopeNorm
+from matplotlib.colors import LogNorm
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
@@ -23,12 +23,38 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  # needed for 3D plots
 import seaborn as sns
 sns.set_theme()
 
-# Sizes tuned for paper-ready readability
-TICK_FONT_SIZE = 12
-LABEL_FONT_SIZE = 14
-TITLE_FONT_SIZE = 15
-LEGEND_FONT_SIZE = 12
-DEFAULT_FIGSIZE = (9, 5.5)
+# ---------------------------------------------------------------------------
+# Configuration loader (YAML)
+# ---------------------------------------------------------------------------
+_SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
+_CONFIG_PATH = _SCRIPT_DIR / "config_ymls" / "metaorder_computation.yml"
+if not _CONFIG_PATH.exists():
+    raise FileNotFoundError(f"Missing config file: {_CONFIG_PATH}")
+
+_CFG = yaml.safe_load(_CONFIG_PATH.read_text(encoding="utf-8")) or {}
+if not isinstance(_CFG, dict):
+    raise TypeError(f"Config must be a mapping (YAML dict): {_CONFIG_PATH}")
+
+
+def _cfg_require(key: str):
+    if key not in _CFG:
+        raise KeyError(f"Missing required key '{key}' in {_CONFIG_PATH}")
+    return _CFG[key]
+
+
+def _resolve_repo_path(value: Union[str, Path]) -> str:
+    path = Path(value)
+    if not path.is_absolute():
+        path = (_SCRIPT_DIR / path).resolve()
+    return str(path)
+
+
+# Sizes tuned for paper-ready readability (loaded from YAML)
+TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
+LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
+TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
+LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
+DEFAULT_FIGSIZE = tuple(_cfg_require("DEFAULT_FIGSIZE"))
 
 plt.rcParams.update({
     "font.size": TICK_FONT_SIZE,
@@ -79,77 +105,68 @@ from utils import (
     build_daily_cache,
 )
 
-sns.set_theme()
-
 # ---------------------------------------------------------------------------
-# Config
+# Config (loaded from YAML)
 # ---------------------------------------------------------------------------
-LEVEL = "member"  # "member" or "client"
-PROPRIETARY = False  # True -> only proprietary trades (LEVEL must be member), False -> only non-proprietary trades (LEVEL must be member or client)
-PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
-RECOMPUTE = True
-USE_MOT_DATA = False  # False -> use files without "MOT" in the name, True -> only files containing "MOT"
-TRADING_HOURS = ("09:30:00", "17:30:00")
+LEVEL = str(_cfg_require("LEVEL"))  # "member" or "client"
+PROPRIETARY = bool(_cfg_require("PROPRIETARY"))
+RECOMPUTE = bool(_cfg_require("RECOMPUTE"))
+USE_MOT_DATA = bool(_cfg_require("USE_MOT_DATA"))
+TRADING_HOURS = tuple(_cfg_require("TRADING_HOURS"))
 
 # How to choose the daily volume used in Q/V:
 #   - "same_day"  : use volume on the metaorder day (default, original behavior)
 #   - "prev_day"  : use volume of the previous trading day (if available)
 #   - "avg_5d"    : use the average daily volume over the last up to 5 trading days
-Q_V_DENOMINATOR_MODE = "avg_5d"
+Q_V_DENOMINATOR_MODE = str(_cfg_require("Q_V_DENOMINATOR_MODE"))
 
 # How to choose the daily volatility used in impact normalization:
 #   - "same_day" : use volatility on the metaorder day (legacy behavior)
 #   - "prev_day" : use volatility of the previous trading day (if available)
 #   - "avg_5d"   : use the average daily volatility over the last up to 5 trading days
-DAILY_VOL_MODE = "avg_5d"
+DAILY_VOL_MODE = str(_cfg_require("DAILY_VOL_MODE"))
 
-PATH_DATA_FOLDER = "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data"
-PATH_NEW_DATA_FOLDER = "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data"
-OUT_DIR = "out_files"
-IMG_DIR = f"images/{LEVEL}_{PROPRIETARY_TAG}"
+PATH_DATA_FOLDER = _resolve_repo_path(str(_cfg_require("PATH_DATA_FOLDER")))
+PATH_NEW_DATA_FOLDER = _resolve_repo_path(str(_cfg_require("PATH_NEW_DATA_FOLDER")))
+OUT_DIR = _resolve_repo_path(str(_cfg_require("OUT_DIR")))
+PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
+_img_dir_override = _CFG.get("IMG_DIR")
+IMG_DIR = (
+    _resolve_repo_path(str(_img_dir_override))
+    if _img_dir_override
+    else _resolve_repo_path(f"images/{LEVEL}_{PROPRIETARY_TAG}")
+)
 
 
 os.makedirs(PATH_NEW_DATA_FOLDER, exist_ok=True)
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(IMG_DIR, exist_ok=True)
 os.makedirs(f"{IMG_DIR}/signature_plots", exist_ok=True)
-warnings.filterwarnings(
-    "ignore",
-    message="Series.view is deprecated and will be removed in a future version",
-    category=FutureWarning,
-)
-
-COLUMN_POSITIONS = {
-    "Trade Time": 3,
-    "ID Member": 1,
-    "Total Amount Buy": 9,
-    "Total Quantity Buy": 7,
-    "Total Amount Sell": 10,
-    "Total Quantity Sell": 8,
-    "ID Client": 0,
-}
 
 # Section toggles
-RUN_INTRO = True
-RUN_METAORDER_COMPUTATION = False
-RUN_SIGNATURE_PLOTS = False
-RUN_SQL_FITS = True
-RUN_WLS = True
-RUN_IMPACT_PATH_PLOT = False
-IMPACT_HORIZONS_MIN = (1, 3, 10, 30, 60)
-SECONDS_FILTER = 120  # minimum metaorder duration (seconds)
-MIN_QV = 1e-5  # minimum Q/V to keep a metaorder for fitting
-COMPUTE_IMPACT_PATHS = False  # compute partial/aftermath impact vectors in the metaorders dataset
-AFTERMATH_DURATION_MULTIPLIER = 2.0  # horizon multiple (x duration) for aftermath impact sampling
-AFTERMATH_NUM_SAMPLES = 30  # number of evenly spaced samples in the aftermath window
-MAX_GAP = pd.Timedelta(hours=1)
-MIN_TRADES = 5
-RESAMPLE_FREQ = "1000s"  # frequency for daily cache of vol/volatility
-N_LOGBIN = 30 # number of log-spaced bins for power-law fitting
-MIN_COUNT = 20 # minimum number of metaorders per bin for power-law fitting
-MIN_COUNT_SURFACE = 10  # minimum number per 2D bin for impact surface/heatmap
-MAX_PARTICIPATION_RATE = 1.0  # filter metaorders with participation rate < this value
-N_PR_BINS_SURFACE = 30  # number of participation-rate bins for impact surface/heatmap
+RUN_INTRO = bool(_cfg_require("RUN_INTRO"))
+RUN_METAORDER_COMPUTATION = bool(_cfg_require("RUN_METAORDER_COMPUTATION"))
+RUN_SIGNATURE_PLOTS = bool(_cfg_require("RUN_SIGNATURE_PLOTS"))
+RUN_SQL_FITS = bool(_cfg_require("RUN_SQL_FITS"))
+RUN_WLS = bool(_cfg_require("RUN_WLS"))
+RUN_IMPACT_PATH_PLOT = bool(_cfg_require("RUN_IMPACT_PATH_PLOT"))
+IMPACT_HORIZONS_MIN = tuple(int(x) for x in _cfg_require("IMPACT_HORIZONS_MIN"))
+SECONDS_FILTER = int(_cfg_require("SECONDS_FILTER"))
+MIN_QV = float(_cfg_require("MIN_QV"))
+COMPUTE_IMPACT_PATHS = bool(_cfg_require("COMPUTE_IMPACT_PATHS"))
+AFTERMATH_DURATION_MULTIPLIER = float(_cfg_require("AFTERMATH_DURATION_MULTIPLIER"))
+AFTERMATH_NUM_SAMPLES = int(_cfg_require("AFTERMATH_NUM_SAMPLES"))
+MAX_GAP = pd.Timedelta(str(_cfg_require("MAX_GAP")))
+MIN_TRADES = int(_cfg_require("MIN_TRADES"))
+RESAMPLE_FREQ = str(_cfg_require("RESAMPLE_FREQ"))
+N_LOGBIN = int(_cfg_require("N_LOGBIN"))
+MIN_COUNT = int(_cfg_require("MIN_COUNT"))
+MIN_COUNT_SURFACE = int(_cfg_require("MIN_COUNT_SURFACE"))
+MAX_PARTICIPATION_RATE = float(_cfg_require("MAX_PARTICIPATION_RATE"))
+N_PR_BINS_SURFACE = int(_cfg_require("N_PR_BINS_SURFACE"))
+N_SIGNATURE_PLOTS: Optional[int] = (
+    None if _CFG.get("N_SIGNATURE_PLOTS") is None else int(_CFG["N_SIGNATURE_PLOTS"])
+)
 
 # ---------------------------------------------------------------------------
 # Functions
@@ -434,26 +451,24 @@ def compute_metaorders_info(
 ) -> List[Tuple]:
     if trades_full is None:
         raise ValueError("trades_full must be provided (full tape needed for denominators and prices).")
+    if not metaorders_dict or trades.empty:
+        return []
     full_trades = trades_full
+    isin = trades["ISIN"].iat[0] if "ISIN" in trades.columns else ""
 
     tt_meta: pd.Series = trades["Trade Time"]
     day_arr = tt_meta.dt.date.values
-    plc = trades["Price Last Contract"].to_numpy()
-    pfc = trades["Price First Contract"].to_numpy()
+    plc = trades["Price Last Contract"].to_numpy(dtype=float)
+    pfc = trades["Price First Contract"].to_numpy(dtype=float)
     direction_arr = trades["Direction"].to_numpy()
-    member_id_arr = trades["ID Member"].to_numpy()
     client_id_arr = trades["ID Client"].to_numpy()
-    q_buy = trades["Total Quantity Buy"].to_numpy(dtype=float)
-    q_sell = trades["Total Quantity Sell"].to_numpy(dtype=float)
-    vol_arr = q_buy + q_sell
-    price_last_meta = trades["Price Last Contract"].to_numpy(dtype=float)
-    ts_meta_ns = trades["Trade Time"].view("int64").to_numpy()
+    vol_arr = trades[["Total Quantity Buy", "Total Quantity Sell"]].to_numpy(dtype=float).sum(axis=1)
+    ts_meta_ns = trades["Trade Time"].to_numpy(dtype="datetime64[ns]").astype(np.int64)
 
-    ts_full_ns = full_trades["Trade Time"].view("int64").to_numpy()
+    ts_full_ns = full_trades["Trade Time"].to_numpy(dtype="datetime64[ns]").astype(np.int64)
     price_last_full = full_trades["Price Last Contract"].to_numpy(dtype=float)
     full_vol_arr = (
-        full_trades["Total Quantity Buy"].to_numpy(dtype=float)
-        + full_trades["Total Quantity Sell"].to_numpy(dtype=float)
+        full_trades[["Total Quantity Buy", "Total Quantity Sell"]].to_numpy(dtype=float).sum(axis=1)
     )
     csum_vol_full = np.cumsum(full_vol_arr)
 
@@ -465,7 +480,7 @@ def compute_metaorders_info(
 
     rows: List[Tuple] = []
     for agent_id, meta_list in metaorders_dict.items():
-        for idx_meta, idx_list in enumerate(meta_list):
+        for idx_list in meta_list:
             s = idx_list[0]
             e = idx_list[-1]
             start_ts = tt_meta.iloc[s]
@@ -504,7 +519,7 @@ def compute_metaorders_info(
             if compute_paths:
                 partial_impacts = []
                 for child_idx in idx_list:
-                    p_child = price_last_meta[child_idx]
+                    p_child = plc[child_idx]
                     if p_child > 0 and valid_for_impacts:
                         ret_child = np.log(p_child) - start_log_price
                         imp_child = ret_child * direction / daily_volatility
@@ -544,7 +559,7 @@ def compute_metaorders_info(
             aftermath_blob = pack_path(aftermath_impacts) if compute_paths else None
             rows.append(
                 (
-                    trades.iloc[0]["ISIN"],
+                    isin,
                     agent_id,
                     client_id_arr[e],
                     direction,
@@ -562,10 +577,6 @@ def compute_metaorders_info(
                 )
             )
     return rows
-
-
-def power_law(qv: np.ndarray, Y: float, gamma: float) -> np.ndarray:
-    return Y * np.power(qv, gamma)
 
 
 def _interpolate_impact_path(
@@ -614,6 +625,69 @@ def _interpolate_impact_path(
     return np.interp(time_grid, t_unique, v_unique)
 
 
+def _prepare_impact_surface_bins(
+    df: pd.DataFrame,
+    n_qv_bins: int,
+    n_pr_bins: int,
+    qv_col: str,
+    impact_col: str,
+    pr_col: str,
+    *,
+    context: str,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Shared preprocessing for 2D impact surfaces:
+    - validate required columns
+    - filter invalid rows
+    - compute log-spaced bin edges and bin indices
+
+    Returns (qv_edges, pr_edges, qv_idx, pr_idx, impact_values).
+    """
+    required_cols = {qv_col, impact_col, pr_col}
+    if not required_cols.issubset(df.columns):
+        missing = required_cols.difference(df.columns)
+        raise ValueError(f"Missing required columns for surface computation: {missing}")
+
+    sub = df[[qv_col, impact_col, pr_col]].copy()
+    sub = sub[
+        (sub[qv_col] > MIN_QV)
+        & np.isfinite(sub[impact_col])
+        & np.isfinite(sub[pr_col])
+        & (sub[pr_col] > 0)
+        & (sub[pr_col] < MAX_PARTICIPATION_RATE)
+    ]
+    if sub.empty:
+        raise ValueError(
+            f"No valid rows ({qv_col}>{MIN_QV}, finite Impact and Participation Rate)."
+        )
+
+    qv = sub[qv_col].to_numpy()
+    pr = sub[pr_col].to_numpy()
+    imp = sub[impact_col].to_numpy()
+
+    qv_min = qv.min()
+    qv_max = qv.max()
+    if not np.isfinite(qv_min) or not np.isfinite(qv_max) or qv_max <= qv_min:
+        raise ValueError(f"Invalid {qv_col} range for log binning ({context}).")
+
+    pr_min = pr.min()
+    pr_max = pr.max()
+    if not np.isfinite(pr_min) or not np.isfinite(pr_max) or pr_max <= pr_min:
+        raise ValueError(f"Invalid Participation Rate range for log binning ({context}).")
+
+    qv_edges = np.logspace(np.log10(qv_min), np.log10(qv_max), n_qv_bins + 1)
+    pr_edges = np.logspace(np.log10(pr_min), np.log10(pr_max), n_pr_bins + 1)
+
+    qv_idx = np.digitize(qv, qv_edges) - 1
+    pr_idx = np.digitize(pr, pr_edges) - 1
+
+    mask = (
+        (qv_idx >= 0) & (qv_idx < n_qv_bins) &
+        (pr_idx >= 0) & (pr_idx < n_pr_bins)
+    )
+    return qv_edges, pr_edges, qv_idx[mask], pr_idx[mask], imp[mask]
+
+
 def compute_impact_surface(
     df: pd.DataFrame,
     n_qv_bins: int,
@@ -640,57 +714,17 @@ def compute_impact_surface(
     count_grid : np.ndarray
         Array of shape (n_pr_bins, n_qv_bins) with counts per 2D bin.
     """
-    required_cols = {qv_col, impact_col, pr_col}
-    if not required_cols.issubset(df.columns):
-        missing = required_cols.difference(df.columns)
-        raise ValueError(f"Missing required columns for surface computation: {missing}")
-
-    sub = df[[qv_col, impact_col, pr_col]].copy()
-    # Apply basic validity filters and cap participation rate; require PR > 0 for logs.
-    # Enforce positivity threshold (MIN_QV) consistent with SQL/WLS fits.
-    sub = sub[
-        (sub[qv_col] > MIN_QV)
-        & np.isfinite(sub[impact_col])
-        & np.isfinite(sub[pr_col])
-        & (sub[pr_col] > 0)
-        & (sub[pr_col] < MAX_PARTICIPATION_RATE)
-    ]
-    if sub.empty:
-        raise ValueError(
-            f"No valid rows ({qv_col}>{MIN_QV}, finite Impact and Participation Rate)."
-        )
-
-    qv = sub[qv_col].to_numpy()
-    imp = sub[impact_col].to_numpy()
-    pr = sub[pr_col].to_numpy()
-
-    qv_min = qv.min()
-    qv_max = qv.max()
-    if not np.isfinite(qv_min) or not np.isfinite(qv_max) or qv_max <= qv_min:
-        raise ValueError(f"Invalid {qv_col} range for log binning (surface).")
-
-    pr_min = pr.min()
-    pr_max = pr.max()
-    if not np.isfinite(pr_min) or not np.isfinite(pr_max) or pr_max <= pr_min:
-        raise ValueError("Invalid Participation Rate range for log binning (surface).")
-
-    qv_edges = np.logspace(np.log10(qv_min), np.log10(qv_max), n_qv_bins + 1)
-    pr_edges = np.logspace(np.log10(pr_min), np.log10(pr_max), n_pr_bins + 1)
-
-    qv_idx = np.digitize(qv, qv_edges) - 1
-    pr_idx = np.digitize(pr, pr_edges) - 1
-
-    mask = (
-        (qv_idx >= 0) & (qv_idx < n_qv_bins) &
-        (pr_idx >= 0) & (pr_idx < n_pr_bins)
+    qv_edges, pr_edges, qv_idx, pr_idx, imp = _prepare_impact_surface_bins(
+        df,
+        n_qv_bins=n_qv_bins,
+        n_pr_bins=n_pr_bins,
+        qv_col=qv_col,
+        impact_col=impact_col,
+        pr_col=pr_col,
+        context="surface",
     )
-    qv_idx = qv_idx[mask]
-    pr_idx = pr_idx[mask]
-    imp = imp[mask]
 
-    df_bins = pd.DataFrame(
-        {"qv_bin": qv_idx, "pr_bin": pr_idx, "Impact": imp}
-    )
+    df_bins = pd.DataFrame({"qv_bin": qv_idx, "pr_bin": pr_idx, "Impact": imp})
     agg = (
         df_bins.groupby(["qv_bin", "pr_bin"])["Impact"]
         .agg(["mean", "count"])
@@ -734,51 +768,15 @@ def compute_impact_surface_stats(
     count_grid : np.ndarray
         Raw counts per 2D bin (filled for all populated bins).
     """
-    required_cols = {qv_col, impact_col, pr_col}
-    if not required_cols.issubset(df.columns):
-        missing = required_cols.difference(df.columns)
-        raise ValueError(f"Missing required columns for surface computation: {missing}")
-
-    sub = df[[qv_col, impact_col, pr_col]].copy()
-    sub = sub[
-        (sub[qv_col] > MIN_QV)
-        & np.isfinite(sub[impact_col])
-        & np.isfinite(sub[pr_col])
-        & (sub[pr_col] > 0)
-        & (sub[pr_col] < MAX_PARTICIPATION_RATE)
-    ]
-    if sub.empty:
-        raise ValueError(
-            f"No valid rows ({qv_col}>{MIN_QV}, finite Impact and Participation Rate)."
-        )
-
-    qv = sub[qv_col].to_numpy()
-    imp = sub[impact_col].to_numpy()
-    pr = sub[pr_col].to_numpy()
-
-    qv_min = qv.min()
-    qv_max = qv.max()
-    if not np.isfinite(qv_min) or not np.isfinite(qv_max) or qv_max <= qv_min:
-        raise ValueError(f"Invalid {qv_col} range for log binning (surface stats).")
-
-    pr_min = pr.min()
-    pr_max = pr.max()
-    if not np.isfinite(pr_min) or not np.isfinite(pr_max) or pr_max <= pr_min:
-        raise ValueError("Invalid Participation Rate range for log binning (surface stats).")
-
-    qv_edges = np.logspace(np.log10(qv_min), np.log10(qv_max), n_qv_bins + 1)
-    pr_edges = np.logspace(np.log10(pr_min), np.log10(pr_max), n_pr_bins + 1)
-
-    qv_idx = np.digitize(qv, qv_edges) - 1
-    pr_idx = np.digitize(pr, pr_edges) - 1
-
-    mask = (
-        (qv_idx >= 0) & (qv_idx < n_qv_bins) &
-        (pr_idx >= 0) & (pr_idx < n_pr_bins)
+    qv_edges, pr_edges, qv_idx, pr_idx, imp = _prepare_impact_surface_bins(
+        df,
+        n_qv_bins=n_qv_bins,
+        n_pr_bins=n_pr_bins,
+        qv_col=qv_col,
+        impact_col=impact_col,
+        pr_col=pr_col,
+        context="surface stats",
     )
-    qv_idx = qv_idx[mask]
-    pr_idx = pr_idx[mask]
-    imp = imp[mask]
 
     df_bins = pd.DataFrame({"qv_bin": qv_idx, "pr_bin": pr_idx, "Impact": imp})
     agg = (
@@ -1595,91 +1593,6 @@ def plot_impact_surface_and_heatmap(
         print("[Surface] plotly is not installed; skipping interactive HTML 3D surface.")
 
 
-def fit_power_law_logbins_wls(
-    subdf: pd.DataFrame,
-    n_logbins: int = 30,
-    min_count: int = 100,
-    use_median: bool = False,
-) -> Tuple[pd.DataFrame, Tuple[float, float, float, float, float, float]]:
-    sub = subdf[(subdf["Q/V"] > 0) & np.isfinite(subdf["Impact"])].copy()
-    if sub.empty:
-        raise ValueError("No valid rows (Q/V>0 and finite Impact).")
-    x = sub["Q/V"].to_numpy()
-    y = sub["Impact"].to_numpy()
-    x_min = x.min()
-    x_max = x.max()
-    if not np.isfinite(x_min) or not np.isfinite(x_max) or x_max <= x_min:
-        raise ValueError("Invalid Q/V range for log binning.")
-    edges = np.logspace(np.log10(x_min), np.log10(x_max), n_logbins + 1)
-    bin_idx = np.digitize(x, edges) - 1
-    mask = (bin_idx >= 0) & (bin_idx < n_logbins)
-    x, y, bin_idx = x[mask], y[mask], bin_idx[mask]
-    dfb = pd.DataFrame({"x": x, "y": y, "bin": bin_idx})
-    agg = (
-        dfb.groupby("bin")["y"]
-        .agg(mean_imp="mean", median_imp="median", std_imp=lambda s: s.std(ddof=1), count="size")
-        .sort_index()
-    )
-    y_stat = agg["median_imp"] if use_median else agg["mean_imp"]
-    y_std = agg["std_imp"].to_numpy()
-    n = agg["count"].to_numpy()
-    sem = y_std / np.sqrt(np.maximum(n, 1))
-    bins_present = agg.index.to_numpy()
-    left_edges = edges[bins_present]
-    right_edges = edges[bins_present + 1]
-    x_center = np.sqrt(left_edges * right_edges)
-    binned = (
-        pd.DataFrame(
-            {
-                "center_QV": x_center,
-                "mean_imp": y_stat.to_numpy(),
-                "std_imp": y_std,
-                "sem_imp": sem,
-                "count": n,
-            }
-        )
-        .sort_values("center_QV")
-        .reset_index(drop=True)
-    )
-    binned = binned[
-        (binned["count"] >= min_count)
-        & np.isfinite(binned["mean_imp"])
-        & np.isfinite(binned["sem_imp"])
-        & (binned["sem_imp"] > 0)
-        & (binned["mean_imp"] > 0)
-    ]
-    if len(binned) < 3:
-        raise ValueError(f"Not enough valid bins after filtering (got {len(binned)}).")
-    X = np.log(binned["center_QV"].to_numpy())
-    Z = np.log(binned["mean_imp"].to_numpy())
-    var_logy = (binned["sem_imp"].to_numpy() / binned["mean_imp"].to_numpy()) ** 2
-    w = np.where(np.isfinite(var_logy) & (var_logy > 0), 1.0 / var_logy, 0.0)
-    A = np.vstack([np.ones_like(X), X]).T
-    Aw = A * np.sqrt(w)[:, None]
-    Zw = Z * np.sqrt(w)
-    coef, _, _, _ = np.linalg.lstsq(Aw, Zw, rcond=None)
-    a_hat, gamma_hat = coef
-    Y_hat = float(np.exp(a_hat))
-    res = Z - (a_hat + gamma_hat * X)
-    RSS = np.sum(w * res**2)
-    dof = max(len(Z) - 2, 1)
-    s2 = RSS / dof
-    XtWX = A.T @ (w[:, None] * A)
-    cov = s2 * np.linalg.inv(XtWX)
-    a_se, gamma_se = np.sqrt(np.diag(cov))
-    Y_se = Y_hat * a_se
-    Zhat = a_hat + gamma_hat * X
-    Zbar = np.average(Z, weights=w)
-    R2_log = 1.0 - np.sum(w * (Z - Zhat) ** 2) / np.sum(w * (Z - Zbar) ** 2)
-    yhat = power_law(binned["center_QV"].to_numpy(), Y_hat, gamma_hat)
-    ybar = np.mean(binned["mean_imp"].to_numpy())
-    R2_lin = 1.0 - np.sum((binned["mean_imp"].to_numpy() - yhat) ** 2) / np.sum(
-        (binned["mean_imp"].to_numpy() - ybar) ** 2
-    )
-    params = (Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin)
-    return binned, params
-
-
 def power_law(x: np.ndarray, Y: float, gamma: float) -> np.ndarray:
     """Simple power-law function: y = Y * x^gamma."""
     return Y * np.power(x, gamma)
@@ -1694,6 +1607,7 @@ def logarithmic_impact(x: np.ndarray, a: float, b: float) -> np.ndarray:
     where `x` corresponds to Q/V.
     """
     return a * np.log10(1.0 + b * x)
+
 
 def fit_power_law_logbins_wls_new(
     subdf: pd.DataFrame,
@@ -2082,6 +1996,27 @@ def plot_normalized_impact_path(
     tqdm.write(f"Saved normalized impact path plot to {out_path}")
 
 
+def filter_metaorders_info_for_fits(df: pd.DataFrame, min_qv: float = MIN_QV) -> pd.DataFrame:
+    """Apply the unified Q/V filter, compute `Impact`, and sanitize numeric columns."""
+    required = {"Q/V", "Price Change", "Direction", "Daily Vol"}
+    missing = required.difference(df.columns)
+    if missing:
+        raise KeyError(f"Missing required columns for filtering: {sorted(missing)}")
+
+    out = df[df["Q/V"] > min_qv].copy()
+    out["Impact"] = out["Price Change"] * out["Direction"] / out["Daily Vol"]
+
+    numeric_cols = [
+        c
+        for c in ["Q/V", "Vt/V", "Impact", "Participation Rate", "Price Change", "Daily Vol", "Q"]
+        if c in out.columns
+    ]
+    if numeric_cols:
+        out[numeric_cols] = out[numeric_cols].replace([np.inf, -np.inf], np.nan)
+
+    return out.dropna(subset=["Q/V", "Impact"]).reset_index(drop=True)
+
+
 # ---------------------------------------------------------------------------
 # Intro / transforms
 # ---------------------------------------------------------------------------
@@ -2123,8 +2058,7 @@ if RUN_METAORDER_COMPUTATION:
         metaorder_counts = {"raw": 0, "after_trades": 0, "after_duration": 0}
         for path in tqdm(dfs_path_new, desc="Metaorders per ISIN (filtered)", dynamic_ncols=True):
             isin = os.path.splitext(os.path.basename(path))[0]
-            trades_full = load_trades_full(path, trading_hours=TRADING_HOURS)
-            trades = filter_trades_by_group(trades_full, PROPRIETARY)
+            trades = load_trades_filtered(path, proprietary=PROPRIETARY, trading_hours=TRADING_HOURS)
             filtered_dict[isin] = compute_metaorders_per_isin(
                 trades,
                 LEVEL,
@@ -2134,13 +2068,12 @@ if RUN_METAORDER_COMPUTATION:
                 counts_acc=metaorder_counts,
             )
             del trades
-            del trades_full
             gc.collect()
         metaorders_dict_all = filtered_dict
         pickle.dump(metaorders_dict_all, open(filtered_path, "wb"))
         tqdm.write(f"Saved {filtered_path}")
         print(
-            "[Metaorders][ALL] raw (gap<{MAX_GAP}): "
+            f"[Metaorders][ALL] raw (gap<{MAX_GAP}): "
             f"{metaorder_counts['raw']} -> after min trades ({MIN_TRADES}): "
             f"{metaorder_counts['after_trades']} -> after duration ({SECONDS_FILTER}s): "
             f"{metaorder_counts['after_duration']}"
@@ -2153,8 +2086,8 @@ if RUN_METAORDER_COMPUTATION:
 if RUN_SIGNATURE_PLOTS:
     print("[Signature] Generating volatility signature plots per ISIN...")
     dfs_path_new = list_parquet_paths()
-    if N is not None:
-        dfs_path_new = dfs_path_new[:N]
+    if N_SIGNATURE_PLOTS is not None:
+        dfs_path_new = dfs_path_new[:N_SIGNATURE_PLOTS]
     for path in tqdm(dfs_path_new, desc="Signature plots", dynamic_ncols=True):
         isin = os.path.splitext(os.path.basename(path))[0]
         trades = load_trades_full(path, trading_hours=TRADING_HOURS)
@@ -2254,18 +2187,7 @@ if RUN_SQL_FITS:
     tqdm.write(f"Saved {info_path_unfiltered}")
 
     print(f"[SQL Fits] Applying filters (Q/V > {MIN_QV}) and computing Impact...")
-    metaorders_info_df_sameday_filtered = metaorders_info_df_sameday[
-        metaorders_info_df_sameday["Q/V"] > MIN_QV
-    ].copy()
-    metaorders_info_df_sameday_filtered["Impact"] = (
-        metaorders_info_df_sameday_filtered["Price Change"]
-        * metaorders_info_df_sameday_filtered["Direction"]
-        / metaorders_info_df_sameday_filtered["Daily Vol"]
-    )
-    numeric_cols = [c for c in ["Q/V", "Vt/V", "Impact", "Participation Rate", "Price Change", "Daily Vol", "Q"] if c in metaorders_info_df_sameday_filtered.columns]
-    if numeric_cols:
-        metaorders_info_df_sameday_filtered[numeric_cols] = metaorders_info_df_sameday_filtered[numeric_cols].replace([np.inf, -np.inf], np.nan)
-    metaorders_info_df_sameday_filtered = metaorders_info_df_sameday_filtered.dropna(subset=["Q/V", "Impact"]).reset_index(drop=True)
+    metaorders_info_df_sameday_filtered = filter_metaorders_info_for_fits(metaorders_info_df_sameday, min_qv=MIN_QV)
     print(
         f"[SQL Fits] Metaorders before Q/V filter: {len(metaorders_info_df_sameday)} | "
         f"after Q/V filter: {len(metaorders_info_df_sameday_filtered)}"
@@ -2286,12 +2208,7 @@ if RUN_WLS:
     elif os.path.exists(info_path_unfiltered):
         print("[WLS] Filtered parquet missing; applying unified filters to unfiltered file...")
         raw_df = pd.read_parquet(info_path_unfiltered)
-        df = raw_df[raw_df["Q/V"] > MIN_QV].copy()
-        df["Impact"] = df["Price Change"] * df["Direction"] / df["Daily Vol"]
-        numeric_cols = [c for c in ["Q/V", "Vt/V", "Impact", "Participation Rate", "Price Change", "Daily Vol", "Q"] if c in df.columns]
-        if numeric_cols:
-            df[numeric_cols] = df[numeric_cols].replace([np.inf, -np.inf], np.nan)
-        df = df.dropna(subset=["Q/V", "Impact"]).reset_index(drop=True)
+        df = filter_metaorders_info_for_fits(raw_df, min_qv=MIN_QV)
         print(
             f"[WLS] Metaorders before Q/V filter: {len(raw_df)} | "
             f"after Q/V filter: {len(df)}"

@@ -28,6 +28,7 @@ import math
 import builtins
 import logging
 import pickle
+import yaml
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from tqdm import tqdm
@@ -41,12 +42,38 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_theme()
 
-# Sizes tuned for print-friendly plots
-TICK_FONT_SIZE = 12
-LABEL_FONT_SIZE = 14
-TITLE_FONT_SIZE = 15
-LEGEND_FONT_SIZE = 12
-DEFAULT_FIGSIZE = (9, 5.5)
+# ---------------------------------------------------------------------
+# Configuration loader (YAML)
+# ---------------------------------------------------------------------
+_SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
+_CONFIG_PATH = _SCRIPT_DIR / "config_ymls" / "metaorder_statistics.yml"
+if not _CONFIG_PATH.exists():
+    raise FileNotFoundError(f"Missing config file: {_CONFIG_PATH}")
+
+_CFG = yaml.safe_load(_CONFIG_PATH.read_text(encoding="utf-8")) or {}
+if not isinstance(_CFG, dict):
+    raise TypeError(f"Config must be a mapping (YAML dict): {_CONFIG_PATH}")
+
+
+def _cfg_require(key: str):
+    if key not in _CFG:
+        raise KeyError(f"Missing required key '{key}' in {_CONFIG_PATH}")
+    return _CFG[key]
+
+
+def _resolve_repo_path(value: str) -> Path:
+    path = Path(value)
+    if not path.is_absolute():
+        path = (_SCRIPT_DIR / path).resolve()
+    return path
+
+
+# Sizes tuned for print-friendly plots (loaded from YAML)
+TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
+LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
+TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
+LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
+DEFAULT_FIGSIZE = tuple(_cfg_require("DEFAULT_FIGSIZE"))
 
 plt.rcParams.update({
     "font.size": TICK_FONT_SIZE,
@@ -85,50 +112,66 @@ def log_print(*args, **kwargs):
 builtins.print = log_print
 
 # ---------------------------------------------------------------------
-# Configuration (edit here to change inputs/plots/flags)
+# Configuration (loaded from YAML)
 # ---------------------------------------------------------------------
-PROP_PATH = Path("out_files/metaorders_info_sameday_filtered_member_proprietary.parquet")
-CLIENT_PATH = Path("out_files/metaorders_info_sameday_filtered_member_non_proprietary.parquet")
+PROP_PATH = _resolve_repo_path(str(_cfg_require("PROP_PATH")))
+CLIENT_PATH = _resolve_repo_path(str(_cfg_require("CLIENT_PATH")))
 
-ALPHA = 0.05 # significance level for confidence intervals
-BOOTSTRAP_RUNS = 1000  # number of permutation/bootstraps for p-values
-P_VALUE_THRESHOLD = 0.05  # significance cutoff used for filtering plotted correlations
-MIN_N = 100 # minimum number of metaorders per day to include in the analysis
-SMOOTHING_DAYS = 5 # number of days to smooth the correlation
-MIN_METAORDERS_PER_MEMBER = 50  # minimum number of metaorders per member for member-level stats
-MEMBER_WINDOW_DAYS = 1  # window length (days) for member-level crowding blocks
-PLOT_DIR = Path("/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/prop_vs_nonprop")
+ALPHA = float(_cfg_require("ALPHA"))  # significance level for confidence intervals
+BOOTSTRAP_RUNS = int(_cfg_require("BOOTSTRAP_RUNS"))  # number of permutation/bootstraps for p-values
+P_VALUE_THRESHOLD = float(_cfg_require("P_VALUE_THRESHOLD"))  # significance cutoff for filtering plotted correlations
+MIN_N = int(_cfg_require("MIN_N"))  # minimum number of metaorders per day to include in the analysis
+SMOOTHING_DAYS = int(_cfg_require("SMOOTHING_DAYS"))  # number of days to smooth the correlation
+MIN_METAORDERS_PER_MEMBER = int(_cfg_require("MIN_METAORDERS_PER_MEMBER"))
+MEMBER_WINDOW_DAYS = int(_cfg_require("MEMBER_WINDOW_DAYS"))
+PLOT_DIR = _resolve_repo_path(str(_cfg_require("PLOT_DIR")))
 
 # Daily returns / imbalance-return scatter
-ATTACH_DAILY_RETURNS = True  # compute and attach close-to-close daily returns per ISIN/date
-PLOT_IMBALANCE_VS_RETURNS = True  # scatter plot imbalance_local vs daily returns
-RETURNS_DATA_DIR = Path("/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data")
-RETURNS_USE_MOT_DATA = False  # match the dataset filter used in metaorder_computation
-RETURNS_TRADING_HOURS = ("09:30:00", "17:30:00")
-DAILY_RETURN_COL = "Daily Return"
+ATTACH_DAILY_RETURNS = bool(_cfg_require("ATTACH_DAILY_RETURNS"))
+PLOT_IMBALANCE_VS_RETURNS = bool(_cfg_require("PLOT_IMBALANCE_VS_RETURNS"))
+RETURNS_DATA_DIR = _resolve_repo_path(str(_cfg_require("RETURNS_DATA_DIR")))
+RETURNS_USE_MOT_DATA = bool(_cfg_require("RETURNS_USE_MOT_DATA"))
+RETURNS_TRADING_HOURS = tuple(_cfg_require("RETURNS_TRADING_HOURS"))
+DAILY_RETURN_COL = str(_cfg_require("DAILY_RETURN_COL"))
 
 # Toggles for imbalance-specific analyses
-ACF_IMBALANCE = True # whether to compute autocorrelation of imbalances
-DISTRIBUTIONS_IMBALANCE = True # whether to plot distributions of imbalances
+ACF_IMBALANCE = bool(_cfg_require("ACF_IMBALANCE"))
+DISTRIBUTIONS_IMBALANCE = bool(_cfg_require("DISTRIBUTIONS_IMBALANCE"))
 
 # Plotting parameters
-ACF_MAX_LAG = 300 # maximum lag for autocorrelation
-ACF_BOOTSTRAP_SAMPLES = 100 # number of bootstrap samples for autocorrelation confidence intervals
-IMBALANCE_HIST_BINS = 50 # number of bins for imbalance histograms
-PARTICIPATION_BINS = 100 # number of bins for participation histograms
-ACF_OUTPUT_DIRNAME = "acf"  # subfolder inside PLOT_DIR for per-ISIN ACF plots
+ACF_MAX_LAG = int(_cfg_require("ACF_MAX_LAG"))
+ACF_BOOTSTRAP_SAMPLES = int(_cfg_require("ACF_BOOTSTRAP_SAMPLES"))
+IMBALANCE_HIST_BINS = int(_cfg_require("IMBALANCE_HIST_BINS"))
+PARTICIPATION_BINS = int(_cfg_require("PARTICIPATION_BINS"))
+ACF_OUTPUT_DIRNAME = str(_cfg_require("ACF_OUTPUT_DIRNAME"))
 
 # Metaorder dictionary stats (raw metaorder indices, not the per-metaorder info parquet)
-RUN_METAORDER_DICT_STATS = True
-METAORDER_STATS_LEVEL = "member"
-METAORDER_STATS_PROPRIETARY = False
+RUN_METAORDER_DICT_STATS = bool(_cfg_require("RUN_METAORDER_DICT_STATS"))
+METAORDER_STATS_LEVEL = str(_cfg_require("METAORDER_STATS_LEVEL"))
+METAORDER_STATS_PROPRIETARY = bool(_cfg_require("METAORDER_STATS_PROPRIETARY"))
 METAORDER_STATS_PROPRIETARY_TAG = "proprietary" if METAORDER_STATS_PROPRIETARY else "non_proprietary"
-METAORDER_STATS_USE_MOT_DATA = False
-METAORDER_STATS_DATA_DIR = Path("/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data")
-METAORDER_STATS_PARQUET_DIR = METAORDER_STATS_DATA_DIR
-METAORDER_STATS_OUT_DIR = Path("out_files")
-METAORDER_STATS_DICT_PATH = METAORDER_STATS_OUT_DIR / f"metaorders_dict_all_{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}.pkl"
-METAORDER_STATS_IMG_DIR = Path(f"images/{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}")
+METAORDER_STATS_USE_MOT_DATA = bool(_cfg_require("METAORDER_STATS_USE_MOT_DATA"))
+METAORDER_STATS_DATA_DIR = _resolve_repo_path(str(_cfg_require("METAORDER_STATS_DATA_DIR")))
+_stats_parquet_override = _CFG.get("METAORDER_STATS_PARQUET_DIR")
+METAORDER_STATS_PARQUET_DIR = (
+    _resolve_repo_path(str(_stats_parquet_override))
+    if _stats_parquet_override
+    else METAORDER_STATS_DATA_DIR
+)
+METAORDER_STATS_OUT_DIR = _resolve_repo_path(str(_cfg_require("METAORDER_STATS_OUT_DIR")))
+_stats_dict_override = _CFG.get("METAORDER_STATS_DICT_PATH")
+METAORDER_STATS_DICT_PATH = (
+    _resolve_repo_path(str(_stats_dict_override))
+    if _stats_dict_override
+    else METAORDER_STATS_OUT_DIR
+    / f"metaorders_dict_all_{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}.pkl"
+)
+_stats_img_override = _CFG.get("METAORDER_STATS_IMG_DIR")
+METAORDER_STATS_IMG_DIR = (
+    _resolve_repo_path(str(_stats_img_override))
+    if _stats_img_override
+    else _resolve_repo_path(f"images/{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}")
+)
 
 # ---------------------------------------------------------------------
 # Correlation with confidence interval

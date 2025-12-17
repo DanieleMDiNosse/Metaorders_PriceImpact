@@ -1,0 +1,48 @@
+# metaorder_computation.py configuration
+
+# Plotting
+TICK_FONT_SIZE: 12
+LABEL_FONT_SIZE: 14
+TITLE_FONT_SIZE: 15
+LEGEND_FONT_SIZE: 12
+DEFAULT_FIGSIZE: [9, 5.5]
+
+# Dataset / preprocessing
+LEVEL: member  # "member" or "client"
+PROPRIETARY: false
+RECOMPUTE: true
+USE_MOT_DATA: false
+TRADING_HOURS: ["09:30:00", "17:30:00"]
+
+Q_V_DENOMINATOR_MODE: avg_5d  # same_day | prev_day | avg_5d
+DAILY_VOL_MODE: avg_5d        # same_day | prev_day | avg_5d
+
+PATH_DATA_FOLDER: data
+PATH_NEW_DATA_FOLDER: data
+OUT_DIR: out_files
+IMG_DIR: null  # null -> computed as images/{LEVEL}_{proprietary_tag}
+
+# Section toggles
+RUN_INTRO: true
+RUN_METAORDER_COMPUTATION: false
+RUN_SIGNATURE_PLOTS: false
+RUN_SQL_FITS: true
+RUN_WLS: true
+RUN_IMPACT_PATH_PLOT: false
+
+# Metaorder construction / fits
+IMPACT_HORIZONS_MIN: [1, 3, 10, 30, 60]
+SECONDS_FILTER: 120
+MIN_QV: 1.0e-5
+COMPUTE_IMPACT_PATHS: false
+AFTERMATH_DURATION_MULTIPLIER: 2.0
+AFTERMATH_NUM_SAMPLES: 30
+MAX_GAP: 1h
+MIN_TRADES: 5
+RESAMPLE_FREQ: 1000s
+N_LOGBIN: 30
+MIN_COUNT: 20
+MIN_COUNT_SURFACE: 10
+MAX_PARTICIPATION_RATE: 1.0
+N_PR_BINS_SURFACE: 30
+N_SIGNATURE_PLOTS: null

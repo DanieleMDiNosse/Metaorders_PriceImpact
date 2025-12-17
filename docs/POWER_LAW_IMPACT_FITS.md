@@ -175,9 +175,9 @@ The chosen denominator is stored in `Q/V` and carried through to the filtered pa
 
 The volatility used to normalize impact is controlled by `DAILY_VOL_MODE`:
 
-- `"same_day"`: use \(\widehat{\sigma}_{d(i)}\) on the metaorder day (default).
+- `"same_day"`: use \(\widehat{\sigma}_{d(i)}\) on the metaorder day.
 - `"prev_day"`: use the previous trading day's volatility when available.
-- `"avg_5d"`: use the average daily volatility over the last up to 5 trading days.
+- `"avg_5d"`: use the average daily volatility over the last up to 5 trading days (default).
 
 The selected value is stored in `Daily Vol` and used throughout the impact-path computation and SQL/WLS fits.
 
@@ -192,7 +192,7 @@ Let \(P^{\text{start}}_i\) be the price at the first trade of metaorder \(i\), a
 \Delta p_i = \log P^{\text{end}}_i - \log P^{\text{start}}_i.
 \]
 
-Let \(\varepsilon_i \in \{+1,-1\}\) be the **direction** of the metaorder (buy \(+1\), sell \(-1\)). The daily volatility used for normalization is \(\widehat{\sigma}_{d(i)}\), selected according to Section 2.5 (same-day by default). The (instantaneous) impact of metaorder \(i\) in volatility units is defined as
+Let \(\varepsilon_i \in \{+1,-1\}\) be the **direction** of the metaorder (buy \(+1\), sell \(-1\)). The daily volatility used for normalization is \(\widehat{\sigma}_{d(i)}\), selected according to Section 2.5 (default `avg_5d`). The (instantaneous) impact of metaorder \(i\) in volatility units is defined as
 \[
 I_i \equiv \frac{\varepsilon_i \, \Delta p_i}{\widehat{\sigma}_{d(i)}}.
 \]
@@ -224,7 +224,7 @@ Because individual \(I_i\) are noisy and can be negative, the estimation is not 
 
 ### 3.3 Execution and aftermath impact paths
 
-Beyond the scalar end-of-execution impact \(I_i\), the script also tracks the **full impact path** of each metaorder, both during execution and in an aftermath window:
+When `COMPUTE_IMPACT_PATHS=True` (default `False` in the script), the script also tracks the **full impact path** of each metaorder, both during execution and in an aftermath window:
 
 - For each metaorder \(i\), the **partial impact path** records the normalized impact after each child trade in \(\mathcal{M}_i\) (same normalization as \(I_i\)).
 - The **aftermath impact path** samples the normalized impact at a fixed number of evenly spaced timestamps after the end of execution, up to a multiple of the metaorder duration (controlled by `AFTERMATH_DURATION_MULTIPLIER` and `AFTERMATH_NUM_SAMPLES`).
@@ -251,7 +251,7 @@ so that deviations between the two functional forms (especially at very small or
 
 ## 4. Filtering Stage Before Fitting
 
-After metaorders are computed and their summary dataframe is built, the SQL-fits block in `metaorder_computation.py` applies the final filters and impact construction. The resulting filtered dataset is saved to `out_files/metaorders_info_sameday_filtered_*.parquet` and reused directly by the WLS step (no re-filtering there).
+After metaorders are computed and their summary dataframe is built, the SQL-fits block in `metaorder_computation.py` applies the final filters and impact construction. The resulting filtered dataset is saved to `out_files/metaorders_info_sameday_filtered_*.parquet` and reused directly by the WLS step when available; if the filtered parquet is missing, the WLS block regenerates it by applying the same filter to the unfiltered parquet.
 
 ### 4.1 Structural filters (enforced during construction)
 
@@ -275,6 +275,8 @@ Let \(\phi_i = Q_i / V_{d(i)}\) and \(I_i = \varepsilon_i \Delta p_i / \widehat{
 2. **Impact computation and cleanup.** Compute \(I_i\); replace \(\pm\infty\) in numeric columns with NaN; drop rows with non-finite `Q/V` or `Impact`.
 
 This yields a clean table with well-defined \((\phi_i, I_i)\) pairs and auxiliary fields such as participation rate, ready for binning.
+
+In the code, this unified filter is implemented by `filter_metaorders_info_for_fits` and shared between the SQL-fits and WLS blocks.
 
 ### 4.3 Bin-level guards inside the WLS routine
 

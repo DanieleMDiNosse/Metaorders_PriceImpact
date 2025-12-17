@@ -99,6 +99,7 @@ Figure: `images/{LEVEL}_{PROPRIETARY_TAG}/participation_rate_all.png`.
 ## Volatility signature plots
 
 `metaorder_computation.py` can generate **volatility signature plots** per ISIN when `RUN_SIGNATURE_PLOTS=True`:
+Optionally, set `N_SIGNATURE_PLOTS` to an integer to limit the run to the first N ISINs.
 
 1. Resample the trade-time price series at interval \(\Delta\), compute log-returns for each day, and compute per-day volatility estimators:
    - realized variance (RV),
@@ -110,7 +111,7 @@ Each figure shows mean \(\pm 2\,\text{SE}\) versus \(\Delta\) for the three esti
 
 ## Normalized impact paths
 
-When `COMPUTE_IMPACT_PATHS=True` (default), `metaorder_computation.py` stores compact partial and aftermath impact paths for each metaorder (packed float32 bytes). `plot_normalized_impact_path`, triggered by `RUN_IMPACT_PATH_PLOT=True`, unpacks and interpolates these paths on a common grid to show:
+When `COMPUTE_IMPACT_PATHS=True` (default `False` in the script), `metaorder_computation.py` stores compact partial and aftermath impact paths for each metaorder (packed float32 bytes). `plot_normalized_impact_path`, triggered by `RUN_IMPACT_PATH_PLOT=True`, unpacks and interpolates these paths on a common grid to show:
 
 - how impact accumulates during execution, and
 - how it relaxes or overshoots after completion (up to `AFTERMATH_DURATION_MULTIPLIER` times the duration, with `AFTERMATH_NUM_SAMPLES` evenly spaced samples).
@@ -121,7 +122,7 @@ Figure: `images/{LEVEL}_{PROPRIETARY_TAG}/normalized_impact_path_{LEVEL}_{PROPRI
 
 The WLS section of `metaorder_computation.py` studies the relationship between price impact and relative size \(Q/V\). Key steps:
 
-1. Build `metaorders_info_sameday_{LEVEL}_{PROPRIETARY_TAG}.parquet`, then filter to `Q/V > MIN_QV` (default `1e-5`), drop non-finite values, and compute `Impact = Price Change * Direction / Daily Vol`. The `Q/V` denominator can be chosen via `Q_V_DENOMINATOR_MODE` (`same_day`, `prev_day`, `avg_5d`, default `avg_5d`).
+1. Build `metaorders_info_sameday_{LEVEL}_{PROPRIETARY_TAG}.parquet`, then filter to `Q/V > MIN_QV` (default `1e-5`), drop non-finite values, and compute `Impact = Price Change * Direction / Daily Vol`. The `Q/V` denominator can be chosen via `Q_V_DENOMINATOR_MODE` (`same_day`, `prev_day`, `avg_5d`, default `avg_5d`), and the daily volatility via `DAILY_VOL_MODE` (`same_day`, `prev_day`, `avg_5d`, default `avg_5d`).
 2. Log-bin \(Q/V\) into `n_logbins=30` bins, keep bins with at least `min_count=20` metaorders and finite standard errors, and compute mean impacts and SEMs per bin.
 3. Fit a weighted least-squares regression in log space to the **power-law** model
    \[

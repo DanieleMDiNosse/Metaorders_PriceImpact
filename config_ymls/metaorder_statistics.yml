@@ -1,0 +1,51 @@
+# metaorder_statistics.py configuration
+
+# Plotting
+TICK_FONT_SIZE: 12
+LABEL_FONT_SIZE: 14
+TITLE_FONT_SIZE: 15
+LEGEND_FONT_SIZE: 12
+DEFAULT_FIGSIZE: [9, 5.5]
+
+# Inputs
+PROP_PATH: out_files/metaorders_info_sameday_filtered_member_proprietary.parquet
+CLIENT_PATH: out_files/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+
+# Correlation / inference
+ALPHA: 0.05
+BOOTSTRAP_RUNS: 1000
+P_VALUE_THRESHOLD: 0.05
+MIN_N: 100
+SMOOTHING_DAYS: 5
+MIN_METAORDERS_PER_MEMBER: 50
+MEMBER_WINDOW_DAYS: 1
+PLOT_DIR: images/prop_vs_nonprop
+
+# Daily returns / scatter
+ATTACH_DAILY_RETURNS: true
+PLOT_IMBALANCE_VS_RETURNS: true
+RETURNS_DATA_DIR: data
+RETURNS_USE_MOT_DATA: false
+RETURNS_TRADING_HOURS: ["09:30:00", "17:30:00"]
+DAILY_RETURN_COL: "Daily Return"
+
+# Extra analyses
+ACF_IMBALANCE: true
+DISTRIBUTIONS_IMBALANCE: true
+
+ACF_MAX_LAG: 300
+ACF_BOOTSTRAP_SAMPLES: 100
+IMBALANCE_HIST_BINS: 50
+PARTICIPATION_BINS: 100
+ACF_OUTPUT_DIRNAME: acf
+
+# Metaorder dictionary stats (from metaorders_dict_all_*.pkl)
+RUN_METAORDER_DICT_STATS: true
+METAORDER_STATS_LEVEL: member
+METAORDER_STATS_PROPRIETARY: false
+METAORDER_STATS_USE_MOT_DATA: false
+METAORDER_STATS_DATA_DIR: data
+METAORDER_STATS_PARQUET_DIR: null  # null -> same as METAORDER_STATS_DATA_DIR
+METAORDER_STATS_OUT_DIR: out_files
+METAORDER_STATS_DICT_PATH: null    # null -> computed from METAORDER_STATS_* params
+METAORDER_STATS_IMG_DIR: null      # null -> computed as images/{level}_{proprietary_tag}
