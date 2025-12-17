@@ -39,7 +39,7 @@ After `metaorder_computation.py` has run, each row in the proprietary/client par
 The imbalance quantities are always based on **signed volume**:
 
 \[
-Q_i D_i,
+Q_i \epsilon_i,
 \]
 
 aggregated over appropriate subsets of metaorders and normalized by total volume.
@@ -48,7 +48,7 @@ For a set of indices \(\mathcal{S}\),
 
 \[
 \text{imbalance}(\mathcal{S})
-  = \frac{\sum_{j \in \mathcal{S}} Q_j D_j}{\sum_{j \in \mathcal{S}} Q_j},
+  = \frac{\sum_{j \in \mathcal{S}} Q_j \epsilon_j}{\sum_{j \in \mathcal{S}} Q_j},
 \]
 
 with the convention that the imbalance is `NaN` if the denominator is zero.
@@ -67,10 +67,10 @@ The within-group local imbalance uses a closely related construction but exclude
 
 ## Local daily imbalance (within-group)
 
-For a metaorder \(i\) on ISIN \(k\) and date \(d\), with volume \(Q_i\) and direction \(D_i \in \{+1,-1\}\), define
+For a metaorder \(i\) on ISIN \(k\) and date \(d\), with volume \(Q_i\) and direction \(\epsilon_i \in \{+1,-1\}\), define
 \[
 \text{imbalance}^{\text{local}}_i
-	  = \frac{\sum_{j \in \mathcal{G}_{k,d}\setminus\{i\}} Q_j D_j}
+	  = \frac{\sum_{j \in \mathcal{G}_{k,d}\setminus\{i\}} Q_j \epsilon_j}
 	         {\sum_{j \in \mathcal{G}_{k,d}\setminus\{i\}} Q_j},
 	\]
 	where \(\mathcal{G}_{k,d}\) are the other metaorders on the same \((k,d)\). Days with a single metaorder yield `NaN` for this field. This is computed separately for proprietary and client flow.
@@ -92,7 +92,7 @@ This exactly implements the self-exclusion \(\mathcal{G}_{k,d}\setminus\{i\}\).
 - **Cross-group environment (ISIN–Date level):**
   - For proprietary metaorders, `imbalance_client_env(ISIN, Date)` is defined as:
     \[
-    \frac{\sum_{\text{client metaorders on }(k,d)} Q_j D_j}
+    \frac{\sum_{\text{client metaorders on }(k,d)} Q_j \epsilon_j}
            {\sum_{\text{client metaorders on }(k,d)} Q_j}.
     \]
     Implemented by `attach_environment_imbalance(metaorders_proprietary, metaorders_non_proprietary, new_col="imbalance_client_env")`.
@@ -107,7 +107,6 @@ This exactly implements the self-exclusion \(\mathcal{G}_{k,d}\setminus\{i\}\).
 The member-level analysis asks whether a member’s proprietary flow tends to align with the aggregate flow of its **own clients**.
 
 For a given member \(m\) and date \(d\), define \(\mathcal{C}_{m,d}\) as the set of **client** metaorders with:
-
 - `Member = m`,
 - `Date = d`,
 - any ISIN.
@@ -116,7 +115,7 @@ The member-level client imbalance is:
 
 \[
 \text{imbalance\_client\_member\_env}(m,d)
-  = \frac{\sum_{j \in \mathcal{C}_{m,d}} Q_j D_j}
+  = \frac{\sum_{j \in \mathcal{C}_{m,d}} Q_j \epsilon_j}
          {\sum_{j \in \mathcal{C}_{m,d}} Q_j},
 \]
 
@@ -134,12 +133,12 @@ The member-level crowding analysis is then performed by:
 - `run_member_level_prop_client_crowding_analysis(metaorders_proprietary, metaorders_non_proprietary, env_col="imbalance_client_member_env", ...)`:
   - Computes a **global** correlation across all proprietary metaorders:
     \[
-    r_{\text{global}} = \text{Corr}\big(D_i,\ \text{imbalance\_client\_member\_env}(\text{Member}_i, \text{Date}_i)\big)
+    r_{\text{global}} = \text{Corr}\big(\epsilon_i,\ \text{imbalance\_client\_member\_env}(\text{Member}_i, \text{Date}_i)\big)
     \]
     with a Fisher-z confidence interval.
   - Computes **per-member** correlations:
     \[
-    r_m = \text{Corr}\big(D_i,\ \text{imbalance\_client\_member\_env}(m, \text{Date}_i)\big)
+    r_m = \text{Corr}\big(\epsilon_i,\ \text{imbalance\_client\_member\_env}(m, \text{Date}_i)\big)
     \quad \text{for metaorders with Member } m,
     \]
     including a **bootstrap percentile CI** (`lo`, `hi`) and `n` (sample size).
@@ -249,7 +248,7 @@ This is implemented in `corr_with_bootstrap_p`, which returns \((r_{\text{obs}},
 - **Member-level analysis (per member, full sample):**
   - For each member \(m\), the script computes:
     \[
-    r_m = \text{Corr}\big(D_i,\ \text{imbalance\_client\_member\_env}(m, \text{Date}_i)\big),
+    r_m = \text{Corr}\big(\epsilon_i,\ \text{imbalance\_client\_member\_env}(m, \text{Date}_i)\big),
     \]
     with:
     - a bootstrap CI on \(r_m\),
@@ -268,7 +267,7 @@ This is implemented in `corr_with_bootstrap_p`, which returns \((r_{\text{obs}},
     - If \(n_{\text{prop}, m, w} < 10\) or \(n_{\text{client}, m, w} < 10\), the cell is treated as missing (`NaN`).
     - Otherwise, it computes:
       \[
-      r_{m,w} = \text{Corr}\big(D_i,\ \text{imbalance\_client\_member\_env}(m, \text{Date}_i)\big)
+      r_{m,w} = \text{Corr}\big(\epsilon_i,\ \text{imbalance\_client\_member\_env}(m, \text{Date}_i)\big)
       \]
       using only proprietary metaorders of member \(m\) in that 5‑day window, and a permutation p‑value \(p_{m,w}\).
     - If \(p_{m,w} > \text{P\_VALUE\_THRESHOLD}\), the corresponding cell is set to `NaN` (only significant correlations are shown).

@@ -96,6 +96,7 @@ P_VALUE_THRESHOLD = 0.05  # significance cutoff used for filtering plotted corre
 MIN_N = 100 # minimum number of metaorders per day to include in the analysis
 SMOOTHING_DAYS = 5 # number of days to smooth the correlation
 MIN_METAORDERS_PER_MEMBER = 50  # minimum number of metaorders per member for member-level stats
+MEMBER_WINDOW_DAYS = 1  # window length (days) for member-level crowding blocks
 PLOT_DIR = Path("/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/prop_vs_nonprop")
 
 # Daily returns / imbalance-return scatter
@@ -598,7 +599,7 @@ def run_metaorder_dict_statistics(
     _pdf_plot([q for q in q_over_v], "Q/V ", "Q/V", "q_over_v_all.png", logx=True)
     _pdf_plot(
         [r for r in participation_rates],
-        "Participation rate",
+        r"$\eta$",
         "Metaorder volume / volume during metaorder",
         "participation_rate_all.png",
         logx=True,
@@ -1148,10 +1149,12 @@ def run_member_level_prop_client_crowding_analysis(
     min_metaorders_per_member: int = MIN_METAORDERS_PER_MEMBER,
     out_prefix: str = "member_prop_client_crowding",
     make_plots: bool = True,
+    member_window_days: int = MEMBER_WINDOW_DAYS,
 ) -> None:
     """
     Member-level crowding between proprietary direction and client flow:
     Corr(Direction_prop, client imbalance aggregated at (Member, Date)).
+    If make_plots is True, builds a non-overlapping member_window_days-day heatmap.
     """
     print("\n" + "=" * 80)
     print("Member-level crowding (prop vs own clients)")
@@ -1171,6 +1174,10 @@ def run_member_level_prop_client_crowding_analysis(
             "skipping member-level analysis."
         )
         return
+
+    member_window_days = int(member_window_days)
+    if member_window_days <= 0:
+        raise ValueError("member_window_days must be >= 1")
 
     df = metaorders_proprietary[list(required_cols)].copy()
     df["Direction"] = pd.to_numeric(df["Direction"], errors="coerce")
@@ -1276,16 +1283,16 @@ def run_member_level_prop_client_crowding_analysis(
             ax.set_xticks(x)
             ax.set_xticklabels(members, rotation=90)
             ax.set_xlabel("Member")
-            ax.set_ylabel("Corr(Direction_prop, client imbalance (Member, Date))")
-            ax.set_title("Per-member prop/client crowding correlations")
+            ax.set_ylabel(r"$\mathrm{Corr}(\epsilon_i, \mathrm{imb}_{m, d_i})$")
+            # ax.set_title("Per-member prop/client crowding correlations")
             plt.tight_layout()
             bar_path = out_prefix_path.parent / f"{out_prefix_path.name}_hist.png"
             fig.savefig(bar_path, bbox_inches="tight")
             plt.close(fig)
             print(f"[Member crowding] Saved per-member correlation bar chart to: {bar_path}")
 
-        # Member–window (5-day, non-overlapping) heatmap with minimum counts
-        # Build non-overlapping 5-day windows from the union of prop+client dates
+        # Member–window (member_window_days-day, non-overlapping) heatmap with minimum counts
+        # Build non-overlapping windows from the union of prop+client dates
         all_dates = sorted(
             set(pd.to_datetime(metaorders_proprietary["Date"]).dt.date.dropna()).union(
                 set(pd.to_datetime(metaorders_non_proprietary.get("Date", pd.Series([], dtype=object))).dt.date.dropna())
@@ -1297,8 +1304,8 @@ def run_member_level_prop_client_crowding_analysis(
 
         window_labels: dict = {}
         window_order: list[str] = []
-        for idx in range(0, len(all_dates), 5):
-            chunk = all_dates[idx : idx + 5]
+        for idx in range(0, len(all_dates), member_window_days):
+            chunk = all_dates[idx : idx + member_window_days]
             start = chunk[0]
             end = chunk[-1]
             label = f"{start}_to_{end}"
@@ -1391,11 +1398,13 @@ def run_member_level_prop_client_crowding_analysis(
                     vmin=-1.0,
                     vmax=1.0,
                     center=0.0,
-                    cbar_kws={"label": "Corr(Direction_prop, client imbalance)"},
+                    cbar_kws={"label": r"$\mathrm{Corr}(\epsilon_i, \mathrm{imb}_{m, d_i})$"},
                 )
                 ax.set_xlabel("Member")
-                ax.set_ylabel("5-day window (non-overlapping)")
-                ax.set_title("Member-level prop vs client crowding (5-day blocks, n_prop>=10 & n_client>=10)")
+                ax.set_ylabel(f"{member_window_days}-day window (non-overlapping)")
+                ax.set_title(
+                    rf"Member-level crowding ({member_window_days}-day blocks, $n_{{\mathrm{{prop}}}}\geq 10$ & $n_{{\mathrm{{client}}}}\geq 10$)"
+                )
                 plt.tight_layout()
                 heatmap_path = out_prefix_path.parent / f"{out_prefix_path.name}_heatmap.png"
                 fig.savefig(heatmap_path, bbox_inches="tight")
@@ -1604,9 +1613,9 @@ def plot_participation_vs_abs_imbalance(
             linewidth=1.5,
         )
 
-    ax.set_xlabel("Participation rate")
+    ax.set_xlabel(r"$\eta$")
     ax.set_ylabel("Average |imbalance_local| per bin")
-    ax.set_title("Average absolute imbalance vs participation rate")
+    ax.set_title(r"Average absolute imbalance vs $\eta$")
     ax.legend()
     ax.grid(True, linestyle=":", linewidth=0.5, alpha=0.7)
     plt.tight_layout()

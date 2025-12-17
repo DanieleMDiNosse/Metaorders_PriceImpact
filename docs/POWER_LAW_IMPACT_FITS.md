@@ -324,6 +324,127 @@ Goodness-of-fit metrics:
 - **Log-space \(R^2_{\log}\):** weighted \(R^2\) on \(Z_k\).
 - **Linear-space \(R^2_{\text{lin}}\):** \(R^2\) on \(\bar{I}_k\) versus \(\widehat{Y}\phi_k^{\widehat{\gamma}}\) (ignoring controls), for interpretability in the original scale.
 
+### 5.4 Bivariate WLS fit in \((\eta, Q/V)\)
+
+Besides the univariate fit \(I/\sigma \sim (Q/V)^\gamma\), `metaorder_computation.py` also implements a **bivariate power-law surface** that models the mean normalized impact jointly as a function of:
+
+- the daily-volume fraction \( \phi \equiv Q/V \) (column `Q/V`), and
+- the participation rate \( \eta \equiv Q / V^{\text{during}} \) (column `Participation Rate`).
+
+The fitted model is:
+\[
+\mathbb{E}[I_i \mid \eta_i, \phi_i]
+  = C \,\eta_i^{\delta}\,\phi_i^{\gamma},
+\]
+or in log form:
+\[
+\log \mathbb{E}[I_i \mid \eta_i, \phi_i]
+  = \log C + \delta \log \eta_i + \gamma \log \phi_i.
+\]
+
+Implementation-wise, the workflow is split into:
+
+- `compute_impact_surface_stats`: 2D log-binning on \((\phi,\eta)\) and per-bin statistics (mean, SEM, count),
+- `fit_bivariate_power_law_eta_qv_wls`: bivariate WLS fit in log space using the bin-level SEMs as weights,
+- `plot_bivariate_fit_surfaces_3d`: evaluate and export the fitted surfaces (power-law + logarithmic overlays and residual heatmaps).
+
+#### 5.4.1 2D log-binning and bin statistics
+
+The bivariate fit follows the same “bin-then-regress” spirit used for the 1D WLS:
+
+1. Apply basic domain filters (the same ones used by the empirical surface/heatmap code):
+   - \(Q/V > \texttt{MIN\_QV}\) (default \(10^{-5}\)),
+   - finite `Impact`,
+   - \(0 < \eta < \texttt{MAX\_PARTICIPATION\_RATE}\) (default 1.0),
+   - finite `Participation Rate`.
+
+2. Build log-spaced bin edges for both axes using the min/max of the filtered sample:
+   \[
+   \{\phi_0,\dots,\phi_{B_\phi}\},\qquad \{\eta_0,\dots,\eta_{B_\eta}\}.
+   \]
+
+3. Assign each metaorder \(i\) to a 2D bin \(b(i)=(b_\phi(i),b_\eta(i))\), then compute per-bin:
+   - mean impact \(\bar{I}_b\),
+   - sample standard deviation \(s_b\),
+   - count \(n_b\),
+   - standard error \(\text{SEM}_b = s_b/\sqrt{n_b}\).
+
+4. Keep only bins with:
+   - \(n_b \ge \texttt{min\_count}\),
+   - \(\bar{I}_b > 0\) and \(\text{SEM}_b > 0\) (required for the log transform and for stable weights).
+
+Geometric bin centers are used:
+\[
+\phi_b = \sqrt{\phi_{\text{left}}\phi_{\text{right}}},\qquad
+\eta_b = \sqrt{\eta_{\text{left}}\eta_{\text{right}}}.
+\]
+
+#### 5.4.2 Bivariate WLS in log space
+
+On the retained 2D bins, define:
+\[
+Z_b = \log \bar{I}_b,\qquad
+X^{(\eta)}_b = \log \eta_b,\qquad
+X^{(\phi)}_b = \log \phi_b.
+\]
+
+The fitted regression is:
+\[
+Z_b = a + \delta X^{(\eta)}_b + \gamma X^{(\phi)}_b + \epsilon_b,
+\quad\text{with}\quad a=\log C.
+\]
+
+Weights use the same delta-method approximation as the univariate fit:
+\[
+\operatorname{Var}(Z_b) \approx \left(\frac{\text{SEM}_b}{\bar{I}_b}\right)^2,
+\qquad
+w_b = \frac{1}{\operatorname{Var}(Z_b)}.
+\]
+
+The design matrix is \(A=[\mathbf{1},X^{(\eta)},X^{(\phi)}]\). The WLS estimator solves:
+\[
+\widehat{\theta} = (A^\top W A)^{-1} A^\top W \mathbf{Z},
+\quad
+\theta = (a,\delta,\gamma)^\top.
+\]
+
+Parameter uncertainty follows the standard WLS covariance approximation:
+\[
+\widehat{\operatorname{Cov}}(\widehat{\theta})
+  \approx \widehat{s}^2 (A^\top W A)^{-1},
+\qquad
+\widehat{s}^2 = \frac{\sum_b w_b (Z_b-\widehat{Z}_b)^2}{B-3}.
+\]
+
+Finally, the model parameters are reported in the original scale as:
+\[
+\widehat{C}=e^{\widehat{a}},
+\qquad
+\operatorname{SE}(\widehat{C}) \approx \widehat{C}\,\operatorname{SE}(\widehat{a})
+\]
+(delta method).
+
+Diagnostics:
+
+- \(R^2_{\log}\): weighted \(R^2\) in log space on \(Z_b\),
+- \(R^2_{\text{lin}}\): unweighted \(R^2\) on \(\bar{I}_b\) vs \(\widehat{C}\,\eta_b^{\widehat{\delta}}\,\phi_b^{\widehat{\gamma}}\).
+
+#### 5.4.3 Fitted surface export (PNG + HTML)
+
+Once \((\widehat{C},\widehat{\delta},\widehat{\gamma})\) are estimated, the fitted surface is evaluated on the full 2D grid of bin centers:
+\[
+\widehat{I}(\eta,\phi) = \widehat{C}\,\eta^{\widehat{\delta}}\,\phi^{\widehat{\gamma}}.
+\]
+
+For visualization, the surface is **masked** outside the empirically supported domain: only grid cells with at least `min_count` observations (and positive finite mean impact) are plotted; all other cells are set to NaN so they do not create misleading extrapolations.
+
+The script saves:
+
+- a static 3D surface PNG (Matplotlib), and
+- an optional interactive 3D surface HTML (Plotly, if installed),
+
+with log-scaled axes \((Q/V,\eta,I/\sigma)\) and a log-scaled colormap.
+
 ---
 
 ## 6. Summary
@@ -331,7 +452,7 @@ Goodness-of-fit metrics:
 - Metaorders: same-sign, same-day, single-client sequences with at least two trades; split on inactivity \(>1\) hour; short fragments and short-duration sequences are dropped; trade-level intraday and proprietary/non-proprietary filters.
 - Normalization: size proxy \(\phi_i = Q_i / V_{d(i)}\) using the chosen `Q_V_DENOMINATOR_MODE` (default average of the last up to 5 days); impact \(I_i = \varepsilon_i \Delta p_i / \widehat{\sigma}_{d(i)}\).
 - Persistence and filters: unfiltered and filtered metaorder-info parquets are written to `out_files/`; the filtered file keeps \(\phi_i > 10^{-5}\) and finite `Impact`/`Q/V`.
-- Estimation: log-binned WLS of \(I\) on \(\phi\) (plus optional controls), with bin-level guards and delta-method weights; default `n_logbins=30`, `min_count=20`; report \(\widehat{Y}\), \(\widehat{\gamma}\), standard errors, and \(R^2\) diagnostics. A logarithmic benchmark \(I \approx a \log_{10}(1 + b \phi)\) is fitted and reported alongside the power-law.
+- Estimation: (i) log-binned WLS of \(I\) on \(\phi\) (plus optional controls), and (ii) a bivariate log-binned WLS surface \(I \approx C\,\eta^\delta\,\phi^\gamma\); both use delta-method weights from bin SEMs and report parameter standard errors and \(R^2\) diagnostics. A logarithmic benchmark \(I \approx a \log_{10}(1 + b \phi)\) is fitted and reported alongside the univariate power-law.
 - Execution and aftermath paths: partial and aftermath impact vectors are packed as float32 blobs in the parquet files and can be unpacked to build the normalized impact-path plot.
 
 This pipeline concentrates all filtering before fitting, minimizing repeated conditioning while preserving the econometric rigor of the power-law impact estimation.
