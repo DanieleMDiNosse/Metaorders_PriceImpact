@@ -215,6 +215,9 @@ out_files/
 # Metaorder scripts 
 metaorder_scripts/
 
+# data
+data/
+
 # CSV, parquet, pkl, pickle
 *.csv
 *.parquet

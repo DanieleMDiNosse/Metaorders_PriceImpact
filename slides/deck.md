@@ -120,24 +120,37 @@ I_i = \frac{\varepsilon_i \Delta p_i}{\sigma_{d(i)}} \;\; (\text{impact in vol u
 $$
 
 
-- participation rate
+- Participation rate
 $$\eta_i = Q_i / V_i^{\text{during}}$$ 
 where $V_i^{\text{during}}$ is volume in the execution window
 
+- Duration
+$$
+F_i = \frac{V_i^{\text{during}}}{V_{d(i)}}
+$$
 ---
 
 ## Impact models & estimation
 
-- Baseline curve:
+- Power law:
   $$
   \mathbb{E}[I \mid \phi] = Y\,\phi^{\gamma}
   \qquad (0<\gamma<1 \Rightarrow \text{concave impact})
   $$
-- Estimation strategy:
-  - log-bin $\phi$, compute bin means and SEM
+
+- Logarithmic:
+$$
+\mathbb{E}[I \mid \phi]
+  = a \,\log_{10}\!\bigl(1 + b\,\phi\bigr),
+$$
+- Bivariate “impact surface” in $(F, \eta)$.
+$$
+\mathbb{E}[I \mid \phi]
+  = C \eta^\delta F^{\kappa}
+$$
+- **Estimation strategy**:
+  - log-bin the independet variables, compute bin means and SEM
   - fit **weighted least squares** in log space (weights $\propto 1/\mathrm{SEM}^2$)
-- Comparator: logarithmic form fitted on the same bins.
-- Extension: bivariate “impact surface” in $(\phi, \eta)$.
 
 ---
 

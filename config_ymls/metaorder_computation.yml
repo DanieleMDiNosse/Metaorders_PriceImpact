@@ -9,8 +9,8 @@ DEFAULT_FIGSIZE: [9, 5.5]
 
 # Dataset / preprocessing
 LEVEL: member  # "member" or "client"
-PROPRIETARY: false
-RECOMPUTE: false
+PROPRIETARY: true
+RECOMPUTE: true
 TRADING_HOURS: ["09:30:00", "17:30:00"]
 
 # Dataset selection (choose subfolder under data/out_files/images)
@@ -22,24 +22,24 @@ IMG_ROOT: images
 Q_V_DENOMINATOR_MODE: avg_5d  # same_day | prev_day | avg_5d
 DAILY_VOL_MODE: avg_5d        # same_day | prev_day | avg_5d
 
-PATH_DATA_FOLDER: null        # optional override; defaults to ${DATA_ROOT}/${DATASET_NAME}
-PATH_NEW_DATA_FOLDER: null    # optional override
+PATH_DATA_FOLDER: C:/Users/User01/Documents/di_nosse/seconda_estrazione        # optional override; defaults to ${DATA_ROOT}/${DATASET_NAME}
+PATH_NEW_DATA_FOLDER: C:/Users/User01/Documents/di_nosse/seconda_estrazione/processed    # optional override
 OUT_DIR: null                 # optional override; defaults to ${OUT_ROOT}/${DATASET_NAME}
 IMG_DIR: null                 # optional override; defaults to ${IMG_ROOT}/${DATASET_NAME}/${LEVEL}_${PROPRIETARY_TAG}
 
 # Section toggles
 RUN_INTRO: false
-RUN_METAORDER_COMPUTATION: false
-RUN_SIGNATURE_PLOTS: false
-RUN_SQL_FITS: false
+RUN_METAORDER_COMPUTATION: true
+RUN_SIGNATURE_PLOTS: true
+RUN_SQL_FITS: true
 RUN_WLS: true
-RUN_IMPACT_PATH_PLOT: false
+RUN_IMPACT_PATH_PLOT: true
 
 # Metaorder construction / fits
 IMPACT_HORIZONS_MIN: [1, 3, 10, 30, 60]
 SECONDS_FILTER: 120
 MIN_QV: 1.0e-5
-COMPUTE_IMPACT_PATHS: false
+COMPUTE_IMPACT_PATHS: true
 AFTERMATH_DURATION_MULTIPLIER: 2.0
 AFTERMATH_NUM_SAMPLES: 30
 MAX_GAP: 1h

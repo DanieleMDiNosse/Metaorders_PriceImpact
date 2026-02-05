@@ -22,6 +22,8 @@ Or explicitly:
         --min-n 100
 """
 
+from __future__ import annotations
+
 import datetime as dt
 import gc
 import math
@@ -304,7 +306,9 @@ def corr_with_bootstrap_p(
 
 def extract_date(period_list):
     if len(period_list) > 0:
-        return pd.to_datetime(period_list[0]).date()
+        # Keep as pandas Timestamp to avoid object-dtype `datetime.date` columns,
+        # which some parquet engines (e.g. fastparquet) can't serialize reliably.
+        return pd.to_datetime(period_list[0]).normalize()
     return None
 
 
@@ -392,6 +396,11 @@ def attach_daily_returns_column(
         return out, changed
 
     def _to_date(val):
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            return None
+        # datetime is a subclass of date -> check datetime first.
+        if isinstance(val, dt.datetime):
+            return val.date()
         if isinstance(val, dt.date):
             return val
         try:
@@ -2027,7 +2036,9 @@ def load_metaorders(path: str | Path) -> pd.DataFrame:
         df["Date"] = df["Period"].apply(extract_date)
 
     df = df.copy()
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
+    # Parquet writers generally expect a real datetime dtype, not object-dtype
+    # Python `datetime.date` values.
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.normalize()
 
     required = ["ISIN", "Q", "Direction"]
     missing = [c for c in required if c not in df.columns]

@@ -1,14 +1,66 @@
 #!/usr/bin/env python3
 """
-Compute basic member statistics across ISINs and generate Plotly plots:
-- Total number of members across all ISINs (printed).
-- Members per ISIN (bar plot).
-- Proprietary vs client trades per ISIN (stacked bar plot).
-- Member coverage across ISINs (bar plot).
-- Member activity heatmap by day across all ISINs (no axis labels).
+Compute member-level trading statistics across ISINs and generate Plotly outputs.
 
+This script expects a folder of per-ISIN parquet files and produces a small set of
+summary tables/figures describing:
+- how many unique members trade each ISIN,
+- how proprietary vs client activity varies by ISIN,
+- how broadly each member trades across the available ISIN universe, and
+- a day-by-day activity heatmap across all ISINs (with an interactive per-ISIN
+  breakdown on hover).
+
+Inputs
+------
+- `DATA_DIR` (`<repo>/data` by default) must contain one or more `*.parquet` files.
+  Each file is treated as one ISIN; the ISIN is inferred from the filename stem
+  (e.g., `FR0012345678.parquet` -> ISIN `FR0012345678`).
+- Required parquet columns (read via pandas):
+  - `"ID Member"`: member identifier (any dtype; converted to string for display).
+  - `"Trade Time"`: trade timestamp (must be datetime-like; the script uses `.dt`).
+  - `"Trade Type Aggressive"`: used to classify proprietary vs client trades.
+  - `"Direction"`: used to split buy vs sell trades in the hover bar chart
+    (expected sign: buy > 0, sell < 0). If missing, the script attempts to derive
+    it from `"Total Quantity Buy"` / `"Total Quantity Sell"` when available.
+
+Processing details
+------------------
+- Trades are filtered to `TRADING_HOURS` (default 09:30-17:30) using only the
+  time-of-day portion of `"Trade Time"`.
+- Proprietary trades are those where `"Trade Type Aggressive" == "Dealing_on_own_account"`.
+  All other values are treated as client trades.
+- Member coverage is computed as: (# ISINs traded by member) / (total # ISIN files).
+
+Outputs
+-------
+Creates `images/member_statistics/` (and subfolders) containing:
+- Interactive HTML plots (`images/member_statistics/html/*.html`)
+- Static PNG exports (`images/member_statistics/png/*.png`), when Plotly image
+  export is available (typically via `kaleido`). If PNG export fails, the script
+  logs a warning and still writes the HTML files.
+
+Generated figures (file stems):
+1) `members_per_isin` (bar)
+2) `proprietary_vs_client_trades_per_isin` (stacked bar)
+3) `member_isin_coverage_per_member` (bar)
+4) `member_activity_heatmap` (HTML) + `member_activity_heatmap.png` (PNG)
+
+The heatmap HTML embeds a second bar chart that updates on hover to show the
+per-ISIN buy/sell breakdown for the selected (day, member) cell (buys positive,
+sells negative).
+
+Logging
+-------
+Appends progress and warnings to `member_statistics.log` next to this script.
+
+Usage
+-----
 Run from the repository root:
+
     python member_statistics.py
+
+To change the data location or trading-hours filter, edit `DATA_DIR` and
+`TRADING_HOURS` in the "Config" section near the top of the file.
 """
 
 from __future__ import annotations
@@ -89,15 +141,19 @@ def main():
     members_per_isin: Dict[str, int] = {}
     trade_records: List[Dict[str, int]] = []
     activity_parts: List[pd.Series] = []
-    # date -> member -> isin -> trades
-    per_day_member_isin: Dict[str, Dict[str, Dict[str, int]]] = defaultdict(lambda: defaultdict(dict))
+    # date -> member -> isin -> {"buy": n_buy, "sell": n_sell}
+    per_day_member_isin: Dict[str, Dict[str, Dict[str, Dict[str, int]]]] = defaultdict(lambda: defaultdict(dict))
 
     for path in paths:
         isin = path.stem
-        df = pd.read_parquet(
-            path,
-            columns=["ID Member", "Trade Time", "Trade Type Aggressive"],
-        )
+        try:
+            df = pd.read_parquet(
+                path,
+                columns=["ID Member", "Trade Time", "Trade Type Aggressive", "Direction"],
+            )
+        except Exception:
+            # Backwards/heterogeneous datasets: fall back to full read and derive Direction if needed.
+            df = pd.read_parquet(path)
         start, end = TRADING_HOURS
         # Filter between 9:30 and 17:30
         df = df[
@@ -105,7 +161,14 @@ def main():
             & (df["Trade Time"].dt.time <= pd.to_datetime(end).time())
         ].copy()
 
-        required = {"ID Member", "Trade Time", "Trade Type Aggressive"}
+        if "Direction" not in df.columns and {"Total Quantity Buy", "Total Quantity Sell"}.issubset(df.columns):
+            buy_qty = pd.to_numeric(df["Total Quantity Buy"], errors="coerce").fillna(0)
+            sell_qty = pd.to_numeric(df["Total Quantity Sell"], errors="coerce").fillna(0)
+            df["Direction"] = 0
+            df.loc[buy_qty > 0, "Direction"] = 1
+            df.loc[sell_qty > 0, "Direction"] = -1
+
+        required = {"ID Member", "Trade Time", "Trade Type Aggressive", "Direction"}
         missing = required.difference(df.columns)
         if missing:
             raise KeyError(f"Missing columns in {path}: {missing}")
@@ -134,10 +197,25 @@ def main():
         activity_parts.append(grouped.rename("trades"))
 
         # Per-ISIN breakdown for hover
-        for (date, member), trades in grouped.items():
+        direction_num = pd.to_numeric(df["Direction"], errors="coerce")
+        side = pd.Series(pd.NA, index=df.index, dtype="string")
+        side[direction_num > 0] = "buy"
+        side[direction_num < 0] = "sell"
+        if side.isna().any():
+            direction_str = df["Direction"].astype(str).str.strip().str.lower()
+            side[side.isna() & direction_str.isin({"buy", "b"})] = "buy"
+            side[side.isna() & direction_str.isin({"sell", "s"})] = "sell"
+        df["side"] = side.fillna("unknown")
+        unknown_side = int((df["side"] == "unknown").sum())
+        if unknown_side:
+            log_print(f"[warn] {isin}: {unknown_side} trades have unknown Direction; excluded from buy/sell breakdown.")
+
+        grouped_side = df[df["side"].isin({"buy", "sell"})].groupby(["date", "ID Member", "side"]).size()
+        for (date, member, trade_side), trades in grouped_side.items():
             date_key = pd.to_datetime(date).strftime("%Y-%m-%d")
             member_key = str(member)
-            per_day_member_isin[date_key][member_key][isin] = per_day_member_isin[date_key][member_key].get(isin, 0) + int(trades)
+            isin_entry = per_day_member_isin[date_key][member_key].setdefault(isin, {"buy": 0, "sell": 0})
+            isin_entry[str(trade_side)] += int(trades)
 
     # ------------------------------------------------------------------
     # Total members
@@ -249,11 +327,25 @@ def main():
 
     # Build interactive HTML with hover-driven per-ISIN bar chart
     bar_stub = go.Figure(
-        data=[go.Bar(x=all_isins_sorted, y=[0] * len(all_isins_sorted), marker=dict(color="#5B8FF9"))],
+        data=[
+            go.Bar(
+                name="Buy",
+                x=all_isins_sorted,
+                y=[0] * len(all_isins_sorted),
+                marker=dict(color="#91CC75"),
+            ),
+            go.Bar(
+                name="Sell",
+                x=all_isins_sorted,
+                y=[0] * len(all_isins_sorted),
+                marker=dict(color="#EE6666"),
+            ),
+        ],
         layout=go.Layout(
-            title="Hover a cell to see per-ISIN trades",
+            title="Hover a cell to see per-ISIN trades (buy/sell)",
             xaxis=dict(title="ISIN", categoryorder="array", categoryarray=all_isins_sorted),
-            yaxis=dict(title="Trades", rangemode="tozero"),
+            yaxis=dict(title="Trades (Buy+, Sell-)", rangemode="tozero", zeroline=True, zerolinecolor="#888"),
+            barmode="relative",
         ),
     )
 
@@ -289,26 +381,42 @@ def main():
       const memberData = (breakdown[date] || {{}})[member];
       if (!memberData) {{
         Plotly.react('bar',
-          [{{type: 'bar', x: allIsins, y: allIsins.map(() => 0), marker: {{color: '#5B8FF9'}}}}],
+          [
+            {{type: 'bar', name: 'Buy',  x: allIsins, y: allIsins.map(() => 0), marker: {{color: '#91CC75'}}}},
+            {{type: 'bar', name: 'Sell', x: allIsins, y: allIsins.map(() => 0), marker: {{color: '#EE6666'}}}},
+          ],
           {{
             title: 'No per-ISIN data for member ' + member + ' on ' + date,
             xaxis: {{title: 'ISIN', categoryorder: 'array', categoryarray: allIsins}},
-            yaxis: {{title: 'Trades', rangemode: 'tozero'}},
+            yaxis: {{title: 'Trades (Buy+, Sell-)', rangemode: 'tozero', zeroline: true, zerolinecolor: '#888'}},
+            barmode: 'relative',
           }}
         );
         return;
       }}
-      const isins = Object.keys(memberData);
-      const trades = isins.map(isin => memberData[isin]);
-      Plotly.react('bar', [{{
-        type: 'bar',
-        x: isins,
-        y: trades,
-        marker: {{color: '#5B8FF9'}},
-      }}], {{
-        title: 'Per-ISIN trades for member ' + member + ' on ' + date,
+      const isins = allIsins.filter(isin => memberData[isin]);
+      const buys = isins.map(isin => (memberData[isin].buy || 0));
+      const sells = isins.map(isin => -(memberData[isin].sell || 0));
+      Plotly.react('bar', [
+        {{
+          type: 'bar',
+          name: 'Buy',
+          x: isins,
+          y: buys,
+          marker: {{color: '#91CC75'}},
+        }},
+        {{
+          type: 'bar',
+          name: 'Sell',
+          x: isins,
+          y: sells,
+          marker: {{color: '#EE6666'}},
+        }},
+      ], {{
+        title: 'Per-ISIN trades (buy/sell) for member ' + member + ' on ' + date,
         xaxis: {{title: 'ISIN', categoryorder: 'array', categoryarray: allIsins}},
-        yaxis: {{title: 'Trades', rangemode: 'tozero'}},
+        yaxis: {{title: 'Trades (Buy+, Sell-)', rangemode: 'tozero', zeroline: true, zerolinecolor: '#888'}},
+        barmode: 'relative',
       }});
     }});
   </script>

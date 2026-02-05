@@ -4,6 +4,7 @@
 import builtins
 import logging
 import os
+import sys
 import gc
 import pickle
 import yaml
@@ -127,7 +128,10 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
     logger.propagate = False
     _formatter = logging.Formatter("%(asctime)s - %(message)s")
-    _file_handler = logging.FileHandler(LOG_PATH, mode="a")
+    # Windows consoles / default locale encodings may not support some unicode
+    # symbols used in prints (e.g., η). Use a tolerant error handler so logging
+    # never crashes the pipeline.
+    _file_handler = logging.FileHandler(LOG_PATH, mode="a", errors="backslashreplace")
     _file_handler.setFormatter(_formatter)
     logger.addHandler(_file_handler)
 
@@ -138,8 +142,20 @@ def log_print(*args, **kwargs):
     """Print to stdout and append the same message to the script log file."""
     sep = kwargs.get("sep", " ")
     message = sep.join(str(a) for a in args)
-    logger.info(message)
-    _original_print(*args, **kwargs)
+    try:
+        logger.info(message)
+    except Exception:
+        # Logging should never prevent the computation from running.
+        pass
+
+    try:
+        _original_print(*args, **kwargs)
+    except UnicodeEncodeError:
+        # Fall back to an ASCII-safe representation for legacy encodings.
+        stream = kwargs.get("file", sys.stdout)
+        encoding = getattr(stream, "encoding", None) or "utf-8"
+        safe = message.encode(encoding, errors="backslashreplace").decode(encoding, errors="ignore")
+        _original_print(safe, file=stream, end=kwargs.get("end", "\n"), flush=kwargs.get("flush", False))
 
 
 builtins.print = log_print
@@ -286,6 +302,8 @@ def ensure_transforms():
             continue
         tqdm.write(f"Transforming {path} -> {new_path}")
         df = pd.read_csv(path, sep=";")
+        if len(df.columns) == 1:
+            df = pd.read_csv(path)
         df_mapped = map_trade_codes(df)
         df_transformed = build_trades_view(df_mapped)
         df_transformed.to_parquet(new_path)
@@ -616,7 +634,9 @@ def compute_metaorders_info(
                     eta,
                     flow_ratio,
                     n_child,
-                    [start_ts, end_ts],
+                    # Store period endpoints as epoch-nanoseconds (Python ints) so fastparquet can
+                    # JSON-encode the list deterministically (Timestamp / numpy scalar are not JSON-serializable).
+                    [int(start_ns), int(end_ns)],
                     partial_blob,
                     aftermath_blob,
                     *impact_h_vals,

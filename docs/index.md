@@ -41,19 +41,19 @@ The raw trade data is proprietary and **not shipped** in this repository. The co
 
 `utils.build_trades_view` requires the following columns (exact names):
 
-- `MIC`
-- `TRADING_DAY`
-- `TRADETIME`
-- `TRADED_QUANTITY`
-- `TRADED_PRICE`
-- `TRADED_AMOUNT`
-- `COD_BUY`
-- `CLIENT_IDENTIFIC_SHORT_CODE_BUY`
-- `PASSIVE_ORDER_INDICATOR_BUY`
-- `COD_SELL`
-- `CLIENT_IDENTIFIC_SHORT_CODE_SELL`
-- `TRADING_CAPACITY_BUY`
-- `TRADING_CAPACITY_SELL`
+- `MIC` -> Market venue (MTA or MOT)
+- `TRADING_DAY` -> DD/MM/YYYY
+- `TRADETIME` -> HH:MM:SS.XXXXXX
+- `TRADED_QUANTITY` -> Unsigned volume traded
+- `TRADED_PRICE` -> Price at which trade occurred
+- `TRADED_AMOUNT` -> (unsigned) Volume x Quantity
+- `COD_BUY` -> Broker ID from buy side
+- `CLIENT_IDENTIFIC_SHORT_CODE_BUY` -> Client ID from buy side
+- `PASSIVE_ORDER_INDICATOR_BUY` -> Passive/active indicator from buy side
+- `COD_SELL` -> Broker ID from sell side
+- `CLIENT_IDENTIFIC_SHORT_CODE_SELL` -> Client ID from sell side
+- `TRADING_CAPACITY_BUY` -> Proprietary/Non-proprietary trade on buy side
+- `TRADING_CAPACITY_SELL` -> Proprietary/Non-proprietary trade on sell side
 
 In typical usage, numeric trade codes are first mapped to readable labels via `utils.map_trade_codes` (e.g., capacity codes mapped to strings such as `Dealing_on_own_account`).
 
@@ -87,7 +87,7 @@ At a given `LEVEL` (member or client), for a fixed ISIN and day, a **metaorder**
 
 - a **contiguous run** of trades by a single agent (member or client),
 - with **constant aggressive sign** (buy or sell),
-- constrained to a **single calendar day** and a **single client ID** for the run,
+- constrained to a **single calendar day**, a **single client ID** and routed across a **single member**,
 - **split** if inactivity gaps exceed `MAX_GAP = 1h`,
 - filtered to keep runs with at least `MIN_TRADES = 5` and duration at least `SECONDS_FILTER = 120` seconds.
 
@@ -171,10 +171,15 @@ Estimation (implemented in `metaorder_computation.py`, described in [`docs/POWER
 ### Logarithmic overlay model (brief)
 
 For comparison, the code can also fit a logarithmic form on the same binned data (see [`docs/POWER_LAW_IMPACT_FITS.md`](POWER_LAW_IMPACT_FITS.md) for the specification and filters).
+$$
+\mathbb{E}[I_i \mid \phi_i]
+  = a \,\log_{10}\!\bigl(1 + b\,\phi_i\bigr),
+$$
+with parameters $a, b > 0$. This is implemented via the helper `logarithmic_impact` and a separate fit routine that works on the bin-level statistics.
 
 ### Bivariate impact surface (brief)
 
-Beyond the one-dimensional impact curve, the code exports a bivariate “impact surface” in $(Q/V, \eta)$, including:
+Beyond the one-dimensional impact curve, the code exports a bivariate “impact surface” in $(F, \eta)$, including:
 
 - a 2D heatmap (PNG), and
 - an interactive 3D surface (HTML, Plotly).

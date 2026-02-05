@@ -330,18 +330,18 @@ Goodness-of-fit metrics:
 
 Besides the univariate fit $I/\sigma \sim (Q/V)^\gamma$, `metaorder_computation.py` also implements a **bivariate power-law surface** that models the mean normalized impact jointly as a function of:
 
-- the daily-volume fraction $ \phi \equiv Q/V $ (column `Q/V`), and
+- the duration $ F \equiv V^{\text{during}}/V $, and
 - the participation rate $ \eta \equiv Q / V^{\text{during}} $ (column `Participation Rate`).
 
 The fitted model is:
 $$
-\mathbb{E}[I_i \mid \eta_i, \phi_i]
-  = C \,\eta_i^{\delta}\,\phi_i^{\gamma},
+\mathbb{E}[I_i \mid \eta_i, F_i]
+  = C \,\eta_i^{\delta}\,F_i^{\gamma},
 $$
 or in log form:
 $$
-\log \mathbb{E}[I_i \mid \eta_i, \phi_i]
-  = \log C + \delta \log \eta_i + \gamma \log \phi_i.
+\log \mathbb{E}[I_i \mid \eta_i, F_i]
+  = \log C + \delta \log \eta_i + \gamma \log F_i.
 $$
 
 Implementation-wise, the workflow is split into:
@@ -362,7 +362,7 @@ The bivariate fit follows the same “bin-then-regress” spirit used for the 1D
 
 2. Build log-spaced bin edges for both axes using the min/max of the filtered sample:
    $$
-   \{\phi_0,\dots,\phi_{B_\phi}\},\qquad \{\eta_0,\dots,\eta_{B_\eta}\}.
+   \{F_0,\dots,F_{B_F}\},\qquad \{\eta_0,\dots,\eta_{B_\eta}\}.
    $$
 
 3. Assign each metaorder $i$ to a 2D bin $b(i)=(b_\phi(i),b_\eta(i))$, then compute per-bin:
@@ -377,7 +377,7 @@ The bivariate fit follows the same “bin-then-regress” spirit used for the 1D
 
 Geometric bin centers are used:
 $$
-\phi_b = \sqrt{\phi_{\text{left}}\phi_{\text{right}}},\qquad
+\phi_b = \sqrt{F_{\text{left}}F_{\text{right}}},\qquad
 \eta_b = \sqrt{\eta_{\text{left}}\eta_{\text{right}}}.
 $$
 
@@ -387,12 +387,12 @@ On the retained 2D bins, define:
 $$
 Z_b = \log \bar{I}_b,\qquad
 X^{(\eta)}_b = \log \eta_b,\qquad
-X^{(\phi)}_b = \log \phi_b.
+X^{(F)}_b = \log F_b.
 $$
 
 The fitted regression is:
 $$
-Z_b = a + \delta X^{(\eta)}_b + \gamma X^{(\phi)}_b + \epsilon_b,
+Z_b = a + \delta X^{(\eta)}_b + \gamma X^{(F)}_b + \epsilon_b,
 \quad\text{with}\quad a=\log C.
 $$
 
@@ -429,13 +429,13 @@ $$
 Diagnostics:
 
 - $R^2_{\log}$: weighted $R^2$ in log space on $Z_b$,
-- $R^2_{\text{lin}}$: unweighted $R^2$ on $\bar{I}_b$ vs $\widehat{C}\,\eta_b^{\widehat{\delta}}\,\phi_b^{\widehat{\gamma}}$.
+- $R^2_{\text{lin}}$: unweighted $R^2$ on $\bar{I}_b$ vs $\widehat{C}\,\eta_b^{\widehat{\delta}}\,F_b^{\widehat{\gamma}}$.
 
 #### 5.4.3 Fitted surface export (PNG + HTML)
 
 Once $(\widehat{C},\widehat{\delta},\widehat{\gamma})$ are estimated, the fitted surface is evaluated on the full 2D grid of bin centers:
 $$
-\widehat{I}(\eta,\phi) = \widehat{C}\,\eta^{\widehat{\delta}}\,\phi^{\widehat{\gamma}}.
+\widehat{I}(\eta,F) = \widehat{C}\,\eta^{\widehat{\delta}}\,F^{\widehat{\gamma}}.
 $$
 
 For visualization, the surface is **masked** outside the empirically supported domain: only grid cells with at least `min_count` observations (and positive finite mean impact) are plotted; all other cells are set to NaN so they do not create misleading extrapolations.
@@ -445,7 +445,7 @@ The script saves:
 - a static 3D surface PNG (Matplotlib), and
 - an optional interactive 3D surface HTML (Plotly, if installed),
 
-with log-scaled axes $(Q/V,\eta,I/\sigma)$ and a log-scaled colormap.
+with log-scaled axes $(F,\eta,I/\sigma)$ and a log-scaled colormap.
 
 ---
 
