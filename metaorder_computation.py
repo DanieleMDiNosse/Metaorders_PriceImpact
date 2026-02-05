@@ -24,6 +24,51 @@ import seaborn as sns
 sns.set_theme()
 
 # ---------------------------------------------------------------------------
+# Numeric helpers
+# ---------------------------------------------------------------------------
+def _weights_from_sigma(sigma: np.ndarray) -> np.ndarray:
+    """Convert per-observation sigma (std/SEM) into WLS weights 1/sigma^2."""
+    sigma = np.asarray(sigma, dtype=float)
+    w = np.zeros_like(sigma, dtype=float)
+    ok = np.isfinite(sigma) & (sigma > 0)
+    w[ok] = 1.0 / np.square(sigma[ok])
+    return w
+
+
+def _weighted_r2(y: np.ndarray, yhat: np.ndarray, w: Optional[np.ndarray] = None) -> float:
+    """
+    Weighted coefficient of determination:
+        R^2 = 1 - sum_i w_i (y_i - yhat_i)^2 / sum_i w_i (y_i - ybar_w)^2
+    Falls back to unweighted when w is None.
+    """
+    y = np.asarray(y, dtype=float)
+    yhat = np.asarray(yhat, dtype=float)
+    if y.shape != yhat.shape:
+        raise ValueError(f"y and yhat must have the same shape (got {y.shape} vs {yhat.shape}).")
+
+    if w is None:
+        w_arr = np.ones_like(y, dtype=float)
+    else:
+        w_arr = np.asarray(w, dtype=float)
+        if w_arr.shape != y.shape:
+            raise ValueError(f"w must have the same shape as y (got {w_arr.shape} vs {y.shape}).")
+
+    valid = np.isfinite(y) & np.isfinite(yhat) & np.isfinite(w_arr) & (w_arr > 0)
+    if np.count_nonzero(valid) < 3:
+        return float("nan")
+
+    yv = y[valid]
+    yhatv = yhat[valid]
+    wv = w_arr[valid]
+
+    ybar = float(np.average(yv, weights=wv))
+    denom = float(np.sum(wv * np.square(yv - ybar)))
+    if denom <= 0:
+        return float("nan")
+    return float(1.0 - np.sum(wv * np.square(yv - yhatv)) / denom)
+
+
+# ---------------------------------------------------------------------------
 # Configuration loader (YAML)
 # ---------------------------------------------------------------------------
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
@@ -47,6 +92,13 @@ def _resolve_repo_path(value: Union[str, Path]) -> str:
     if not path.is_absolute():
         path = (_SCRIPT_DIR / path).resolve()
     return str(path)
+
+
+def _resolve_opt_repo_path(value: Optional[Union[str, Path]], default: Union[str, Path]) -> str:
+    """Resolve a path, falling back to `default` when the config value is None."""
+    if value is None:
+        return _resolve_repo_path(default)
+    return _resolve_repo_path(value)
 
 
 # Sizes tuned for paper-ready readability (loaded from YAML)
@@ -111,7 +163,6 @@ from utils import (
 LEVEL = str(_cfg_require("LEVEL"))  # "member" or "client"
 PROPRIETARY = bool(_cfg_require("PROPRIETARY"))
 RECOMPUTE = bool(_cfg_require("RECOMPUTE"))
-USE_MOT_DATA = bool(_cfg_require("USE_MOT_DATA"))
 TRADING_HOURS = tuple(_cfg_require("TRADING_HOURS"))
 
 # How to choose the daily volume used in Q/V:
@@ -126,15 +177,23 @@ Q_V_DENOMINATOR_MODE = str(_cfg_require("Q_V_DENOMINATOR_MODE"))
 #   - "avg_5d"   : use the average daily volatility over the last up to 5 trading days
 DAILY_VOL_MODE = str(_cfg_require("DAILY_VOL_MODE"))
 
-PATH_DATA_FOLDER = _resolve_repo_path(str(_cfg_require("PATH_DATA_FOLDER")))
-PATH_NEW_DATA_FOLDER = _resolve_repo_path(str(_cfg_require("PATH_NEW_DATA_FOLDER")))
-OUT_DIR = _resolve_repo_path(str(_cfg_require("OUT_DIR")))
+DATASET_NAME = str(_CFG.get("DATASET_NAME") or "ftsemib")
+DATA_ROOT = _resolve_repo_path(_CFG.get("DATA_ROOT") or "data")
+PATH_DATA_FOLDER = _resolve_opt_repo_path(
+    _CFG.get("PATH_DATA_FOLDER"), Path(DATA_ROOT) / DATASET_NAME
+)
+PATH_NEW_DATA_FOLDER = _resolve_opt_repo_path(
+    _CFG.get("PATH_NEW_DATA_FOLDER"), Path(DATA_ROOT) / DATASET_NAME
+)
+OUT_ROOT = _resolve_repo_path(_CFG.get("OUT_ROOT") or "out_files")
+OUT_DIR = _resolve_opt_repo_path(_CFG.get("OUT_DIR"), Path(OUT_ROOT) / DATASET_NAME)
 PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
+IMG_ROOT = _resolve_repo_path(_CFG.get("IMG_ROOT") or "images")
 _img_dir_override = _CFG.get("IMG_DIR")
 IMG_DIR = (
-    _resolve_repo_path(str(_img_dir_override))
+    _resolve_repo_path(_img_dir_override)
     if _img_dir_override
-    else _resolve_repo_path(f"images/{LEVEL}_{PROPRIETARY_TAG}")
+    else _resolve_repo_path(Path(IMG_ROOT) / DATASET_NAME / f"{LEVEL}_{PROPRIETARY_TAG}")
 )
 
 
@@ -196,23 +255,12 @@ def unpack_path(blob: Optional[Union[bytes, bytearray, memoryview, List[float], 
     return np.asarray(blob, dtype=np.float32)
 
 
-def _is_mot_name(name: str) -> bool:
-    return "MOT" in name.upper()
-
-
-def _dataset_filter(name: str) -> bool:
-    is_mot = _is_mot_name(name)
-    return is_mot if USE_MOT_DATA else not is_mot
-
-
 def list_raw_csv_paths() -> List[str]:
     paths = []
     for p in os.listdir(PATH_DATA_FOLDER):
         if not p.endswith(".csv"):
             continue
         if p == "ALTRI_FTSEMIB.csv":
-            continue
-        if not _dataset_filter(p):
             continue
         paths.append(os.path.join(PATH_DATA_FOLDER, p))
     return sorted(paths)
@@ -222,8 +270,6 @@ def list_parquet_paths() -> List[str]:
     paths = []
     for p in os.listdir(PATH_NEW_DATA_FOLDER):
         if not p.endswith(".parquet"):
-            continue
-        if not _dataset_filter(p):
             continue
         paths.append(os.path.join(PATH_NEW_DATA_FOLDER, p))
     return sorted(paths)
@@ -649,6 +695,9 @@ def _prepare_impact_surface_bins(
         raise ValueError(f"Missing required columns for surface computation: {missing}")
 
     sub = df[[qv_col, impact_col, pr_col]].copy()
+    sub[qv_col] = pd.to_numeric(sub[qv_col], errors="coerce")
+    sub[impact_col] = pd.to_numeric(sub[impact_col], errors="coerce")
+    sub[pr_col] = pd.to_numeric(sub[pr_col], errors="coerce")
     sub = sub[
         (sub[qv_col] > MIN_QV)
         & np.isfinite(sub[impact_col])
@@ -830,7 +879,8 @@ def fit_bivariate_power_law_eta_f_wls(
         One row per retained 2D bin with centers, mean/SEM impact, count, weights.
     params : dict
         Keys: C_hat, C_se, C_ci, delta_hat, delta_se, delta_ci, gamma_hat, gamma_se,
-        gamma_ci, R2_log, R2_lin, dof, ci_level
+        gamma_ci, R2_log, R2_lin, dof, ci_level.
+        Here R2_log is weighted in log space; R2_lin is weighted in linear space (1/SEM^2).
     """
     if surface_stats is None:
         qv_edges, pr_edges, mean_grid, sem_grid, count_grid = compute_impact_surface_stats(
@@ -918,15 +968,12 @@ def fit_bivariate_power_law_eta_f_wls(
     C_ci = float((C_ci_high - C_ci_low) / 2.0)
 
     log_y_hat = A @ coef
-    log_y_bar = float(np.average(log_y, weights=w))
-    denom = float(np.sum(w * (log_y - log_y_bar) ** 2))
-    R2_log = float("nan") if denom <= 0 else float(1.0 - np.sum(w * (log_y - log_y_hat) ** 2) / denom)
+    R2_log = _weighted_r2(log_y, log_y_hat, w=w)
 
     y_hat = C_hat * np.power(binned["center_eta"].to_numpy(), delta_hat) * np.power(binned["center_QV"].to_numpy(), gamma_hat)
     y = binned["mean_imp"].to_numpy()
-    y_bar = float(np.mean(y))
-    denom_lin = float(np.sum((y - y_bar) ** 2))
-    R2_lin = float("nan") if denom_lin <= 0 else float(1.0 - np.sum((y - y_hat) ** 2) / denom_lin)
+    w_lin = _weights_from_sigma(binned["sem_imp"].to_numpy())
+    R2_lin = _weighted_r2(y, y_hat, w=w_lin)
 
     binned["w"] = w
     params = {
@@ -986,7 +1033,8 @@ def fit_bivariate_logarithmic_eta_f_wls(
         One row per retained 2D bin with centers, mean/SEM impact, count.
     params : dict
         Keys: a_hat, a_se, a_ci, b_hat, b_se, b_ci, c_hat, c_se, c_ci,
-        R2_log, R2_lin, dof, ci_level
+        R2_log, R2_lin, dof, ci_level.
+        Here R2_lin is weighted in linear space (1/SEM^2).
     """
     if surface_stats is None:
         qv_edges, pr_edges, mean_grid, sem_grid, count_grid = compute_impact_surface_stats(
@@ -1093,7 +1141,6 @@ def fit_bivariate_logarithmic_eta_f_wls(
 
     yhat = _model((eta, qv), a_hat, b_hat, c_hat)
 
-    # R^2 in log space (weighted, same delta-method spirit as the power-law fit)
     valid = np.isfinite(yhat) & (yhat > 0) & np.isfinite(y) & (y > 0)
     if np.count_nonzero(valid) < 3:
         R2_log = float("nan")
@@ -1105,13 +1152,10 @@ def fit_bivariate_logarithmic_eta_f_wls(
         if np.count_nonzero(w > 0) < 3:
             R2_log = float("nan")
         else:
-            Zbar = float(np.average(Z, weights=w))
-            denom = float(np.sum(w * (Z - Zbar) ** 2))
-            R2_log = float("nan") if denom <= 0 else float(1.0 - np.sum(w * (Z - Zhat) ** 2) / denom)
+            R2_log = _weighted_r2(Z, Zhat, w=w)
 
-    ybar = float(np.mean(y))
-    denom_lin = float(np.sum((y - ybar) ** 2))
-    R2_lin = float("nan") if denom_lin <= 0 else float(1.0 - np.sum((y - yhat) ** 2) / denom_lin)
+    w_lin = _weights_from_sigma(sigma)
+    R2_lin = _weighted_r2(y, yhat, w=w_lin)
 
     params = {
         "a_hat": a_hat,
@@ -1208,7 +1252,7 @@ def plot_bivariate_fit_surfaces_3d(
             f"c = {params_log['c_hat']:.6g} +/- {params_log['c_ci']:.3g}"
         )
         print(
-            f"[Bivariate Fits]   R^2_log = {params_log['R2_log']:.4f} | R^2_lin = {params_log['R2_lin']:.4f}"
+            f"[Bivariate Fits]   R^2_lin = {params_log['R2_lin']:.4f}"
         )
 
     qv_centers = np.sqrt(qv_edges[:-1] * qv_edges[1:])
@@ -1276,7 +1320,7 @@ def plot_bivariate_fit_surfaces_3d(
             f"Power: C={params_pow['C_hat']:.3g}±{params_pow['C_ci']:.2g}, "
             f"δ={params_pow['delta_hat']:.3f}±{params_pow['delta_ci']:.2g}, "
             f"γ={params_pow['gamma_hat']:.3f}±{params_pow['gamma_ci']:.2g} ({ci_pct}% CI), "
-            f"R²_log={params_pow['R2_log']:.3f}"
+            f"R²={params_pow['R2_log']:.3f}"
         )
     if params_log is not None:
         ci_pct = int(round(100.0 * float(params_log["ci_level"])))
@@ -1284,7 +1328,7 @@ def plot_bivariate_fit_surfaces_3d(
             f"Log: a={params_log['a_hat']:.3g}±{params_log['a_ci']:.2g}, "
             f"b={params_log['b_hat']:.3g}±{params_log['b_ci']:.2g}, "
             f"c={params_log['c_hat']:.3g}±{params_log['c_ci']:.2g} ({ci_pct}% CI), "
-            f"R²_log={params_log['R2_log']:.3f}"
+            f"R²={params_log['R2_lin']:.3f}"
         )
 
     # Interactive HTML 3D plot with both fits, empirical surface, and stacked residuals (no PNG saved)
@@ -1350,8 +1394,8 @@ def plot_bivariate_fit_surfaces_3d(
         if pow_residual is not None and vmax_pow is not None:
             fig_html.add_trace(
                 go.Heatmap(
-                    x=qv_edges_log,
-                    y=pr_edges_log,
+                    x=qv_edges,
+                    y=pr_edges,
                     z=pow_residual,
                     colorscale="RdBu",
                     zmid=0.0,
@@ -1377,8 +1421,8 @@ def plot_bivariate_fit_surfaces_3d(
         if log_residual is not None and vmax_log is not None:
             fig_html.add_trace(
                 go.Heatmap(
-                    x=qv_edges_log,
-                    y=pr_edges_log,
+                    x=qv_edges,
+                    y=pr_edges,
                     z=log_residual,
                     colorscale="RdBu",
                     zmid=0.0,
@@ -1402,31 +1446,34 @@ def plot_bivariate_fit_surfaces_3d(
 
         title_parts = [
             "Bivariate fits with residuals",
-            r"Power: $\\hat{I}/\\sigma = C\\,\\eta^{\\delta}F^{\\gamma}$; "
-            r"Log: $\\hat{I}/\\sigma = a\\,\\log_{10}(1+b\\eta)\\,\\log_{10}(1+c\\,F)$",
+            # r"Power: $\hat{I}/\sigma = C\,\eta^{\delta}F^{\gamma}$; "
+            # r"Log: $\hat{I}/\sigma = a\,\log_{10}(1+b\eta)\,\log_{10}(1+c\,F)$",
         ]
         if summary_lines:
             title_parts.append("<br>".join(summary_lines))
 
-        fig_html.update_layout(
-            scene=dict(
-                xaxis_title="F",
-                yaxis_title="η",
-                zaxis_title="Mean normalized impact",
-                xaxis=dict(type="log"),
-                yaxis=dict(type="log"),
-                zaxis=dict(type="log"),
-            ),
-            scene_camera=dict(eye=dict(x=1.3, y=1.3, z=0.8)),
-            title="<br>".join(title_parts),
-            coloraxis1=dict(colorbar=dict(title="Power law", y=0.78, len=0.35)),
-            coloraxis2=dict(colorbar=dict(title="Logarithmic", y=0.22, len=0.35)),
-            xaxis2=dict(title="log10(F)"),
-            yaxis2=dict(title="log10(η)"),
-            xaxis3=dict(title="log10(F)"),
-            yaxis3=dict(title="log10(η)"),
-            showlegend=True,
-        )
+            fig_html.update_layout(
+                scene=dict(
+                    xaxis_title="F",
+                    yaxis_title="η",
+                    zaxis_title="Mean normalized impact",
+                    xaxis=dict(type="log"),
+                    yaxis=dict(type="log"),
+                    zaxis=dict(type="log"),
+                ),
+                scene_camera=dict(eye=dict(x=1.3, y=1.3, z=0.8)),
+                title="<br>".join(title_parts),
+                coloraxis1=dict(colorbar=dict(title="Power law", y=0.78, len=0.35)),
+                coloraxis2=dict(colorbar=dict(title="Logarithmic", y=0.22, len=0.35)),
+                # In this mixed-type subplot layout, the first cartesian subplot is the
+                # top-right heatmap (row=1,col=2) => xaxis/yaxis, and the second is the
+                # bottom-right heatmap (row=2,col=2) => xaxis2/yaxis2.
+                xaxis=dict(title="F", type="log"),
+                yaxis=dict(title="η", type="log"),
+                xaxis2=dict(title="F", type="log"),
+                yaxis2=dict(title="η", type="log"),
+                showlegend=True,
+            )
         out_path_html = os.path.join(
             IMG_DIR, f"{out_prefix}_3d_surface_bivariate_fits_{LEVEL}_{PROPRIETARY_TAG}.html"
         )
@@ -1652,16 +1699,28 @@ def fit_power_law_logbins_wls_new(
 
         - Y_hat, gamma_hat : power-law prefactor and exponent
         - Y_se, gamma_se   : their standard errors
-        - R2_log           : R^2 in log space
-        - R2_lin           : R^2 in linear space
+        - R2_log           : weighted R^2 in log space (delta-method weights)
+        - R2_lin           : weighted R^2 in linear space (1/SEM^2)
         - beta_controls    : pd.Series of control coefficients (or None)
         - beta_controls_se : pd.Series of control SEs (or None)
     """
     # 1) Filter valid rows
-    sub = subdf[(subdf["Q/V"] > 0) & np.isfinite(subdf["Impact"])].copy()
+    qv = pd.to_numeric(subdf["Q/V"], errors="coerce")
+    impact = pd.to_numeric(subdf["Impact"], errors="coerce")
+    mask = (qv > 0) & np.isfinite(impact)
+
+    controls_numeric: Dict[str, pd.Series] = {}
     if control_cols is not None:
         for c in control_cols:
-            sub = sub[np.isfinite(sub[c])]
+            ctrl = pd.to_numeric(subdf[c], errors="coerce")
+            controls_numeric[c] = ctrl
+            mask &= np.isfinite(ctrl)
+
+    sub = subdf.loc[mask].copy()
+    sub["Q/V"] = qv.loc[mask].astype(float)
+    sub["Impact"] = impact.loc[mask].astype(float)
+    for c, ctrl in controls_numeric.items():
+        sub[c] = ctrl.loc[mask].astype(float)
     if sub.empty:
         raise ValueError("No valid rows (Q/V>0 and finite Impact/controls).")
 
@@ -1794,17 +1853,13 @@ def fit_power_law_logbins_wls_new(
     if len(control_names) > 0:
         beta_controls_se = pd.Series(se_all[2:], index=control_names)
 
-    # 7) R^2 in log space
     Zhat = A @ coef
-    Zbar = np.average(Z, weights=w)
-    R2_log = 1.0 - np.sum(w * (Z - Zhat) ** 2) / np.sum(w * (Z - Zbar) ** 2)
+    R2_log = _weighted_r2(Z, Zhat, w=w)
 
-    # 8) R^2 in linear space (only for the power-law part)
+    # 8) R^2 in linear space (only for the power-law part; weighted by 1/SEM^2)
     yhat = power_law(binned["center_QV"].to_numpy(), Y_hat, gamma_hat)
-    ybar = np.mean(binned["mean_imp"].to_numpy())
-    R2_lin = 1.0 - np.sum((binned["mean_imp"].to_numpy() - yhat) ** 2) / np.sum(
-        (binned["mean_imp"].to_numpy() - ybar) ** 2
-    )
+    w_lin = _weights_from_sigma(binned["sem_imp"].to_numpy())
+    R2_lin = _weighted_r2(binned["mean_imp"].to_numpy(), yhat, w=w_lin)
 
     params = (Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se)
 
@@ -1824,6 +1879,7 @@ def fit_logarithmic_from_binned(
     Returns
     -------
     (a_hat, a_se, b_hat, b_se, R2_lin)
+        where R2_lin is weighted in linear space (1/SEM^2).
     """
     if binned.empty:
         raise ValueError("No bins available for logarithmic fit.")
@@ -1882,14 +1938,10 @@ def fit_logarithmic_from_binned(
         a_se = float(perr[0])
         b_se = float(perr[1])
 
-    # Goodness-of-fit in linear space
+    # Goodness-of-fit in linear space (weighted by 1/SEM^2)
     yhat = _log_model(x, a_hat, b_hat)
-    ybar = np.mean(y)
-    denom = np.sum((y - ybar) ** 2)
-    if denom <= 0:
-        R2_lin = float("nan")
-    else:
-        R2_lin = 1.0 - np.sum((y - yhat) ** 2) / denom
+    w_lin = _weights_from_sigma(sigma)
+    R2_lin = _weighted_r2(y, yhat, w=w_lin)
 
     return a_hat, a_se, b_hat, b_se, R2_lin
 
@@ -2003,8 +2055,15 @@ def filter_metaorders_info_for_fits(df: pd.DataFrame, min_qv: float = MIN_QV) ->
     if missing:
         raise KeyError(f"Missing required columns for filtering: {sorted(missing)}")
 
-    out = df[df["Q/V"] > min_qv].copy()
-    out["Impact"] = out["Price Change"] * out["Direction"] / out["Daily Vol"]
+    out = df.copy()
+    for col in ["Q/V", "Vt/V", "Participation Rate", "Price Change", "Daily Vol", "Q", "Direction"]:
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce")
+
+    out = out[out["Q/V"] > min_qv].copy()
+    out["Impact"] = pd.to_numeric(
+        out["Price Change"] * out["Direction"] / out["Daily Vol"], errors="coerce"
+    )
 
     numeric_cols = [
         c
@@ -2017,6 +2076,122 @@ def filter_metaorders_info_for_fits(df: pd.DataFrame, min_qv: float = MIN_QV) ->
     return out.dropna(subset=["Q/V", "Impact"]).reset_index(drop=True)
 
 
+def run_wls_fits_and_surfaces(df: pd.DataFrame) -> None:
+    """Run aggregated WLS fits + downstream plots; safe to call only when df is non-empty."""
+    label_size = 16
+    legend_size = 14
+    title_size = 18
+    plt.rcParams.update(
+        {
+            "axes.labelsize": label_size,
+            "axes.titlesize": title_size,
+            "legend.fontsize": legend_size,
+        }
+    )
+
+    try:
+        binned_all, params_all = fit_power_law_logbins_wls_new(
+            df,
+            n_logbins=N_LOGBIN,
+            min_count=MIN_COUNT,
+            use_median=False,
+            control_cols=None,
+        )
+    except Exception as e:
+        print(f"[WLS] Skipping WLS fits and surfaces: {e}")
+        return
+
+    Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se = params_all
+    log_params_all = fit_logarithmic_from_binned(binned_all)
+    a_hat, a_se, b_hat, b_se, R2_lin_log = log_params_all
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+    plot_fit(ax, binned_all, params_all, log_params=log_params_all)
+    ax.set_title("Impact fits (power-law and logarithmic, aggregated)", fontsize=title_size)
+    plt.tight_layout()
+    plt.savefig(os.path.join(IMG_DIR, f"power_law_fit_overall_{LEVEL}.png"), dpi=300)
+    plt.close()
+
+    print("--- Overall (All) ---")
+    print(f"Power law: Y = {Y_hat:.6g} +/- {Y_se:.3g}")
+    print(f"Power law: gamma = {gamma_hat:.6f} +/- {gamma_se:.3g}")
+    print(f"Power law: R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
+    print(
+        f"Logarithmic: a = {a_hat:.6g} +/- {a_se:.3g} | "
+        f"b = {b_hat:.6g} +/- {b_se:.3g} | R^2_lin = {R2_lin_log:.4f}"
+    )
+    print(f"Bins used: {len(binned_all)} (min_count >= {MIN_COUNT})")
+
+    pr_col = "Participation Rate"
+    if pr_col in df.columns and df[pr_col].notna().sum() >= 2:
+        pr_nbins = 2
+        labels = [f"Q{j+1}" for j in range(pr_nbins)]
+        try:
+            df_pr = df.copy()
+            df_pr["PR_bin"] = pd.qcut(df_pr[pr_col], q=pr_nbins, labels=labels, duplicates="drop")
+        except Exception as e:
+            print(f"[WLS] Conditioned-on-η fits skipped: {e}")
+            df_pr = None
+        if df_pr is not None:
+            fig, ax = plt.subplots(figsize=(12, 8))
+            fits_by_pr = {}
+            for label in df_pr["PR_bin"].dropna().unique():
+                sub = df_pr[df_pr["PR_bin"] == label]
+                try:
+                    binned_sub, params_sub = fit_power_law_logbins_wls_new(
+                        sub,
+                        n_logbins=N_LOGBIN,
+                        min_count=MIN_COUNT,
+                        use_median=False,
+                        control_cols=None,
+                    )
+                except Exception as e:
+                    print(f"[{label}] skipped: {e}")
+                    continue
+                plot_fit(ax, binned_sub, params_sub, label_prefix=rf"$\eta$ {label}")
+                fits_by_pr[str(label)] = params_sub
+            ax.set_title(r"Power-law fits conditioned on $\eta$ (aggregated)", fontsize=title_size)
+            plt.tight_layout()
+            plt.savefig(os.path.join(IMG_DIR, f"power_law_fits_by_participation_rate_{LEVEL}.png"), dpi=300)
+            plt.close()
+
+            print("--- Conditioned on η (power-law only) ---")
+            for k, power_params in fits_by_pr.items():
+                Y, Y_se, gamma, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se = power_params
+                print(f"[η {k}] Y = {Y:.6g} +/- {Y_se:.3g} | gamma = {gamma:.6f} +/- {gamma_se:.3g} |")
+                print(f"[η {k}] R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
+                print(f"[η {k}] Beta controls: {beta_controls}")
+                print(f"[η {k}] Beta controls SE: {beta_controls_se}")
+
+    # -----------------------------------------------------------------------
+    # 3D surface / heatmap of mean impact vs Q/V and participation rate
+    # -----------------------------------------------------------------------
+    try:
+        plot_impact_surface_and_heatmap(
+            df,
+            out_prefix="impact_surface_qv_participation",
+            n_qv_bins=N_LOGBIN,
+            n_pr_bins=N_PR_BINS_SURFACE,
+            min_count=MIN_COUNT_SURFACE,
+        )
+    except Exception as e:
+        print(f"[Surface] skipped: {e}")
+
+    # -----------------------------------------------------------------------
+    # Bivariate fits: power-law and logarithmic vs empirical (3D + residuals)
+    # -----------------------------------------------------------------------
+    try:
+        plot_bivariate_fit_surfaces_3d(
+            df,
+            out_prefix="impact_surface_qv_participation",
+            n_qv_bins=N_LOGBIN,
+            n_pr_bins=N_PR_BINS_SURFACE,
+            min_count=MIN_COUNT_SURFACE,
+        )
+    except Exception as e:
+        print(f"[Bivariate Fits] skipped: {e}")
+
+
 # ---------------------------------------------------------------------------
 # Intro / transforms
 # ---------------------------------------------------------------------------
@@ -2024,30 +2199,36 @@ if RUN_INTRO:
     print("[Intro] Ensuring parquet transforms are up to date...")
     print(
         "[Intro] Parameters — "
-        f"LEVEL={LEVEL}, PROPRIETARY={PROPRIETARY}, USE_MOT_DATA={USE_MOT_DATA}, "
-        f"IMPACT_HORIZONS_MIN={IMPACT_HORIZONS_MIN}, RECOMPUTE={RECOMPUTE}, "
-        f"PATH_DATA_FOLDER={PATH_DATA_FOLDER}, PATH_NEW_DATA_FOLDER={PATH_NEW_DATA_FOLDER}"
+        f"LEVEL={LEVEL}, PROPRIETARY={PROPRIETARY}, DATASET={DATASET_NAME}, "
+        f"IMPACT_HORIZONS_MIN={IMPACT_HORIZONS_MIN}, RECOMPUTE={RECOMPUTE}"
     )
     ensure_transforms()
     dfs_path_new = list_parquet_paths()
-    dataset_label = "MOT" if USE_MOT_DATA else "non-MOT"
-    print(f"[Intro] Parquet files available ({dataset_label}): {len(dfs_path_new)}")
+    print(f"[Intro] Parquet files available for dataset '{DATASET_NAME}': {len(dfs_path_new)}")
 
 
 # ---------------------------------------------------------------------------
 # Metaorder computation (aggregated across ISIN)
 # ---------------------------------------------------------------------------
 if RUN_METAORDER_COMPUTATION:
-    dataset_label = "MOT" if USE_MOT_DATA else "non-MOT"
-    print(f"[Metaorders] Computing metaorders across all ISINs ({dataset_label})...")
+    print(f"[Metaorders] Computing metaorders across all ISINs (dataset={DATASET_NAME})...")
     dfs_path_new = list_parquet_paths()
 
     filtered_path = os.path.join(OUT_DIR, f"metaorders_dict_all_{LEVEL}_{PROPRIETARY_TAG}.pkl")
 
+    metaorders_dict_all: Optional[Dict[str, Dict[int, List[List[int]]]]] = None
     if os.path.exists(filtered_path) and not RECOMPUTE:
         print(f"Loading {filtered_path}")
-        metaorders_dict_all = pickle.load(open(filtered_path, "rb"))
-    else:
+        loaded = pickle.load(open(filtered_path, "rb"))
+        if isinstance(loaded, dict) and len(loaded) == 0 and len(dfs_path_new) > 0:
+            print(
+                f"[Metaorders] Cached metaorders dict is empty at {filtered_path}; "
+                "recomputing (set RECOMPUTE=true to force this explicitly)."
+            )
+        else:
+            metaorders_dict_all = loaded
+
+    if metaorders_dict_all is None:
         try:
             max_gap_np = MAX_GAP.to_numpy()
         except AttributeError:
@@ -2220,6 +2401,27 @@ if RUN_WLS:
             "Missing metaorders info parquet: run the SQL fits section to generate the filtered dataset."
         )
 
+    # Coerce key numeric columns to avoid dtype-driven failures (e.g., object columns in old parquets).
+    df = df.copy()
+    for col in [
+        "Q/V",
+        "Vt/V",
+        "Participation Rate",
+        "Price Change",
+        "Daily Vol",
+        "Direction",
+        "Q",
+        "Impact",
+    ]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    if "Impact" not in df.columns and {"Price Change", "Direction", "Daily Vol"}.issubset(df.columns):
+        df["Impact"] = pd.to_numeric(df["Price Change"] * df["Direction"] / df["Daily Vol"], errors="coerce")
+    # Only sanitize numeric columns to avoid comparing arrays/bytes objects in replace
+    numeric_cols = df.select_dtypes(include=["number"]).columns
+    if len(numeric_cols) > 0:
+        df[numeric_cols] = df[numeric_cols].replace([np.inf, -np.inf], np.nan)
+
     # Apply participation-rate filter for all subsequent fits and surfaces
     if "Participation Rate" in df.columns:
         before_pr = len(df)
@@ -2233,83 +2435,7 @@ if RUN_WLS:
         out_path = os.path.join(IMG_DIR, f"normalized_impact_path_{LEVEL}_{PROPRIETARY_TAG}.png")
         plot_normalized_impact_path(df, out_path, duration_multiplier=AFTERMATH_DURATION_MULTIPLIER)
 
-    LABEL_SIZE = 16
-    LEGEND_SIZE = 14
-    TITLE_SIZE = 18
-    plt.rcParams.update(
-        {
-            "axes.labelsize": LABEL_SIZE,
-            "axes.titlesize": TITLE_SIZE,
-            "legend.fontsize": LEGEND_SIZE,
-        }
-    )
-    
-    # binned_all, params_all = fit_power_law_logbins_wls(df, n_logbins=n_logbins, min_count=min_count, use_median=False)
-    binned_all, params_all = fit_power_law_logbins_wls_new(df, n_logbins=N_LOGBIN, min_count=MIN_COUNT, use_median=False, control_cols=None)
-    Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se = params_all
-    log_params_all = fit_logarithmic_from_binned(binned_all)
-    a_hat, a_se, b_hat, b_se, R2_lin_log = log_params_all
-    fig, ax = plt.subplots(figsize=(12, 8))
-    plot_fit(ax, binned_all, params_all, log_params=log_params_all)
-    ax.set_title("Impact fits (power-law and logarithmic, aggregated)", fontsize=TITLE_SIZE)
-    plt.tight_layout()
-    plt.savefig(os.path.join(IMG_DIR, f"power_law_fit_overall_{LEVEL}.png"), dpi=300)
-    plt.close()
-    print("--- Overall (All) ---")
-    print(f"Power law: Y = {Y_hat:.6g} +/- {Y_se:.3g}")
-    print(f"Power law: gamma = {gamma_hat:.6f} +/- {gamma_se:.3g}")
-    print(f"Power law: R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
-    print(f"Logarithmic: a = {a_hat:.6g} +/- {a_se:.3g} | b = {b_hat:.6g} +/- {b_se:.3g} | R^2_lin = {R2_lin_log:.4f}")
-    print(f"Bins used: {len(binned_all)} (min_count >= {MIN_COUNT})")
-
-    PR_CANDIDATES = "Participation Rate"
-    pr_nbins = 2
-    labels = [f"Q{j+1}" for j in range(pr_nbins)]
-    df["PR_bin"] = pd.qcut(df[PR_CANDIDATES], q=pr_nbins, labels=labels, duplicates="drop")
-    fig, ax = plt.subplots(figsize=(12, 8))
-    fits_by_pr = {}
-    for label in df["PR_bin"].dropna().unique():
-        sub = df[df["PR_bin"] == label]
-        try:
-            binned_sub, params_sub = fit_power_law_logbins_wls_new(
-                sub, n_logbins=N_LOGBIN, min_count=MIN_COUNT, use_median=False, control_cols=None
-            )
-        except Exception as e:
-            print(f"[{label}] skipped: {e}")
-            continue
-        # Only power-law fits when conditioning on participation rate
-        plot_fit(ax, binned_sub, params_sub, label_prefix=rf"$\eta$ {label}")
-        fits_by_pr[str(label)] = params_sub
-    ax.set_title(r"Power-law fits conditioned on $\eta$ (aggregated)", fontsize=TITLE_SIZE)
-    plt.tight_layout()
-    plt.savefig(os.path.join(IMG_DIR, f"power_law_fits_by_participation_rate_{LEVEL}.png"), dpi=300)
-    plt.close()
-    print("--- Conditioned on η (power-law only) ---")
-    for k, power_params in fits_by_pr.items():
-        Y, Y_se, gamma, gamma_se, R2_log, R2_lin, beta_controls, beta_controls_se = power_params
-        print(f"[η {k}] Y = {Y:.6g} +/- {Y_se:.3g} | gamma = {gamma:.6f} +/- {gamma_se:.3g} |")
-        print(f"[η {k}] R^2_log = {R2_log:.4f} | R^2_lin = {R2_lin:.4f}")
-        print(f"[η {k}] Beta controls: {beta_controls}")
-        print(f"[η {k}] Beta controls SE: {beta_controls_se}")
-
-    # -----------------------------------------------------------------------
-    # 3D surface / heatmap of mean impact vs Q/V and participation rate
-    # -----------------------------------------------------------------------
-    plot_impact_surface_and_heatmap(
-        df,
-        out_prefix="impact_surface_qv_participation",
-        n_qv_bins=N_LOGBIN,
-        n_pr_bins=N_PR_BINS_SURFACE,
-        min_count=MIN_COUNT_SURFACE,
-    )
-
-    # -----------------------------------------------------------------------
-    # Bivariate fits: power-law and logarithmic vs empirical (3D + residuals)
-    # -----------------------------------------------------------------------
-    plot_bivariate_fit_surfaces_3d(
-        df,
-        out_prefix="impact_surface_qv_participation",
-        n_qv_bins=N_LOGBIN,
-        n_pr_bins=N_PR_BINS_SURFACE,
-        min_count=MIN_COUNT_SURFACE,
-    )
+    if df.empty:
+        print("[WLS] No metaorders available after filters; skipping WLS fits and surfaces.")
+    else:
+        run_wls_fits_and_surfaces(df)

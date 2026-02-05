@@ -1,36 +1,19 @@
-TODO:
-- Controllare Zarinelli et al. per confrontare tutto ciò che ottengo con ciò che è presente in letteratura
-
-- Controllare quali sono i valori tipici del participation rate in letterature.
-
-- Scrviere una literature review sulle diverse tipologie di metaordini, intese dal punto di vista della loro costruzione: clients metaorders, proprietary
-    metaorders, statistical detection, synthetic 
-    statistical: [10] E. Moro, J. Vicente, L. G. Moyano, A. Gerig, J. D. Farmer, G. Vaglica, F. Lillo, and R. N.
-                    Mantegna, “Market impact and trading profile of hidden orders in stock markets,” Physical
-                    Review E, vol. 80, no. 6, p. 066102, 2009.
-                [11] B. T´oth, F. Lillo, and J. Farmer, “Segmentation algorithm for non-stationary compound
-                    poisson processes. with an application to inventory time series of market members in a financial
-                    market,” European Physical Journal B, vol. 78, pp. 235–243, 2010
-- Controllare la questione del valore di aspettazione dell'imbalance, che a detta di Fabrizio dipende solamente dal
-    rapporto fra buy and sell metaorder
-
-DONE:
-- Valutare il numero di members per ISIN per evidenziare eventuali members che si concentrano maggiormente su un ISIN 
-    rispetto ad un altro.
-- I trade eseguiti per conto di una sezione dell'istituto finanziario che non ha accesso al mercato e che si rivolge alla sezione che lo ha, come vengono
-    etichettati? Li trovo come proprietari ma con un label clienti diverso da zero o li trovo come clienti? Ho un modo per distinguerli?
-    RISPOSTA: sono etichettati come client trades. Non ho modo di distinguerli.
-- Quanti trade non appartengono a metaordini? Potrebbe essere una buona misura della presenza dei retail 
-    RIPOSTA: 66%
+- crowding vs eta
+- fit bivariato
 
 
-BROKER:
-- Quanti sono
-- Quanti trade per broker (proprietary and client)
-- Distribuzione dei broker across ISIN (quanti broker per isin and quanti isin per broker)
-- distribuzione attivita' broker lungo tutto il periodo (heatmap: asse x broker, asse y giorni, color proprotional to the number of trades in that day)
+Alcune considerazioni/domande:
+ - Il problema non è tanto nel numero di membri, ma nel loro identificativo e se questo è consistente
+    anche negli altri dataset degli altri ISIN, ovvero se il member 'Tizio' viene identificato come
+    1000 sia su Generali che sugli altri ISIN. Quello che mi ritrovo è che circa la metà dei membri
+    opera su tutti gli ISIN tranne Generali e l'altra metà opera solo su Generali. Sembra quasi che
+    ci sia stato un cambio di codici tra Generali e gli altri ISIN. Questo quindi mi inflaziona
+    il numero di membri su tutti gli ISIN (me ne trovo 132 attivi dalle 9:30 alle 17:30 su tutto il 
+    periodo di analisi). Nell'immagine vedi questo fenomeno: ci sono molti membri che hanno un ratio 
+    ISIN_scambiati / ISIN_totali circa 1 e tanti altri che lo hanno circa 0
+ - Molti dei miei client ID sono indicati con uno 0. Ciò accade quando il trade è Dealing on own account. 
+    Non so se anche tu li vedi come 0 su argo. In caso negativo potrebbe essere questo il mismatch.
+ - Il mismatch si manifesta anche nel computo dei volumi.
+ - Se non è quello il caso, probabilmente i valori che ti ho girato sono quelli relativi al dataset
+    filtrato per orari dalle 9:30 alle 17:30. Scusami se non ho riportato questa cosa.
 
-
-Ciao Francesco, scusa il disturbo, avrei un'altra domanda a farti riguardo gli ID dei member nel mio dataset. Su 116 broker e 41 ISIN diversi, mi trovo che 57 broker hanno
-operato su tutti gli ISIN tranne uno (IT0000062072, Generali Assicurazione spa) e i restati 59 hanno operato solamente su un ISIN (sempre IT0000062072). Mi sembra molto strano.
-La cosa ti torna? 

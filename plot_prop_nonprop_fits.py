@@ -18,6 +18,32 @@ import seaborn as sns
 
 sns.set_theme()
 
+def _weights_from_sigma(sigma: np.ndarray) -> np.ndarray:
+    sigma = np.asarray(sigma, dtype=float)
+    w = np.zeros_like(sigma, dtype=float)
+    ok = np.isfinite(sigma) & (sigma > 0)
+    w[ok] = 1.0 / np.square(sigma[ok])
+    return w
+
+
+def _weighted_r2(y: np.ndarray, yhat: np.ndarray, w: np.ndarray) -> float:
+    y = np.asarray(y, dtype=float)
+    yhat = np.asarray(yhat, dtype=float)
+    w = np.asarray(w, dtype=float)
+    if y.shape != yhat.shape or y.shape != w.shape:
+        raise ValueError("y, yhat and w must have the same shape.")
+    valid = np.isfinite(y) & np.isfinite(yhat) & np.isfinite(w) & (w > 0)
+    if np.count_nonzero(valid) < 3:
+        return float("nan")
+    yv = y[valid]
+    yhatv = yhat[valid]
+    wv = w[valid]
+    ybar = float(np.average(yv, weights=wv))
+    denom = float(np.sum(wv * np.square(yv - ybar)))
+    if denom <= 0:
+        return float("nan")
+    return float(1.0 - np.sum(wv * np.square(yv - yhatv)) / denom)
+
 
 # ---------------------------------------------------------------------------
 # Core fitting helpers (mirrors metaorder_computation.py)
@@ -100,13 +126,10 @@ def fit_power_law_logbins_wls(
     a_se, gamma_se = np.sqrt(np.diag(cov))
     Y_se = Y_hat * a_se
     Zhat = a_hat + gamma_hat * X
-    Zbar = np.average(Z, weights=w)
-    R2_log = 1.0 - np.sum(w * (Z - Zhat) ** 2) / np.sum(w * (Z - Zbar) ** 2)
+    R2_log = _weighted_r2(Z, Zhat, w=w)
     yhat = power_law(binned["center_QV"].to_numpy(), Y_hat, gamma_hat)
-    ybar = np.mean(binned["mean_imp"].to_numpy())
-    R2_lin = 1.0 - np.sum((binned["mean_imp"].to_numpy() - yhat) ** 2) / np.sum(
-        (binned["mean_imp"].to_numpy() - ybar) ** 2
-    )
+    w_lin = _weights_from_sigma(binned["sem_imp"].to_numpy())
+    R2_lin = _weighted_r2(binned["mean_imp"].to_numpy(), yhat, w=w_lin)
     return binned, (Y_hat, Y_se, gamma_hat, gamma_se, R2_log, R2_lin)
 
 

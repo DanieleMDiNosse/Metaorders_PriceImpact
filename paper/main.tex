@@ -1,0 +1,1177 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{hyperref}
+\usepackage{subcaption}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+
+\title{Metaorders, Price Impact, and Crowding:\\
+Evidence from Proprietary and Client Flow}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+A robust empirical regularity in market microstructure is the
+non-linear, concave relation between the average price impact of large
+orders and their size. When a metaorder of total size $Q$ is executed
+over a day by slicing it into many smaller trades, the average price
+change $\Delta p$ typically scales as a power law,
+\begin{equation}
+  \Delta p \propto Q^\gamma, \qquad 0 < \gamma < 1,
+\end{equation}
+with a ``square-root law'' $\gamma \approx \tfrac12$ often observed
+across markets and asset classes \cite{BouchaudFarmerLillo2008,SatoKanazawa2024}.
+This behaviour has been documented in a wide range of institutional
+datasets and synthetic metaorder reconstructions, and is remarkably
+robust to variations in the microstructure and in the autocorrelation
+of order flow.
+
+At the same time, institutional trading activity is highly crowded:
+different investors often trade in the same direction on the same names
+and days, which amplifies execution costs through \emph{co-impact}.
+In co-impact models, the aggregate price response is driven by the joint
+distribution of metaorder signs and sizes, with correlations in order
+flow leading to a non-linear impact surface and to important differences
+between idiosyncratic and crowded trades \cite{BucciEtAl2020}.
+
+The present analysis focuses on a high-frequency dataset where
+trade-by-trade aggressive activity can be attributed to individual
+members and separated into proprietary and client flows. We:
+
+\begin{enumerate}
+  \item reconstruct metaorders as same-sign sequences of aggressive
+        trades at the member level;
+  \item document the empirical distributions of their durations, sizes,
+        relative sizes in units of daily volume, and execution
+        participation rates;
+  \item estimate a volatility-normalised power-law impact function as a
+        function of the metaorder's size;
+  \item study crowding for proprietary and client flows via volume-weighted imbalances
+        within-group (e.g. proprietary vs proprietary), cross-group (e.g. proprietary vs client), and all-vs-all (e.g. proprietary + client vs proprietary + client)
+        ;
+  % \item relate the empirical crowding patterns to co-impact and
+  %       transaction-cost modelling frameworks where partially observable
+  %       order-flow imbalance plays a key role \cite{BriereEtAl2019,Guillaume2025}.
+\end{enumerate}
+
+\section{Data and Metaorder Reconstruction}
+\label{sec:data_metaorders}
+
+\subsection{Trade-level data}
+
+We observe an event-level sequence of aggressive trades for all the FTSEMIB constituents between 2024/06/03 and 2025/05/30. For each trade $j$ we have:
+
+\begin{itemize}
+  \item an instrument identifier (ISIN) $k(j)$;
+  \item a timestamp $t_j$;
+  \item an aggressive direction $\varepsilon_j \in \{+1,-1\}$, with
+        $\varepsilon_j = +1$ for aggressive buys and $\varepsilon_j=-1$
+        for aggressive sells;
+  \item a traded volume $q_j > 0$ (shares);
+  \item first and last execution prices $P_j^f, P_j^l$;
+  \item an aggressive capacity flag distinguishing proprietary (``dealing
+        on own account'') from client (client) trading;
+  \item a client identifier and a member identifier.
+\end{itemize}
+
+Only trades in the continuous trading session are used (from 09{:}30 to 17{:}30), and trades are sorted by time within each ISIN to form a time-ordered event stream.
+
+As the goal of this project is to study the differences and the interplay between proprietary and client metaorders, it is interesting to collect some descriptive statistics about distribution of these two kinds of trades and the overall behaviour of the market members.
+
+We have found almost 60-70 active members across all the ISINs, see Figure \ref{fig:members_isins}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{images/member_statistics/png/members_per_isin.png}
+    \caption{Number of members per ISIN}
+    \label{fig:members_isins}
+\end{figure}
+
+Across all the ISIN, the ratio between proprietary and client metaorders is quite constant, as we can see from Figure \ref{fig:prop_vs_client_per_isin}. We can also notice that the number of proprietary trades is always bigger than the client one.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{images/member_statistics/png/proprietary_vs_client_trades_per_isin.png}
+    \caption{Number of proprietary and client trades per ISIN.}
+    \label{fig:prop_vs_client_per_isin}
+\end{figure}
+
+Figure \ref{fig:heatmap_trades} shows the distribution of the number of trades for each member across all the days and all the ISINs in the dataset. Looking at the heatmap, we can notice some vertical bands linked to the most active members during the studied periods, with a little cluster during the first ten days of April 2025. An interactive version of this plot can be found in the github repository of the project \cite{repo}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{images/member_statistics/png/member_activity_heatmap.png}
+    \caption{Heatmap of the number of members trades across all the days during the studied period.}
+    \label{fig:heatmap_trades}
+\end{figure}
+\subsection{Metaorder definition at member level}
+Before detailing how we construct metaorders from our dataset, it is useful to briefly review the main approaches that have been proposed in the literature to identify such metaorders. Our dataset is particularly valuable in this respect, as it provides access to both client and member identifiers as well as detailed information on the nature of each trade. These features substantially improve the accuracy of our metaorder reconstruction, placing it just below datasets in which metaorders are explicitly labelled, such as in \cite{zarinelli}. In summary, the literature distinguishes four broad categories of metaorder detection methods:
+
+\begin{itemize}
+    \item Labelled metaorders (Ancerno) 
+    \cite{zarinelli,BucciEtAl2018,BucciEtAl2020Invariants}
+
+    \item Synthetic metaorders construction
+    \cite{MaitrierEtAl2025}
+
+    \item Detection of same sign sequences
+    \cite{MoroEtAl2009,VaglicaEtAl2010}
+
+    \item Detection of same sign sequences from proprietary data with label on the nature of the trades (proprietary and client) 
+    \cite{GomesWaelbroeck2015}
+\end{itemize}
+
+
+
+
+\paragraph{Metaorder construction} We work at the \emph{member level}: a metaorder is a sequence of
+trades by a given member in a given ISIN and day, with constant sign of
+aggressive activity. The construction proceeds as follows.
+
+Fix an instrument $k$ and a member $a$. Let $I_{a,k}$ be the ordered set
+of indices $j$ such that member $a$ trades instrument $k$ at time
+$t_j \in [09{:}30,17{:}30]$. For each $j \in I_{a,k}$ we observe the
+sign $\varepsilon_j$ and volume $q_j$.
+
+We first detect \emph{runs of constant sign}:
+\begin{equation}
+  M = \{j_s, j_s+1, \dots, j_e\} \subset I_{a,k}
+\end{equation}
+such that
+\begin{equation}
+  \varepsilon_j = \varepsilon_{j_s}, \qquad \forall j \in M,
+\end{equation}
+and $M$ is maximal with this property (no strictly larger contiguous
+set has a constant sign). We apply several filters to the detected sequences:
+
+\begin{itemize}
+\item \textbf{Min trades number}. A sequence is kept if |M| $\geq$ 5
+  \item \textbf{Same day.} All trades in the run must belong to the same
+        calendar day; runs spanning the market close are discarded.
+  \item \textbf{Single client.} All trades in the run share the same
+        client identifier; this ensures that we do not aggregate orders
+        from different final investors.
+\end{itemize}
+
+Even after this step, very long runs can contain long periods of
+inactivity. We finally split runs on large gaps. Let $\Delta t_k = t_{j_{k+1}} - t_{j_k}$ be
+successive inter-trade gaps within a run. If
+\begin{equation}
+  \Delta t_k > 1 \text{ hour},
+\end{equation}
+the run is split at that point into separate metaorders. Again, 
+metaorders with fewer than five trades are discarded. This yields a collection of \emph{same-day, same-client, same-sign} metaorders for each ISIN.
+
+Each resulting metaorder $i$ is characterised by:
+
+\begin{itemize}
+  \item its set of child trades $M_i = \{j_s(i),\dots,j_e(i)\}$,
+  \item its sign $\varepsilon_i \in \{+1,-1\}$ (direction), taken as the sign of
+        its trades,
+  \item its start and end timestamps $t_i^{\text{start}} = t_{j_s(i)}$
+        and $t_i^{\text{end}} = t_{j_e(i)}$,
+  \item its execution interval $[t_i^{\text{start}},t_i^{\text{end}}]$,
+  \item the capacity flag (proprietary vs client).
+\end{itemize}
+
+We thus obtain two large metaorder datasets:
+
+\begin{itemize}
+  \item proprietary metaorders (group ``prop''),
+  \item client metaorders (group ``client'') \footnote{It is crucial to emphasize that a portion of trades labeled as client trades are in fact institutional executions carried out by entities with direct market access on behalf of end-clients who lack such access. These are not retail trades.}
+\end{itemize}
+
+Table \ref{tab:metaorders_numbers} summarize the number of metaorders for each group before and after every filter.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{lccc}
+\hline
+\textbf{Category} & \textbf{Initial Number} & \textbf{After Min Trades} & \textbf{After Min Duration} \\
+\hline
+Proprietary & 2774536 & 866443 & 588545 \\
+Client      & 986951   & 307620 & 255976 \\
+\hline
+\end{tabular}
+\caption{Metaorder counts for Proprietary vs Client across filtering steps (min trades set to 5, min duration to 120 seconds).}
+\label{tab:metaorders_numbers}
+\end{table}
+
+Finally, in the current dataset there are  $588545$
+proprietary metaorders and $255976$ client metaorders, spanning
+$41$ ISINs and $251$ trading days between 2024/06/03 and 2025/05/30. Approximately 33\% of all trades were detected to be part of a metaorder.
+
+\subsection{Per-metaorder quantities}
+
+For each metaorder $i$ we compute:
+
+\begin{itemize}
+  \item \textbf{Metaorder volume}
+        \begin{equation}
+          Q_i = \sum_{j\in M_i} q_j,
+        \end{equation}
+        i.e.\ the total number of shares executed by the metaorder.
+
+  \item \textbf{Metaorder direction.}
+        \begin{equation}
+            \varepsilon_i = \begin{cases}
+                +1 \quad \text{buy metaorder} \\ -1 \quad \text{sell metaorder}
+            \end{cases}
+        \end{equation}
+  \item \textbf{Duration}
+        \begin{equation}
+          T_i = t_i^{\text{end}} - t_i^{\text{start}}.
+        \end{equation}
+
+  \item \textbf{Inter-arrival times.} Within each metaorder, gaps between
+        consecutive child trades are
+        \begin{equation}
+          \Delta t_i^{(\ell)} = t_{j_{\ell+1}} - t_{j_\ell}, \qquad \ell = 1,\dots, |M_i|-1.
+        \end{equation}
+
+\item \textbf{Average Daily volume.}
+      In order to smooth day–to–day fluctuations, we consider
+      the 5‑day average daily volume
+      \begin{equation}
+        \bar V^{(5)}_d = \frac{1}{K_d} \sum_{k=0}^{K_d-1} V_{d-k},
+      \end{equation}
+      where $K_d = \min\bigl(5,\ \#\{\text{trading days up to } d\}\bigr)$ and
+       \begin{equation}
+        V_d = \sum_{j \in J_d} q_j,
+      \end{equation}
+      where $J_d$ are all trades in that ISIN on day $d$.
+
+
+  \item \textbf{Daily volatility.} For each day, we compute the intraday volatility using a realised-kernel estimator. See Section \ref{subsec:daily_vol}
+
+  \item \textbf{Relative size (participation in daily volume).}
+        \begin{equation}
+          \phi_i = \frac{Q_i}{V_{d(i)}} \in (0,1],
+        \end{equation}
+        where $d(i)$ denotes the day of metaorder $i$. This is the
+        fraction of the daily traded volume executed by the metaorder.
+
+  \item \textbf{Participation rate within the execution window.} Let
+        $V_i^{\text{window}}$ denote the total market volume (buy + sell)
+        traded in the same instrument between $t_i^{\text{start}}$ and
+        $t_i^{\text{end}}$. The execution participation rate is
+        \begin{equation}
+          \eta_i = \frac{Q_i}{V_i^{\text{window}}}.
+        \end{equation}
+        This is the metaorder's market share during its own execution.
+
+  \item \textbf{Start and end prices.} $P_i^{\text{start}}$ and
+        $P_i^{\text{end}}$, typically taken as last-traded prices at the
+        corresponding timestamps.
+\end{itemize}
+
+
+
+\section{Descriptive Properties of Metaorders}
+
+\subsection{Metaorders per member, durations, and inter-arrival times}
+
+Across all the studied period there are 132 active members. Figure \ref{fig:trades_per_member} shows the distribution of the ratio of the ISINs traded over the total number of them for each member. We found that 57 out of the 132 active members traded all ISINs except IT0000062072, which corresponds to Assicurazioni Generali. Interestingly, there are 59 members that traded only this asset.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{images/member_statistics/png/member_isin_coverage_per_member.png}
+    \caption{Distribution of the ratio of the ISINs traded by a single member over the total number of ISINs. As we can see, there are members specialized in a single asset (Assicurazioni Generali) and members that traded almost all the assets expect one (again, Assicurazioni Generali).}
+    \label{fig:trades_per_member}
+\end{figure}
+
+Then, for each member $m$ we define the metaorder count
+$N_m = \#\{i: \text{metaorder } i \text{ is initiated by } m\}$. The
+distribution of $N_m$ across members is broad, with some highly active
+members executing a very large number of metaorders, and a long tail of
+members with fewer metaorders, see Figure \ref{fig:metaorders_per_member}.
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_non_proprietary/metaorders_per_member_all.png}
+    \caption{Client}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_proprietary/metaorders_per_member_all.png}
+    \caption{Proprietary}
+  \end{subfigure}
+  \caption{Distribution of metaorders per member $N_m$ across all ISINs and days.}
+  \label{fig:metaorders_per_member}
+\end{figure}
+
+The distribution of durations $T_i$ spans several orders of magnitude:
+most metaorders complete within a few minutes, but there is a sizeable
+fraction of longer executions, see Figure \ref{fig:duration}.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_non_proprietary/metaorder_duration_all.png}
+    \caption{Client}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_proprietary/metaorder_duration_all.png}
+    \caption{Proprietary}
+  \end{subfigure}
+  \caption{Distribution of metaorder durations $T_i$ (in minutes) for
+  client (left) and proprietary (right) flows.}
+  \label{fig:duration}
+\end{figure}
+
+Within each metaorder, the inter-arrival times between consecutive child
+trades $\Delta t_i^{(\ell)}$ are also broadly distributed, reflecting a
+mixture of rapid sequences of child orders and periods of inactivity, see Figure \ref{fig:interarrival}.
+{\bf FL: Citare le figure, farei un fit sulla forma e lo confronterei con la letteratura (ad esempio Zarinelli et al.}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_non_proprietary/interarrival_all.png}
+    \caption{Client}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_proprietary/interarrival_all.png}
+    \caption{Proprietary}
+  \end{subfigure}
+  \caption{Distribution of inter-arrival times between child trades within metaorders.}
+  \label{fig:interarrival}
+\end{figure}
+
+\subsection{Volumes, relative sizes, and participation rates}
+
+The distribution of metaorder volumes $Q_i$ (in shares) is highly
+heterogeneous, with many small metaorders and a long right tail of large
+ones. To assess their market footprint, we focus on the relative size
+$\phi_i = Q_i/V_{d(i)}$.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_non_proprietary/q_over_v_all.png}
+    \caption{Client}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_proprietary/q_over_v_all.png}
+    \caption{Proprietary}
+  \end{subfigure}
+  \caption{Empirical distribution of relative size $\phi_i = Q_i/V_{d(i)}$
+  for client (left) and proprietary (right) metaorders.}
+  \label{fig:rel_size}
+\end{figure}
+
+Metaorder volumes themselves are summarised in
+Figure~\ref{fig:volumes_all}, which shows the distributions of $Q_i$.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_non_proprietary/volumes_all.png}
+    \caption{Client}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_proprietary/volumes_all.png}
+    \caption{Proprietary}
+  \end{subfigure}
+  \caption{Empirical distribution of metaorder volumes $Q_i$ (shares).}
+  \label{fig:volumes_all}
+\end{figure}
+
+Execution participation rates $\eta_i$ are moderate on average.
+Aggregating across instruments and days, we find:
+
+\begin{itemize}
+  \item proprietary metaorders: mean $\eta \approx 0.31$;
+  \item client metaorders: mean $\eta \approx 0.23$.
+\end{itemize}
+
+The corresponding distributions are shown in Figure~\ref{fig:eta}.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_non_proprietary/participation_rate_all.png}
+    \caption{Client}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_proprietary/participation_rate_all.png}
+    \caption{Proprietary}
+  \end{subfigure}
+  \caption{Distribution of execution participation rates $\eta_i$ for
+  client and proprietary metaorders.}
+  \label{fig:eta}
+\end{figure}
+
+\subsection{Volatility signature plots}
+
+To construct a robust daily volatility for each instrument, we study
+volatility signature plots. For a given sampling interval $\Delta$ (in
+seconds), the last-traded price is resampled at this frequency within
+the trading day, and log-returns are computed. For each day and $\Delta$
+we compute realised variance (RV), bipower variation (BPV), and realised
+kernel (RK). For each $\Delta$, the daily estimates are aggregated
+across days to produce means and standard errors.
+
+An example signature plot for a given ISIN and the client
+subset is shown in Figure~\ref{fig:signature}.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/member_non_proprietary/signature_plots/signature_plot_IT0000062072.png}
+  \caption{Example volatility signature plot (client flow for a
+  given ISIN). The three panels display mean $\pm 2\text{SE}$ of realised
+  variance, bipower variation, and realised kernel as a function of the
+  sampling interval $\Delta$.}
+  \label{fig:signature}
+\end{figure}
+
+Realised kernel (RK) with $\Delta = 1000$ seconds is used as the daily
+volatility proxy in the impact analysis below. The value has been chosen looking at the signature plot evaluated using the RK estimation, as shown in Figure \ref{fig:signature}. This is a different approach with respect to the broader literature (CITAZIONI), where usually the difference between the close and opening price (Parkinson estimator) is chosen for $\sigma_D$.
+
+\section{Normalisation and Impact Model}
+\label{sec:impact_model}
+
+\subsection{Daily volatility and size normalisation}
+\label{subsec:daily_vol}
+
+For each instrument and day $d$, we construct a daily volatility
+$\sigma_d$ as follows:
+
+\begin{enumerate}
+  \item Restrict the trade-time price process $P_t$ to trades on day
+        $d$, and retain the last price at each timestamp.
+
+  \item For each trading day, we build an equally spaced time grid with step
+$\Delta = 1000$ seconds. At each grid time $t_\ell$ we set $P_{t_\ell}$
+equal to the last observed trade price strictly before (or at) $t_\ell$
+(previous-tick interpolation), yielding a sequence
+$P_{t_0}, P_{t_1}, \dots, P_{t_n}$ with $t_{\ell+1} - t_\ell = \Delta$.
+
+  \item Compute log-returns
+        \begin{equation}
+          r_\ell = \log P_{t_{\ell+1}} - \log P_{t_\ell}, \qquad \ell=0,\dots,n-1.
+        \end{equation}
+
+  \item Apply a realised-kernel estimator with a Parzen kernel and
+        bandwidth $H \propto n^{2/3}$ to $(r_\ell)_{\ell=0}^{n-1}$ to
+        obtain $\sigma_d = \text{RK}_d$.
+\end{enumerate}
+
+Size is normalised by daily volume $V_d$, as defined in
+Section~\ref{sec:data_metaorders}. For metaorder $i$ on day $d(i)$ we
+use
+\begin{equation}
+  \phi_i = \frac{Q_i}{V_{d(i)}}.
+\end{equation}
+
+\subsection{Instantaneous impact in volatility units}
+
+For each metaorder $i$, let $P_i^{\text{start}}$ and
+$P_i^{\text{end}}$ be the prices at the first and last trade of the
+metaorder. The signed log-return over the execution interval is
+\begin{equation}
+  \Delta p_i = \log P_i^{\text{end}} - \log P_i^{\text{start}}.
+\end{equation}
+Let $\varepsilon_i \in \{+1,-1\}$ be the direction (buy $+1$, sell $-1$), and
+$\sigma_{d(i)}$ the daily volatility on the same day. The
+\emph{instantaneous impact} of metaorder $i$ in volatility units is
+defined as
+\begin{equation}
+  I_i = \frac{\varepsilon_i\,\Delta p_i}{\sigma_{d(i)}}.
+\end{equation}
+By construction, $I_i$ is typically positive on average (buys push the
+price up, sells push it down), but individual realisations can be
+negative because of noise and concurrent market activity.
+
+Before fitting, we apply a filter on the participation rate, keeping only those metaorders with $\phi_i > 10^{-5}$, to avoid fitting on very noisy region.
+
+This yields a clean dataset of $(\phi_i, I_i)$ pairs with auxiliary
+fields (participation, capacity, etc.) for subsequent analysis.
+
+Last but not least, we computed the autocorellation function of the signs of the metaorders per ISIN. An example is given in Figure \ref{fig:autocorr_metaorders}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{images/prop_vs_nonprop/acf/IT0000062072_acf.png}
+    \label{fig:autocorr_metaorders}
+    \caption{Example of autocorrelation of metaorder signs. ISIN IT0000062072 (Generali Assicurazioni SpA)}
+\end{figure}
+
+\subsection{Impact models}
+\label{subsec:impact_models}
+Following \cite{zarinelli}, we posit two different functional forms for the relation between the expected instantaneous impact and the relative size:
+\begin{align}
+  \E[I_i \mid \phi_i] &= Y\,\phi_i^\gamma \qquad &\text{Power law} \nonumber \\
+  \E[I_i \mid \phi_i] &= a \log_{10}(1+b\phi_i) \qquad &\text{Logarithm}
+  \label{eq:impact_model}
+\end{align}
+where:
+
+\begin{itemize}
+  \item $Y > 0$ is a scale parameter (impact for unit participation);
+  \item $\gamma \in (0,1)$ is the impact exponent (with $\gamma \approx \tfrac12$ corresponding to a square-root law \cite{BouchaudFarmerLillo2008,SatoKanazawa2024});
+  \item $a, b > 0$ are the parameters of the logarithmic model, which serves as a benchmark to assess deviations from power-law behaviour (e.g. saturation or linear regimes).
+\end{itemize}
+
+Taking logarithms of the power-law specification yields:
+\begin{equation}
+  \log \E[I_i \mid \phi_i] = \log Y + \gamma \log \phi_i.
+\end{equation}
+
+Because individual $I_i$ are noisy and often negative, we do not regress directly on single metaorders. Instead we proceed via log-binning.
+
+\paragraph{Binning in relative size.}
+
+We form $K$ logarithmic bins in $\log_{10} \phi$ over the range of the data. For each bin $k$ we compute:
+
+\begin{itemize}
+  \item the bin centre $\phi_k$ (e.g.\ geometric mean of $\phi_i$ in the bin);
+  \item the mean impact $\bar{I}_k$ over metaorders in the bin;
+  \item the standard error of the mean $\text{SEM}_k$.
+\end{itemize}
+
+Bins with fewer than a prescribed minimum count, non-positive or non-finite $\bar{I}_k$, or non-finite $\text{SEM}_k$ are discarded.
+
+\paragraph{Estimation procedure: Power Law.}
+
+For the power-law model, we define
+\begin{equation}
+  X_k = \log \phi_k, \qquad Z_k = \log \bar{I}_k.
+\end{equation}
+We fit the linear model
+\begin{equation}
+  Z_k = \alpha + \gamma X_k + \varepsilon_k,
+\end{equation}
+where $\alpha = \log Y$ and $\gamma$ is the impact exponent. The fit is performed by weighted least squares (WLS) in log-space, using weights inversely proportional to the variance of the bin estimate \cite{BouchaudFarmerLillo2008}:
+\begin{equation}
+    w_k \approx \left(\frac{\bar{I}_k}{\text{SEM}_k}\right)^2.
+\end{equation}
+Bins with more metaorders and smaller dispersion are given larger weight, while very noisy or poorly populated bins contribute less. This yields estimates $\hat{\alpha}$ and $\hat{\gamma}$ together with their standard errors; the scale parameter is then recovered as $Y = e^{\hat{\alpha}}$.
+
+\paragraph{Estimation procedure: Logarithmic Benchmark.}
+
+Alongside the power law, we fit the logarithmic specification $\bar{I}_k = a \log_{10}(1+b\phi_k)$ on the same binned statistics $(\phi_k, \bar{I}_k)$. Unlike the power law, this model is estimated via a non-linear fit on the bin means. Comparing the two curves allows us to visually inspect deviations from the power law, particularly at the extremes of the size distribution where the logarithmic form imposes a linear behaviour for $\phi \to 0$ and a slower saturation for very large $\phi$.
+
+\paragraph{Empirical impact curves.}
+
+Applying this procedure separately to proprietary and client metaorders yields two sets of impact curves, as shown in Figure \ref{fig:impact_vs_size}
+
+The analysis can be refined by conditioning on participation rate
+$\eta_i$. Splitting metaorders into quantiles of $\eta_i$ and repeating
+the log-binned WLS within each quantile yields a family of impact curves
+\[
+  \E[I \mid \phi, \eta \in \text{quantile }q] = Y_q \phi^{\gamma_q},
+\]
+summarised in Figure \ref{fig:impact_vs_size}, Figure \ref{fig:impact_by_participation} and \ref{fig:heatmap_impact_by_participation}. {\bf FL: Aggiungere commenti! Molto strano che si incrocino le linee per i non proprietary nei due quantili.}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_non_proprietary/power_law_fit_overall_member.png}
+    \caption{Client}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_proprietary/power_law_fit_overall_member.png}
+    \caption{Proprietary}
+  \end{subfigure}
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/prop_vs_nonprop/power_law_prop_vs_nonprop.png}
+    \caption{Proprietary vs non-proprietary}
+  \end{subfigure}
+  \caption{Average volatility-normalised impact $\bar{I}$ as a function
+  of relative size $\phi = Q/V_d$ for client (first) and
+  proprietary metaorders (second) and comparison of the two (third). Points are bin-level means with
+  error bars; lines are the fitted power-law curves
+  $Y\phi^\gamma$.}
+  \label{fig:impact_vs_size}
+\end{figure}
+
+
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_non_proprietary/power_law_fits_by_participation_rate_member.png}
+    \caption{Client}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_proprietary/power_law_fits_by_participation_rate_member.png}
+    \caption{Proprietary}
+  \end{subfigure}
+  \caption{Impact curves conditional on participation rate median,
+  for client and proprietary flow.}
+  \label{fig:impact_by_participation}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_non_proprietary/impact_surface_qv_participation_heatmap_member_non_proprietary.png}
+    \caption{Client}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/member_proprietary/impact_surface_qv_participation_heatmap_member_proprietary.png}
+    \caption{Proprietary}
+  \end{subfigure}
+  \caption{Impact curves conditional on participation rate for client and proprietary flow.}
+  \label{fig:impact_by_participation}
+\end{figure}
+
+\subsection{Execution and aftermath impact paths}
+\label{subsec:impact-paths}
+% Construction of impact paths follows the implementation documented in POWER\_LAW\_IMPACT\_FITS, Section 3.3. :contentReference[oaicite:0]{index=0}
+
+The scalar impact measure $I_i$ in the previous section captures only the
+price change between the first and last trade of a metaorder. To obtain a time--resolved view of
+how impact builds up during execution and relaxes afterwards, we also track the full impact path of
+each metaorder.
+
+For a given metaorder $i$ on day $d(i)$, with start and end times $t^{\mathrm{start}}_i$ and
+$t^{\mathrm{end}}_i$ and duration $T_i = t^{\mathrm{end}}_i - t^{\mathrm{start}}_i$, we define the
+\emph{instantaneous normalised impact} at calendar time $t \ge t^{\mathrm{start}}_i$ as
+\begin{equation}
+  I_i(t) = \frac{\varepsilon_i}{\sigma_{d(i)}}\bigl(\log P(t) - \log P^{\mathrm{start}}_i\bigr),
+\end{equation}
+where $\varepsilon_i \in \{+1,-1\}$ is the metaorder direction and $\sigma_{d(i)}$ is the daily volatility
+constructed in Section~\ref{subsec:daily_vol}. This is the same normalisation used for
+the end-of-execution impact, but evaluated along the whole trajectory of the price process.
+
+We then introduce a normalised time variable $\tau$ at the metaorder level. During execution,
+\begin{equation}
+  \tau = \frac{t - t^{\mathrm{start}}_i}{T_i} \in [0,1] \qquad
+  (t^{\mathrm{start}}_i \le t \le t^{\mathrm{end}}_i),
+\end{equation}
+so that $\tau = 0$ corresponds to the first trade and $\tau = 1$ to the last trade. In the
+aftermath, we continue to track impact on a time window proportional to the execution duration,
+\begin{equation}
+  \tau = 1 + \frac{t - t^{\mathrm{end}}_i}{T_i} \in (1, 1 + \lambda],
+\end{equation}
+for $t^{\mathrm{end}}_i < t \le t^{\mathrm{end}}_i + \lambda T_i$, where $\lambda > 0$ is a fixed
+multiple (in practice, $\lambda \approx 2$). For each metaorder we record:
+\begin{itemize}
+  \item a \emph{partial impact path}, i.e.\ the sequence of $I_i(t)$ evaluated after each child
+        trade during execution ($\tau \in [0,1]$);
+  \item an \emph{aftermath impact path}, i.e.\ $I_i(t)$ sampled at a set of evenly spaced times in
+        the interval $(1,1+\lambda]$.
+\end{itemize}
+These two vectors are stored per metaorder and subsequently interpolated onto a common normalised time grid $\{\tau_m\}_{m=0}^M \subset [0,1+\lambda]$. Averaging across metaorders in a given group $G$ (proprietary or client) yields the mean normalised impact path
+\begin{equation}
+  \bar I_G(\tau_m) = \frac{1}{N_G(\tau_m)} \sum_{i \in G(\tau_m)} I_i(\tau_m),
+\end{equation}
+where $G(\tau_m)$ is the set of metaorders in group $G$ with a defined impact at time $\tau_m$,
+and $N_G(\tau_m) = |G(\tau_m)|$. The sample used here is the same filtered metaorder set as in the
+power-law fits (minimum duration, minimum relative size, finite impact).
+
+Figures~\ref{fig:normalized-impact-client} and~\ref{fig:normalized-impact-prop} display the mean paths for client (client) and proprietary metaorders, respectively. The vertical dashed line marks $\tau = 1$, the end of execution; $\tau > 1$ corresponds to the aftermath window.
+
+For client metaorders (Figure~\ref{fig:normalized-impact-client}), the mean impact increases smoothly over the execution interval, with a concave shape in normalised time. The path reaches a maximum at $\tau \approx 1$ and then decays relatively quickly in the first aftermath duration, before stabilising on a plateau at roughly $40\%$ of the peak impact.
+
+For proprietary metaorders (Figure~\ref{fig:normalized-impact-prop}), the build-up of impact is nearly linear in $\tau$ and peaks at a higher level, consistent with the larger typical relative sizes and participation rates of proprietary flow. The subsequent decay is slower and incomplete: the
+aftermath plateau lies around $60\text{--}70\%$ of the peak impact, substantially higher than in the client case, with a modest overshoot immediately after $\tau = 1$. This suggests that proprietary metaorders leave a more persistent footprint in prices, whereas client metaorders are
+associated with a larger transient component that tends to mean-revert. Usually, the permanent component of the impact is considered a measure of the information content of the metaorder (CITAZIONE).
+Overall, the dynamic profiles are in line with the picture of \emph{transient but partly permanent} impact emerging from empirical studies of metaorders and propagator models: impact accumulates during execution, then relaxes slowly towards a non-zero asymptotic level rather than reverting to
+zero.
+% \footnote{See, for example, the discussion of impact kernels and slow decay in
+% Bouchaud, Farmer, and Lillo~\cite{bouchaud2008how}, and the co-impact analysis of
+% Bucci et al.~\cite{bucci2020coimpact}, where crowded institutional flows generate persistent price
+% moves.} 
+In our dataset, the stronger permanence of proprietary impact is consistent with a view in which proprietary trading incorporates more information, while
+client flow is more liquidity-demanding and hence more prone to subsequent partial reversal. This dynamic perspective complements the static power-law fits of Section~\ref{subsec:impact_models} and provides additional evidence that market impact and its decay depend sensitively on who trades and how their orders are crowded in time and across investors.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{images/member_non_proprietary/normalized_impact_path_member_non_proprietary.png}
+  \caption{Mean normalised impact path $\bar I_G(\tau)$ for client (client) metaorders.
+  Time is normalised so that $\tau = 0$ at the start of the metaorder and $\tau = 1$ at its end;
+  the dashed line marks $\tau = 1$.}
+  \label{fig:normalized-impact-client}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{images/member_proprietary/normalized_impact_path_member_proprietary.png}
+  \caption{Mean normalised impact path $\bar I_G(\tau)$ for proprietary metaorders. The vertical
+  dashed line marks the end of execution ($\tau = 1$); $\tau > 1$ corresponds to the aftermath
+  window, up to a multiple of the execution duration.}
+  \label{fig:normalized-impact-prop}
+\end{figure}
+
+
+\section{Crowding and Co-Impact of Proprietary vs Client Flow}
+\label{sec:crowding}
+
+We now turn to \emph{crowding}: the tendency of metaorders to align with
+(or against) the contemporaneous net order flow of other metaorders.
+Crowding is a key driver of co-impact and execution costs, since
+metaorders that trade in the same direction as the rest of the market
+face more adverse price pressure. This connects directly to the
+institutional co-impact picture of \cite{BucciEtAl2020}.
+
+All crowding measures are based on \emph{volume-weighted imbalances}
+constructed from other metaorders in an appropriate reference set.
+
+\subsection{Orderflow imbalance (within-group crowding)}
+\label{subsec:local_imbalance}
+
+Fix a group $G$ (proprietary or client). For a given instrument $k$ and
+day $d$, let $G_{k,d}$ be the set of metaorders in group $G$ on $(k,d)$.
+For each $j \in G_{k,d}$ define the signed volume
+\begin{equation}
+  Q_j^{\text{sign}} = Q_j \varepsilon_j.
+\end{equation}
+For metaorder $i \in G_{k,d}$, the \emph{orderflow imbalance} from
+other metaorders in the same stock and day is defined as
+\begin{equation}
+  \text{imb}_i^{k,d} =
+  \frac{\displaystyle \sum_{j \in G_{k,d}\setminus\{i\}} Q_j^{\text{sign}}}
+       {\displaystyle \sum_{j \in G_{k,d}\setminus\{i\}} Q_j}.
+  \label{eq:local_imbalance}
+\end{equation}
+Interpretation:
+
+\begin{itemize}
+  \item $\text{imb}_i^{k,d} \approx +1$: other metaorders
+        that day are almost all buys;
+  \item $\text{imb}_i^{k,d} \approx -1$: other metaorders
+        are almost all sells;
+  \item $\text{imb}_i^{k,d} \approx 0$: buy and sell volume
+        roughly balance.
+\end{itemize}
+
+If $G_{k,d}$ contains only metaorder $i$ (no ``others''), the
+denominator vanishes and $\text{imb}_i^{k,d}$ is set to NaN
+and excluded. The distributions of the imbalances within-group and cross-group is shown in Figure \ref{fig:imbalance_distributions}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/prop_vs_nonprop/imbalance_distribution.png}
+    \caption{Distributions of the imbalances within-group and cross-group.}
+    \label{fig:imbalance_distributions}
+\end{figure}
+
+A simple measure of within-group crowding is the Pearson correlation
+between direction and orderflow imbalance,
+\begin{equation}
+  r = \mathrm{Corr}(\varepsilon_i, \text{imb}_i^{k,d}),
+\end{equation}
+computed over all metaorders in the group. We also compute \emph{daily}
+correlations $r_d$ by restricting to metaorders on a single date $d$ and
+evaluating
+\begin{equation}
+  r_d = \mathrm{Corr}(\varepsilon_i, \text{imb}_i^{k,d} \mid \text{Date}=d)
+\end{equation}
+whenever there are at least a minimum number of metaorders on that day.
+
+\paragraph{Estimation and confidence intervals. }
+
+Given a sample correlation $r$ from $n$ observations, we use Fisher's
+$z$-transform to construct confidence intervals \footnote{Probably a bootstrap is better. The Fisher transformation of the Pearson correlation coefficient assumes that the pair $(\varepsilon_i, \text{imb}_i^{k,d})$ is characterized by a bivariate normal distribution and $\varepsilon_i, \text{imb}_i^{k,d}$ are iid}. Set
+\begin{equation}
+  z = \frac{1}{2}\log\left(\frac{1+r}{1-r}\right),
+\end{equation}
+with standard error
+\begin{equation}
+  SE_z = \frac{1}{\sqrt{n-3}}.
+\end{equation}
+For a two-sided $(1-\alpha)$-confidence interval, define
+$z_{\alpha/2}$ as the $(1-\alpha/2)$ quantile of the standard normal.
+Then
+\begin{equation}
+  [z_{\mathrm{lo}}, z_{\mathrm{hi}}] =
+  [z - z_{\alpha/2} SE_z,\, z + z_{\alpha/2} SE_z],
+\end{equation}
+and transforming back,
+\begin{equation}
+  r_{\mathrm{lo}} = \tanh(z_{\mathrm{lo}}), \qquad
+  r_{\mathrm{hi}} = \tanh(z_{\mathrm{hi}}).
+\end{equation}
+
+\paragraph{Empirical within-group crowding.}
+
+On the current dataset, within-group orderflow imbalance statistics are:
+
+\begin{itemize}
+  \item \textbf{Proprietary flow.}
+    \begin{itemize}
+      \item Global correlation:
+            $r = 0.108$ with $95\%$ CI $[0.105, 0.110]$,
+            $n = 588545$ metaorders.
+      % \item Conditional means over all days all members and all ISINs:
+      %       \[
+      %         \E[\mathrm{imb} \mid \varepsilon=+1] \approx -0.024, \quad
+      %         \E[\mathrm{imb} \mid \varepsilon=-1] \approx -0.08.
+      %       \]
+      \item Mean daily correlation:
+            $\bar{r}_{\text{prop}} \approx 0.081$ over $251$ days.
+    \end{itemize}
+
+  \item \textbf{Client flow.}
+    \begin{itemize}
+      \item Global correlation:
+            $r = 0.187$ with $95\%$ CI $[0.183, 0.191]$,
+            $n = 255976$ metaorders.
+      % \item Conditional means over all days all members and all ISINs:
+      %       \[
+      %         \E[\mathrm{imb} \mid \varepsilon=+1] \approx +0.088, \quad
+      %         \E[\mathrm{imb} \mid \varepsilon=-1] \approx -0.087.
+      %       \]
+      \item Mean daily correlation:
+            $\bar{r}_{\text{client}} \approx 0.168$ over $251$ days.
+    \end{itemize}
+\end{itemize}
+
+Thus both client and proprietary metaorders tend to trade \emph{with} the local daily
+imbalance (positive crowding/herding), although client metaorders show a higher and statistically significant correlation value.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/prop_vs_nonprop/daily_crowding_daily_corr.png}
+    \caption{Daily correlations}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/prop_vs_nonprop/daily_crowding_rolling_5d.png}
+    \caption{5-day rolling mean}
+  \end{subfigure}
+  \caption{Daily within-group crowding: time series of
+  $r_d = \mathrm{Corr}(\varepsilon_i,\text{imb}_i^{k,d})$ for
+  proprietary and client metaorders, with confidence bands and 5-day
+  rolling averages.}
+  \label{fig:daily_crowding_local}
+\end{figure}
+
+\subsection{Daily crowding time series and cross-group crowding}
+
+As already stated in the previous section, to track how crowding evolves over time, we compute daily correlations
+between direction and orderflow imbalance:
+\begin{equation}
+  r_d = \mathrm{Corr}\bigl(\varepsilon_i, \text{imb}_i^{k,d} \,\big|\, \text{Date}=d\bigr),
+\end{equation}
+for each calendar date $d$ with at least a minimum number of
+metaorders (100). The time series $\{r_d\}$ is then plotted for proprietary
+and client flows separately, together with rolling averages (e.g. a
+5-day rolling mean) to smooth short-term fluctuations, as in
+Figure~\ref{fig:daily_crowding_local}.
+
+To study cross-group crowding, we construct an \emph{environment
+imbalance} based solely on the other group. For example, to ask whether
+proprietary metaorders trade with or against the imbalance generated by
+clients, we proceed as follows.
+
+Fix a source group $G_{\text{src}}$ (e.g.\ clients) and a target group
+$G_{\text{tgt}}$ (e.g.\ proprietary). For each instrument $k$ and day
+$d$, let $G_{k,d}^{\text{src}}$ be the set of metaorders in the source
+group on $(k,d)$. Define the environment imbalance for that $(k,d)$ as
+\begin{equation}
+  \mathrm{imb}^{\text{env}}_{k,d} =
+  \frac{\displaystyle \sum_{j \in G_{k,d}^{\text{src}}} Q_j \varepsilon_j}
+       {\displaystyle \sum_{j \in G_{k,d}^{\text{src}}} Q_j}.
+\end{equation}
+This is then attached to each target-group metaorder $i$ in the same
+$(k,d)$ as $\mathrm{imb}^{\text{env}}_i$.
+
+We compute daily correlations
+\begin{align}
+  r_d^{\text{prop}\mid\text{client}} &=
+     \mathrm{Corr}\bigl(\varepsilon_i^{\text{prop}}, \mathrm{imb}^{\text{env}}_i
+     \,\big|\, \text{Date}=d\bigr),
+     \\
+  r_d^{\text{client}\mid\text{prop}} &=
+     \mathrm{Corr}\bigl(\varepsilon_i^{\text{client}}, \mathrm{imb}^{\text{env}}_i
+     \,\big|\, \text{Date}=d\bigr),
+\end{align}
+where the environment is built from client or proprietary flow
+respectively.
+
+Empirically, over $251$ days:
+
+\begin{itemize}
+  \item $\bar{r}^{\text{prop}\mid\text{client}} = -0.018$,
+  \item $\bar{r}^{\text{client}\mid\text{prop}} = -0.003$.
+\end{itemize}
+
+(Add CI) Both numbers are slightly negative, indicating a (very) mild tendency for each
+group to trade \emph{against} the imbalance produced by the other group,
+which is reminiscent of the way different institutional styles interact
+in \cite{BucciEtAl2020}.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/prop_vs_nonprop/cross_crowding_daily_corr.png}
+    \caption{Daily correlations}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/prop_vs_nonprop/cross_crowding_rolling_5d.png}
+    \caption{5-day rolling mean}
+  \end{subfigure}
+  \caption{Cross-group crowding: daily correlations
+  $r_d^{\text{prop}\mid\text{client}}$ and
+  $r_d^{\text{client}\mid\text{prop}}$, with confidence bands and
+  smoothed curves.}
+  \label{fig:daily_crowding_cross}
+\end{figure}
+
+\subsection{Crowding vs all others}
+
+A third viewpoint concatenates proprietary and client flows, then
+computes orderflow imbalances of each metaorder against \emph{all other}
+metaorders (both groups) on the same stock and day:
+\begin{equation}
+  \mathrm{imb}^{\text{all}}_i =
+  \frac{\displaystyle \sum_{j \in G_{k,d}\setminus\{i\}} Q_j \varepsilon_j}
+       {\displaystyle \sum_{j \in G_{k,d}\setminus\{i\}} Q_j},
+\end{equation}
+where $G_{k,d}$ now contains both proprietary and client metaorders.
+The combined dataset is then split back into proprietary and client
+subsets, and daily correlations
+$\mathrm{Corr}(\varepsilon_i,\mathrm{imb}^{\text{all}}_i)$ are computed for each
+group.
+
+Aggregating over days, we obtain mean daily correlations:
+
+\begin{itemize}
+  \item proprietary vs all others:
+        $\bar{r}^{\text{prop}\mid\text{all}} \approx 0.041$;
+  \item client vs all others:
+        $\bar{r}^{\text{client}\mid\text{all}} \approx 0.112$.
+\end{itemize}
+
+Client flow again shows a stronger alignment with the overall daily
+imbalance than proprietary flow, reinforcing the picture that client
+metaorders are more crowded.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/prop_vs_nonprop/all_vs_all_crowding_daily_corr.png}
+    \caption{Daily correlations}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.7\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png}
+    \caption{5-day rolling mean}
+  \end{subfigure}
+  \caption{Crowding vs all others: daily correlations of $\varepsilon_i$ with the
+  imbalance from all other metaorders, and smoothed versions.}
+  \label{fig:all_vs_all_crowding}
+\end{figure}
+
+\subsection{Member level crowding}
+The final measure of interest---particularly from a regulatory perspective---is the correlation 
+between a member’s proprietary trading direction and the order-flow imbalance generated by the 
+clients whose metaorders were executed through that member. This indicator can be interpreted as 
+evidence that the member either \emph{provides liquidity} to its clients’ metaorders (negative correlation) 
+or \emph{trades in the same direction as the flow}, potentially amplifying the market impact of its 
+clients’ trades (positive correlation).
+
+For a given member $m$ and date $d$, let $\mathcal{C}_{m,d}$ denote the set of client metaorders executed 
+by member $m$ on day $d$, aggregated across all ISINs. We define the member-level client imbalance as
+\begin{equation}
+\text{imb}_{m,d}
+  = \frac{\sum_{j \in \mathcal{C}_{m,d}} Q_j \epsilon_j}
+         {\sum_{j \in \mathcal{C}_{m,d}} Q_j},
+\end{equation}
+where $Q_j$ and $\epsilon_j$ denote, respectively, the size and direction of client metaorder $j$.
+The statistic $\text{imb}_{m,d}$ is considered valid only when both the member and its associated 
+client cohort initiate at least 50 metaorders during day $d$. Using all valid observations across 
+all members and dates, the unconditional correlation between proprietary direction and client 
+imbalance is $-0.034$.
+
+A more informative analysis focuses on how this correlation evolves over time. Periods displaying 
+larger absolute values may signal episodes of \emph{front running} (when $\text{imb}_{m,d} > 0$) 
+or \emph{systematic liquidity provision} (when $\text{imb}_{m,d} < 0$). 
+Figure~\ref{fig:heatmap_imbcorr} reports a heatmap of the correlation computed over non-overlapping 
+5-day windows. Only correlation estimates with a permutation-test $p$-value below $0.05$ are shown. 
+As illustrated, several members exhibit persistent and statistically significant correlation patterns, 
+suggesting heterogeneous and potentially structural interactions between proprietary trading activity 
+and client flow.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{images/prop_vs_nonprop/member_prop_client_crowding_heatmap.png}
+    \caption{Heatmap of the correlation between member metaorder directions and the member related clients order-flow
+imbalance, computed over non-overlapping 5-day windows. Each cell is displayed only when both the proprietary desk and 
+its client cohort executed at least 10 metaorders in that window. Colors indicate the sign and magnitude of the correlation
+$\mathrm{corr}(\epsilon_i, \mathrm{imb}_{m,d})$, where red (blue) denotes positive (negative)
+association.. The figure highlights several members exhibiting
+persistent and statistically meaningful correlation patterns.}
+    \label{fig:heatmap_imbcorr}
+\end{figure}
+% \subsection{Daily metaorder count imbalance}
+
+% Finally, we compare how many metaorders each group executes per day,
+% independently of size or sign. Let $\mathrm{Prop}(d)$ and
+% $\mathrm{Client}(d)$ be the number of proprietary and client
+% metaorders on day $d$. Define the daily count imbalance
+% \begin{equation}
+%   \mathrm{imb}^{\text{count}}(d) =
+%   \frac{\mathrm{Prop}(d) - \mathrm{Client}(d)}
+%        {\mathrm{Prop}(d) + \mathrm{Client}(d)}.
+% \end{equation}
+% By construction:
+
+% \begin{itemize}
+%   \item values near $+1$ mean almost all metaorders are proprietary;
+%   \item values near $-1$ mean almost all are client;
+%   \item values near $0$ mean similar counts in both groups.
+% \end{itemize}
+
+% Over the full sample:
+% \begin{itemize}
+%   \item mean daily count imbalance:
+%         $\E[\mathrm{imb}^{\text{count}}] \approx +0.385$;
+%   \item standard deviation:
+%         $\mathrm{SD}[\mathrm{imb}^{\text{count}}] \approx 0.050$.
+% \end{itemize}
+
+% Thus, on a typical day, proprietary metaorders are substantially more
+% numerous than client metaorders {\bf FL: Non mi pare molto informativo, dato che sappiamo che il numero totale di metaordini proprietari e' piu' grande di quelli dei clienti}, even though clients exhibit stronger
+% crowding in terms of direction vs imbalance.
+
+% \begin{figure}[t]
+%   \centering
+%   \begin{subfigure}{0.7\textwidth}
+%     \centering
+%     \includegraphics[width=\textwidth]{images/prop_vs_nonprop/daily_counts_imbalance_timeseries.png}
+%     \caption{Time series}
+%   \end{subfigure}
+%   \hfill
+%   \begin{subfigure}{0.7\textwidth}
+%     \centering
+%     \includegraphics[width=\textwidth]{images/prop_vs_nonprop/daily_counts_imbalance_histogram.png}
+%     \caption{Distribution}
+%   \end{subfigure}
+%   \caption{Daily metaorder count imbalance
+%   $\mathrm{imb}^{\text{count}}(d)$: time series (left) and empirical
+%   distribution (right).}
+%   \label{fig:daily_count_imbalance}
+% \end{figure}
+
+\begin{thebibliography}{99}
+
+\bibitem{BouchaudFarmerLillo2008}
+J.-P.~Bouchaud, J.~D.~Farmer, and F.~Lillo.
+\newblock How markets slowly digest changes in supply and demand.
+\newblock \emph{In} T.~Hens and K.~R.~Schenk-Hopp\'e (eds.),
+\emph{Handbook of Financial Markets: Dynamics and Evolution}.
+Academic Press, 2008.
+
+\bibitem{MoroEtAl2009}
+E.~Moro, J.~Vicente, L.~G.~Moyano, A.~Gerig, J.~D.~Farmer, G.~Vaglica, F.~Lillo, and R.~N.~Mantegna.
+\newblock Market impact and trading profile of hidden orders in stock markets.
+\newblock \emph{Physical Review E} \textbf{80}(6), 066102, 2009.
+
+\bibitem{VaglicaEtAl2010}
+G.~Vaglica, F.~Lillo, and R.~N.~Mantegna.
+\newblock Statistical identification with hidden {Markov} models of large order splitting strategies in an equity market.
+\newblock \emph{New Journal of Physics} \textbf{12}(7), 075031, 2010.
+
+\bibitem{GomesWaelbroeck2015}
+C.~Gomes and H.~Waelbroeck.
+\newblock Is market impact a measure of the information value of trades? Market response to liquidity vs. informed metaorders.
+\newblock \emph{Quantitative Finance} \textbf{15}(5), 773--793, 2015.
+
+\bibitem{zarinelli}
+E.~Zarinelli, M.~Treccani, J.~D.~Farmer, and F.~Lillo.
+\newblock Beyond the square root: Evidence for logarithmic dependence of market impact on size and participation rate.
+\newblock \emph{Market Microstructure and Liquidity}, \textbf{1}(2):1550004, 2015.
+
+\bibitem{BucciEtAl2018}
+F.~Bucci, M.~Benzaquen, F.~Lillo, and J.-P.~Bouchaud.
+\newblock Slow decay of impact in equity markets: insights from the ANcerno database.
+\newblock \emph{Market Microstructure and Liquidity} \textbf{4}(3--4), 1950006, 2018.
+
+\bibitem{BriereEtAl2019}
+M.~Briere, C.-A.~Lehalle, T.~Nefedova, and A.~Raboun.
+\newblock Modelling transaction costs when trades may be crowded: a Bayesian network using partially observable orders imbalance.
+\newblock Book chapter, 2019.
+
+\bibitem{BucciEtAl2020}
+F.~Bucci, I.~Mastromatteo, Z.~Eisler, F.~Lillo, J.-P.~Bouchaud, and C.-A.~Lehalle.
+\newblock Co-impact: crowding effects in institutional trading activity.
+\newblock \emph{Quantitative Finance} \textbf{20}(2), 193--205, 2020.
+
+\bibitem{BucciEtAl2020Invariants}
+F.~Bucci, F.~Lillo, J.-P.~Bouchaud, and M.~Benzaquen.
+\newblock Are trading invariants really invariant? Trading costs matter.
+\newblock \emph{Quantitative Finance} \textbf{20}(7), 1059--1068, 2020.
+
+\bibitem{SatoKanazawa2024}
+Y.~Sato and K.~Kanazawa.
+\newblock Does the square-root price impact law belong to the strict universal scalings? Quantitative support by a complete survey of the Tokyo Stock Exchange market.
+\newblock Preprint, 2024.
+
+\bibitem{MaitrierEtAl2025}
+G.~Maitrier, G.~Loeper, and J.-P.~Bouchaud.
+\newblock Generating realistic metaorders from public data.
+\newblock arXiv preprint arXiv:2503.18199, 2025.
+
+\bibitem{NaviglioEtAl2025}
+M.~Naviglio, G.~Bormetti, F.~Campigli, G.~Rodikov, and F.~Lillo.
+\newblock Why is the estimation of metaorder impact with public market data so challenging?
+\newblock arXiv preprint arXiv:2501.17096, 2025.
+
+\bibitem{Guillaume2025}
+G.~Guillaume.
+\newblock The hidden complexity of price formation.
+\newblock PhD thesis, 2025.
+
+\bibitem{repo}
+D.~M.~Di~Nosse.
+\newblock Metaorders\_PriceImpact: Study of metaorder price impact using proprietary CONSOB data.
+\newblock GitHub repository, 2025. Available at \url{https://github.com/DanieleMDiNosse/Metaorders_PriceImpact}.
+
+
+
+
+\end{thebibliography}
+
+\end{document}

@@ -68,6 +68,13 @@ def _resolve_repo_path(value: str) -> Path:
     return path
 
 
+def _resolve_opt_repo_path(value: Optional[str | Path], default: Path) -> Path:
+    """Resolve a path, falling back to `default` when the config value is None."""
+    if value is None:
+        return _resolve_repo_path(str(default))
+    return _resolve_repo_path(str(value))
+
+
 # Sizes tuned for print-friendly plots (loaded from YAML)
 TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
 LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
@@ -114,8 +121,21 @@ builtins.print = log_print
 # ---------------------------------------------------------------------
 # Configuration (loaded from YAML)
 # ---------------------------------------------------------------------
-PROP_PATH = _resolve_repo_path(str(_cfg_require("PROP_PATH")))
-CLIENT_PATH = _resolve_repo_path(str(_cfg_require("CLIENT_PATH")))
+DATASET_NAME = str(_CFG.get("DATASET_NAME") or "ftsemib")
+DATA_ROOT = _resolve_repo_path(str(_CFG.get("DATA_ROOT") or "data"))
+OUT_ROOT = _resolve_repo_path(str(_CFG.get("OUT_ROOT") or "out_files"))
+IMG_ROOT = _resolve_repo_path(str(_CFG.get("IMG_ROOT") or "images"))
+
+_prop_path_cfg = _CFG.get("PROP_PATH")
+_client_path_cfg = _CFG.get("CLIENT_PATH")
+PROP_PATH = _resolve_opt_repo_path(
+    _prop_path_cfg,
+    Path(OUT_ROOT) / DATASET_NAME / "metaorders_info_sameday_filtered_member_proprietary.parquet",
+)
+CLIENT_PATH = _resolve_opt_repo_path(
+    _client_path_cfg,
+    Path(OUT_ROOT) / DATASET_NAME / "metaorders_info_sameday_filtered_member_non_proprietary.parquet",
+)
 
 ALPHA = float(_cfg_require("ALPHA"))  # significance level for confidence intervals
 BOOTSTRAP_RUNS = int(_cfg_require("BOOTSTRAP_RUNS"))  # number of permutation/bootstraps for p-values
@@ -123,14 +143,18 @@ P_VALUE_THRESHOLD = float(_cfg_require("P_VALUE_THRESHOLD"))  # significance cut
 MIN_N = int(_cfg_require("MIN_N"))  # minimum number of metaorders per day to include in the analysis
 SMOOTHING_DAYS = int(_cfg_require("SMOOTHING_DAYS"))  # number of days to smooth the correlation
 MIN_METAORDERS_PER_MEMBER = int(_cfg_require("MIN_METAORDERS_PER_MEMBER"))
+N_MIN_PER_MEMBER_CLIENT = int(_cfg_require("N_MIN_PER_MEMBER_CLIENT"))
 MEMBER_WINDOW_DAYS = int(_cfg_require("MEMBER_WINDOW_DAYS"))
-PLOT_DIR = _resolve_repo_path(str(_cfg_require("PLOT_DIR")))
+PLOT_DIR = _resolve_opt_repo_path(
+    _CFG.get("PLOT_DIR"), Path(IMG_ROOT) / DATASET_NAME / "prop_vs_nonprop"
+)
 
 # Daily returns / imbalance-return scatter
 ATTACH_DAILY_RETURNS = bool(_cfg_require("ATTACH_DAILY_RETURNS"))
 PLOT_IMBALANCE_VS_RETURNS = bool(_cfg_require("PLOT_IMBALANCE_VS_RETURNS"))
-RETURNS_DATA_DIR = _resolve_repo_path(str(_cfg_require("RETURNS_DATA_DIR")))
-RETURNS_USE_MOT_DATA = bool(_cfg_require("RETURNS_USE_MOT_DATA"))
+RETURNS_DATA_DIR = _resolve_opt_repo_path(
+    _CFG.get("RETURNS_DATA_DIR"), Path(DATA_ROOT) / DATASET_NAME
+)
 RETURNS_TRADING_HOURS = tuple(_cfg_require("RETURNS_TRADING_HOURS"))
 DAILY_RETURN_COL = str(_cfg_require("DAILY_RETURN_COL"))
 
@@ -150,27 +174,29 @@ RUN_METAORDER_DICT_STATS = bool(_cfg_require("RUN_METAORDER_DICT_STATS"))
 METAORDER_STATS_LEVEL = str(_cfg_require("METAORDER_STATS_LEVEL"))
 METAORDER_STATS_PROPRIETARY = bool(_cfg_require("METAORDER_STATS_PROPRIETARY"))
 METAORDER_STATS_PROPRIETARY_TAG = "proprietary" if METAORDER_STATS_PROPRIETARY else "non_proprietary"
-METAORDER_STATS_USE_MOT_DATA = bool(_cfg_require("METAORDER_STATS_USE_MOT_DATA"))
-METAORDER_STATS_DATA_DIR = _resolve_repo_path(str(_cfg_require("METAORDER_STATS_DATA_DIR")))
+METAORDER_STATS_DATA_DIR = _resolve_opt_repo_path(
+    _CFG.get("METAORDER_STATS_DATA_DIR"), Path(DATA_ROOT) / DATASET_NAME
+)
 _stats_parquet_override = _CFG.get("METAORDER_STATS_PARQUET_DIR")
 METAORDER_STATS_PARQUET_DIR = (
-    _resolve_repo_path(str(_stats_parquet_override))
-    if _stats_parquet_override
-    else METAORDER_STATS_DATA_DIR
+    _resolve_opt_repo_path(_stats_parquet_override, METAORDER_STATS_DATA_DIR)
 )
-METAORDER_STATS_OUT_DIR = _resolve_repo_path(str(_cfg_require("METAORDER_STATS_OUT_DIR")))
+METAORDER_STATS_OUT_DIR = _resolve_opt_repo_path(
+    _CFG.get("METAORDER_STATS_OUT_DIR"), Path(OUT_ROOT) / DATASET_NAME
+)
 _stats_dict_override = _CFG.get("METAORDER_STATS_DICT_PATH")
 METAORDER_STATS_DICT_PATH = (
-    _resolve_repo_path(str(_stats_dict_override))
-    if _stats_dict_override
-    else METAORDER_STATS_OUT_DIR
-    / f"metaorders_dict_all_{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}.pkl"
+    _resolve_opt_repo_path(
+        _stats_dict_override,
+        METAORDER_STATS_OUT_DIR / f"metaorders_dict_all_{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}.pkl",
+    )
 )
 _stats_img_override = _CFG.get("METAORDER_STATS_IMG_DIR")
 METAORDER_STATS_IMG_DIR = (
-    _resolve_repo_path(str(_stats_img_override))
-    if _stats_img_override
-    else _resolve_repo_path(f"images/{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}")
+    _resolve_opt_repo_path(
+        _stats_img_override,
+        Path(IMG_ROOT) / DATASET_NAME / f"{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}",
+    )
 )
 
 # ---------------------------------------------------------------------
@@ -285,11 +311,7 @@ def extract_date(period_list):
 # ---------------------------------------------------------------------
 # Daily returns helpers
 # ---------------------------------------------------------------------
-def _is_mot_name(name: str) -> bool:
-    return "MOT" in name.upper()
-
-
-def list_isin_parquet_paths(data_dir: Path, use_mot_data: bool = False) -> List[Path]:
+def list_isin_parquet_paths(data_dir: Path) -> List[Path]:
     if not data_dir.exists():
         print(f"[Daily returns] Data directory not found: {data_dir}")
         return []
@@ -299,11 +321,6 @@ def list_isin_parquet_paths(data_dir: Path, use_mot_data: bool = False) -> List[
         if not name.endswith(".parquet"):
             continue
         if path.stem.upper() == "ALTRI_FTSEMIB":
-            continue
-        is_mot = _is_mot_name(name)
-        if use_mot_data and not is_mot:
-            continue
-        if (not use_mot_data) and is_mot:
             continue
         paths.append(path)
     return sorted(paths)
@@ -337,14 +354,13 @@ def compute_daily_returns_for_path(parquet_path: Path, trading_hours: Tuple[str,
 def build_daily_returns_lookup(
     data_dir: Path,
     isins: Sequence[str],
-    use_mot_data: bool = False,
     trading_hours: Tuple[str, str] = ("09:30:00", "17:30:00"),
 ) -> Dict[Tuple[str, dt.date], float]:
     isin_set = {str(isin) for isin in isins if pd.notna(isin)}
     if not isin_set:
         return {}
 
-    paths = list_isin_parquet_paths(data_dir, use_mot_data=use_mot_data)
+    paths = list_isin_parquet_paths(data_dir)
     paths = [p for p in paths if p.stem in isin_set]
     lookup: Dict[Tuple[str, dt.date], float] = {}
     for path in tqdm(paths, desc="Computing daily returns per ISIN"):
@@ -439,18 +455,13 @@ def plot_pdf_line(
 # ---------------------------------------------------------------------
 # Metaorder dictionary statistics (durations, volumes, inter-arrivals)
 # ---------------------------------------------------------------------
-def list_metaorder_parquet_paths(data_dir: Path, use_mot_data: bool) -> List[Path]:
+def list_metaorder_parquet_paths(data_dir: Path) -> List[Path]:
     if not data_dir.exists():
         print(f"[Metaorder stats] Parquet directory not found: {data_dir}")
         return []
     paths: List[Path] = []
     for path in sorted(data_dir.iterdir()):
         if path.suffix.lower() != ".parquet":
-            continue
-        is_mot = _is_mot_name(path.name)
-        if use_mot_data and not is_mot:
-            continue
-        if (not use_mot_data) and is_mot:
             continue
         paths.append(path)
     return paths
@@ -469,10 +480,11 @@ def load_trades_filtered_for_stats(
         trades = trades[trades["Trade Type Aggressive"] != "Dealing_on_own_account"].copy()
     # proprietary=None -> no filter (full tape)
     start, end = trading_hours
-    trades = trades[
-        (trades["Trade Time"].dt.time >= pd.to_datetime(start).time())
-        & (trades["Trade Time"].dt.time <= pd.to_datetime(end).time())
-    ].copy()
+    if trading_hours != None:
+        trades = trades[
+            (trades["Trade Time"].dt.time >= pd.to_datetime(start).time())
+            & (trades["Trade Time"].dt.time <= pd.to_datetime(end).time())
+        ].copy()
     trades = trades.reset_index(drop=True)
     trades["__row_id__"] = np.arange(len(trades), dtype=np.int64)
     trades.sort_values(["Trade Time", "__row_id__"], kind="mergesort", inplace=True)
@@ -486,7 +498,6 @@ def run_metaorder_dict_statistics(
     parquet_dir: Path,
     img_dir: Path,
     proprietary: bool,
-    use_mot_data: bool,
     trading_hours: Tuple[str, str] = ("09:30:00", "17:30:00"),
 ) -> None:
     if not metaorders_dict_path.exists():
@@ -501,9 +512,9 @@ def run_metaorder_dict_statistics(
         print(f"[Metaorder stats] Failed to load {metaorders_dict_path}: {exc}")
         return
 
-    parquet_paths = list_metaorder_parquet_paths(parquet_dir, use_mot_data=use_mot_data)
+    parquet_paths = list_metaorder_parquet_paths(parquet_dir)
     if not parquet_paths:
-        print(f"[Metaorder stats] No parquet files found in {parquet_dir} (use_mot_data={use_mot_data}).")
+        print(f"[Metaorder stats] No parquet files found in {parquet_dir}.")
         return
 
     print("[Metaorder stats] Building aggregated statistics and density plots...")
@@ -1193,6 +1204,7 @@ def run_member_level_prop_client_crowding_analysis(
     out_prefix: str = "member_prop_client_crowding",
     make_plots: bool = True,
     member_window_days: int = MEMBER_WINDOW_DAYS,
+    n_min_per_member_client: int = N_MIN_PER_MEMBER_CLIENT,
 ) -> None:
     """
     Member-level crowding between proprietary direction and client flow:
@@ -1396,7 +1408,7 @@ def run_member_level_prop_client_crowding_analysis(
             r_win = float("nan")
             p_win = float("nan")
             n_win = len(g)
-            if n_prop >= 10 and n_client >= 10:
+            if n_prop >= n_min_per_member_client and n_client >= n_min_per_member_client:
                 r_win_b, p_win, n_win = corr_with_bootstrap_p(
                     g["Direction"], g[env_col], n_bootstrap=BOOTSTRAP_RUNS
                 )
@@ -1446,7 +1458,7 @@ def run_member_level_prop_client_crowding_analysis(
                 ax.set_xlabel("Member")
                 ax.set_ylabel(f"{member_window_days}-day window (non-overlapping)")
                 ax.set_title(
-                    rf"Member-level crowding ({member_window_days}-day blocks, $n_{{\mathrm{{prop}}}}\geq 10$ & $n_{{\mathrm{{client}}}}\geq 10$)"
+                    rf"Member-level crowding ({member_window_days}-day blocks, $n_{{\mathrm{{prop}}}}\geq {n_min_per_member_client}$ & $n_{{\mathrm{{client}}}}\geq {n_min_per_member_client}$)"
                 )
                 plt.tight_layout()
                 heatmap_path = out_prefix_path.parent / f"{out_prefix_path.name}_heatmap.png"
@@ -2032,7 +2044,6 @@ def main() -> None:
             parquet_dir=METAORDER_STATS_PARQUET_DIR,
             img_dir=METAORDER_STATS_IMG_DIR,
             proprietary=METAORDER_STATS_PROPRIETARY,
-            use_mot_data=METAORDER_STATS_USE_MOT_DATA,
             trading_hours=RETURNS_TRADING_HOURS,
         )
 
@@ -2099,7 +2110,6 @@ def main() -> None:
         daily_returns = build_daily_returns_lookup(
             RETURNS_DATA_DIR,
             isins=all_isins,
-            use_mot_data=RETURNS_USE_MOT_DATA,
             trading_hours=RETURNS_TRADING_HOURS,
         )
         if not daily_returns and (DAILY_RETURN_COL in metaorders_proprietary.columns) and (
