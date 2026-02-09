@@ -73,7 +73,7 @@ $$
 	  = \frac{\sum_{j \in \mathcal{G}_{k,d}\setminus\{i\}} Q_j \epsilon_j}
 	         {\sum_{j \in \mathcal{G}_{k,d}\setminus\{i\}} Q_j},
 	$$
-	where $\mathcal{G}_{k,d}$ are the other metaorders on the same $(k,d)$. Days with a single metaorder yield `NaN` for this field. This is computed separately for proprietary and client flow.
+where $\mathcal{G}_{k,d}$ are the other metaorders on the same $(k,d)$. Days with a single metaorder yield `NaN` for this field. This is computed separately for proprietary and client flow.
 
 In code, this is handled by:
 

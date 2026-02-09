@@ -80,7 +80,7 @@ import plotly.io as pio
 # Config
 # ---------------------------------------------------------------------
 DATA_DIR = Path(__file__).resolve().parent / "data"
-PLOT_DIR = Path(__file__).resolve().parent / "images" / "member_statistics"
+PLOT_DIR = Path(__file__).resolve().parent / "images" / "ftsemib" / "member_statistics"
 HTML_DIR = PLOT_DIR / "html"
 PNG_DIR = PLOT_DIR / "png"
 TRADING_HOURS = ("09:30:00", "17:30:00")

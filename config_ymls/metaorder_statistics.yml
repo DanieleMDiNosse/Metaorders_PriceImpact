@@ -20,12 +20,13 @@ CLIENT_PATH: null
 # Correlation / inference
 ALPHA: 0.05
 BOOTSTRAP_RUNS: 100
+BOOTSTRAP_HEATMAP: false  # if false: skip permutation p-values and don't filter heatmap cells by significance
 P_VALUE_THRESHOLD: 0.05
 MIN_N: 100
 SMOOTHING_DAYS: 5
 MIN_METAORDERS_PER_MEMBER: 30
 N_MIN_PER_MEMBER_CLIENT: 5
-MEMBER_WINDOW_DAYS: 1
+MEMBER_WINDOW_DAYS: 3
 PLOT_DIR: null  # defaults to images/{DATASET_NAME}/prop_vs_nonprop
 
 # Daily returns / scatter

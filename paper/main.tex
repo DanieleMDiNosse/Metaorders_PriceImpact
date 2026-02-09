@@ -200,16 +200,16 @@ Table \ref{tab:metaorders_numbers} summarize the number of metaorders for each g
 \hline
 \textbf{Category} & \textbf{Initial Number} & \textbf{After Min Trades} & \textbf{After Min Duration} \\
 \hline
-Proprietary & 2774536 & 866443 & 588545 \\
-Client      & 986951   & 307620 & 255976 \\
+Proprietary & 2774308 & 866165 & 588408 \\
+Client      & 987575   & 307777 & 256184 \\
 \hline
 \end{tabular}
 \caption{Metaorder counts for Proprietary vs Client across filtering steps (min trades set to 5, min duration to 120 seconds).}
 \label{tab:metaorders_numbers}
 \end{table}
 
-Finally, in the current dataset there are  $588545$
-proprietary metaorders and $255976$ client metaorders, spanning
+Finally, in the current dataset there are  $588408$
+proprietary metaorders and $256184$ client metaorders, spanning
 $41$ ISINs and $251$ trading days between 2024/06/03 and 2025/05/30. Approximately 33\% of all trades were detected to be part of a metaorder.
 
 \subsection{Per-metaorder quantities}
@@ -406,8 +406,8 @@ Execution participation rates $\eta_i$ are moderate on average.
 Aggregating across instruments and days, we find:
 
 \begin{itemize}
-  \item proprietary metaorders: mean $\eta \approx 0.31$;
-  \item client metaorders: mean $\eta \approx 0.23$.
+  \item proprietary metaorders: mean $\eta \approx 0.136$;
+  \item client metaorders: mean $\eta \approx 0.085$.
 \end{itemize}
 
 The corresponding distributions are shown in Figure~\ref{fig:eta}.
@@ -521,8 +521,8 @@ Last but not least, we computed the autocorellation function of the signs of the
 \begin{figure}
     \centering
     \includegraphics[width=0.8\linewidth]{images/prop_vs_nonprop/acf/IT0000062072_acf.png}
-    \label{fig:autocorr_metaorders}
     \caption{Example of autocorrelation of metaorder signs. ISIN IT0000062072 (Generali Assicurazioni SpA)}
+    \label{fig:autocorr_metaorders}
 \end{figure}
 
 \subsection{Impact models}
@@ -582,7 +582,7 @@ Alongside the power law, we fit the logarithmic specification $\bar{I}_k = a \lo
 
 \paragraph{Empirical impact curves.}
 
-Applying this procedure separately to proprietary and client metaorders yields two sets of impact curves, as shown in Figure \ref{fig:impact_vs_size}
+Applying this procedure separately to proprietary and client metaorders yields two sets of impact curves, as shown in Figure \ref{fig:impact_vs_size}. With the participation-rate filter $\mathrm{PR} < 1.0$, we obtain $N_{\text{prop}}: 588{,}199 \to 588{,}037$ with $\gamma_{\text{prop}} = 0.366198 \pm 0.00828$ and $N_{\text{client}}: 255{,}348 \to 255{,}312$ with $\gamma_{\text{client}} = 0.507990 \pm 0.0228$.
 
 The analysis can be refined by conditioning on participation rate
 $\eta_i$. Splitting metaorders into quantiles of $\eta_i$ and repeating
@@ -651,8 +651,8 @@ summarised in Figure \ref{fig:impact_vs_size}, Figure \ref{fig:impact_by_partici
     \includegraphics[width=\textwidth]{images/member_proprietary/impact_surface_qv_participation_heatmap_member_proprietary.png}
     \caption{Proprietary}
   \end{subfigure}
-  \caption{Impact curves conditional on participation rate for client and proprietary flow.}
-  \label{fig:impact_by_participation}
+  \caption{Impact surface heatmaps in $(Q/V,\eta)$ for client and proprietary flow.}
+  \label{fig:heatmap_impact_by_participation}
 \end{figure}
 
 \subsection{Execution and aftermath impact paths}
@@ -832,8 +832,8 @@ On the current dataset, within-group orderflow imbalance statistics are:
   \item \textbf{Proprietary flow.}
     \begin{itemize}
       \item Global correlation:
-            $r = 0.108$ with $95\%$ CI $[0.105, 0.110]$,
-            $n = 588545$ metaorders.
+            $r = 0.108$ with $95\%$ CI $[0.106, 0.111]$,
+            $n = 588199$ metaorders.
       % \item Conditional means over all days all members and all ISINs:
       %       \[
       %         \E[\mathrm{imb} \mid \varepsilon=+1] \approx -0.024, \quad
@@ -846,15 +846,15 @@ On the current dataset, within-group orderflow imbalance statistics are:
   \item \textbf{Client flow.}
     \begin{itemize}
       \item Global correlation:
-            $r = 0.187$ with $95\%$ CI $[0.183, 0.191]$,
-            $n = 255976$ metaorders.
+            $r = 0.187$ with $95\%$ CI $[0.184, 0.191]$,
+            $n = 255182$ metaorders.
       % \item Conditional means over all days all members and all ISINs:
       %       \[
       %         \E[\mathrm{imb} \mid \varepsilon=+1] \approx +0.088, \quad
       %         \E[\mathrm{imb} \mid \varepsilon=-1] \approx -0.087.
       %       \]
       \item Mean daily correlation:
-            $\bar{r}_{\text{client}} \approx 0.168$ over $251$ days.
+            $\bar{r}_{\text{client}} \approx 0.169$ over $251$ days.
     \end{itemize}
 \end{itemize}
 
@@ -1020,28 +1020,32 @@ by member $m$ on day $d$, aggregated across all ISINs. We define the member-leve
 \end{equation}
 where $Q_j$ and $\epsilon_j$ denote, respectively, the size and direction of client metaorder $j$.
 The statistic $\text{imb}_{m,d}$ is considered valid only when both the member and its associated 
-client cohort initiate at least 50 metaorders during day $d$. Using all valid observations across 
-all members and dates, the unconditional correlation between proprietary direction and client 
-imbalance is $-0.034$.
+client cohort initiate a sufficient number of metaorders during day $d$. Using members with at least 30 proprietary and 30 client metaorders over the sample, the mean per-member correlation between proprietary direction and client imbalance is $0.003$.
 
 A more informative analysis focuses on how this correlation evolves over time. Periods displaying 
 larger absolute values may signal episodes of \emph{front running} (when $\text{imb}_{m,d} > 0$) 
 or \emph{systematic liquidity provision} (when $\text{imb}_{m,d} < 0$). 
 Figure~\ref{fig:heatmap_imbcorr} reports a heatmap of the correlation computed over non-overlapping 
-5-day windows. Only correlation estimates with a permutation-test $p$-value below $0.05$ are shown. 
+3-day windows. 
 As illustrated, several members exhibit persistent and statistically significant correlation patterns, 
 suggesting heterogeneous and potentially structural interactions between proprietary trading activity 
 and client flow.
 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/prop_vs_nonprop/member_prop_client_crowding_hist.png}
+    \caption{Per-member correlations between proprietary trading direction and member-level client imbalance (members with at least 30 proprietary and 30 client metaorders).}
+    \label{fig:hist_imbcorr}
+\end{figure}
 
 \begin{figure}
     \centering
-    \includegraphics[width=1\linewidth]{images/prop_vs_nonprop/member_prop_client_crowding_heatmap.png}
+    \includegraphics[width=1\linewidth]{images/prop_vs_nonprop/member_prop_client_crowding_heatmap_3d.png}
     \caption{Heatmap of the correlation between member metaorder directions and the member related clients order-flow
-imbalance, computed over non-overlapping 5-day windows. Each cell is displayed only when both the proprietary desk and 
-its client cohort executed at least 10 metaorders in that window. Colors indicate the sign and magnitude of the correlation
+imbalance, computed over non-overlapping 3-day windows. Each cell is displayed only when both the proprietary desk and 
+its client cohort executed at least 5 metaorders in that window. Colors indicate the sign and magnitude of the correlation
 $\mathrm{corr}(\epsilon_i, \mathrm{imb}_{m,d})$, where red (blue) denotes positive (negative)
-association.. The figure highlights several members exhibiting
+association. The figure highlights several members exhibiting
 persistent and statistically meaningful correlation patterns.}
     \label{fig:heatmap_imbcorr}
 \end{figure}

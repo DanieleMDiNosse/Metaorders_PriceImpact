@@ -141,6 +141,7 @@ CLIENT_PATH = _resolve_opt_repo_path(
 
 ALPHA = float(_cfg_require("ALPHA"))  # significance level for confidence intervals
 BOOTSTRAP_RUNS = int(_cfg_require("BOOTSTRAP_RUNS"))  # number of permutation/bootstraps for p-values
+BOOTSTRAP_HEATMAP = bool(_cfg_require("BOOTSTRAP_HEATMAP"))  # toggle permutation test + significance filtering in heatmaps
 P_VALUE_THRESHOLD = float(_cfg_require("P_VALUE_THRESHOLD"))  # significance cutoff for filtering plotted correlations
 MIN_N = int(_cfg_require("MIN_N"))  # minimum number of metaorders per day to include in the analysis
 SMOOTHING_DAYS = int(_cfg_require("SMOOTHING_DAYS"))  # number of days to smooth the correlation
@@ -1408,7 +1409,9 @@ def run_member_level_prop_client_crowding_analysis(
         df_win = df_win.merge(client_counts, on=["Member", "Window"], how="left")
         df_win["n_client"] = df_win["n_client"].fillna(0).astype(int)
 
-        # Compute correlations per (Member, Window) with minimum counts and p-value filtering
+        # Compute correlations per (Member, Window) with minimum counts.
+        # If BOOTSTRAP_HEATMAP is True, we also compute permutation p-values and
+        # filter non-significant cells (set them to NaN) before plotting.
         window_rows = []
         grouped_win = df_win.groupby(["Member", "Window"], sort=True)
         for (member, window_label), g in grouped_win:
@@ -1418,12 +1421,11 @@ def run_member_level_prop_client_crowding_analysis(
             p_win = float("nan")
             n_win = len(g)
             if n_prop >= n_min_per_member_client and n_client >= n_min_per_member_client:
+                n_boot = BOOTSTRAP_RUNS if BOOTSTRAP_HEATMAP else 0
                 r_win_b, p_win, n_win = corr_with_bootstrap_p(
-                    g["Direction"], g[env_col], n_bootstrap=BOOTSTRAP_RUNS
+                    g["Direction"], g[env_col], n_bootstrap=n_boot
                 )
-                if p_win > P_VALUE_THRESHOLD:
-                    r_win = float("nan")
-                else:
+                if (not BOOTSTRAP_HEATMAP) or (not np.isfinite(p_win)) or (p_win <= P_VALUE_THRESHOLD):
                     r_win = r_win_b
             window_rows.append(
                 {
@@ -1470,7 +1472,7 @@ def run_member_level_prop_client_crowding_analysis(
                     rf"Member-level crowding ({member_window_days}-day blocks, $n_{{\mathrm{{prop}}}}\geq {n_min_per_member_client}$ & $n_{{\mathrm{{client}}}}\geq {n_min_per_member_client}$)"
                 )
                 plt.tight_layout()
-                heatmap_path = out_prefix_path.parent / f"{out_prefix_path.name}_heatmap.png"
+                heatmap_path = out_prefix_path.parent / f"{out_prefix_path.name}_heatmap_{member_window_days}d.png"
                 fig.savefig(heatmap_path, bbox_inches="tight")
                 plt.close(fig)
                 print(f"[Member crowding] Saved member–window heatmap to: {heatmap_path}")

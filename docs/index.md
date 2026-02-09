@@ -233,15 +233,15 @@ The numbers below are copied from the committed log files to avoid fabricating r
 
 | Component | Group | Logged timestamp | Logged result |
 |---|---|---:|---|
-| Impact WLS (after `PR < 1.0`) | Proprietary | 2025-12-19 | $N$: 588,336 → 588,174; $\gamma = 0.366208 \pm 0.00828$ |
-| Impact WLS (after `PR < 1.0`) | Client (non-proprietary) | 2025-12-19 | $N$: 255,140 → 255,104; $\gamma = 0.508227 \pm 0.0226$ |
-| Daily crowding (mean corr, `n >= 100`) | Proprietary | 2025-12-17 | mean corr: 0.081 |
-| Daily crowding (mean corr, `n >= 100`) | Client (non-proprietary) | 2025-12-17 | mean corr: 0.168 |
-| Cross crowding (mean corr, `n >= 100`) | Prop vs client env | 2025-12-17 | mean corr: -0.018 |
-| Cross crowding (mean corr, `n >= 100`) | Client vs prop env | 2025-12-17 | mean corr: -0.003 |
-| All-vs-all crowding (mean corr, `n >= 100`) | Prop vs all | 2025-12-17 | mean corr: 0.041 |
-| All-vs-all crowding (mean corr, `n >= 100`) | Client vs all | 2025-12-17 | mean corr: 0.112 |
-| Member-level prop–client crowding | Per-member mean (threshold `n >= 30`) | 2025-12-17 | mean per-member corr: -0.003 |
+| Impact WLS (after `PR < 1.0`) | Proprietary | 2026-02-05 | $N$: 588,199 → 588,037; $\gamma = 0.366198 \pm 0.00828$ |
+| Impact WLS (after `PR < 1.0`) | Client (non-proprietary) | 2026-02-05 | $N$: 255,348 → 255,312; $\gamma = 0.507990 \pm 0.0228$ |
+| Daily crowding (mean corr, `n >= 100`) | Proprietary | 2026-02-05 | mean corr: 0.081 |
+| Daily crowding (mean corr, `n >= 100`) | Client (non-proprietary) | 2026-02-05 | mean corr: 0.169 |
+| Cross crowding (mean corr, `n >= 100`) | Prop vs client env | 2026-02-05 | mean corr: -0.018 |
+| Cross crowding (mean corr, `n >= 100`) | Client vs prop env | 2026-02-05 | mean corr: -0.003 |
+| All-vs-all crowding (mean corr, `n >= 100`) | Prop vs all | 2026-02-05 | mean corr: 0.041 |
+| All-vs-all crowding (mean corr, `n >= 100`) | Client vs all | 2026-02-05 | mean corr: 0.112 |
+| Member-level prop–client crowding | Per-member mean (threshold `n >= 30`) | 2026-02-05 | mean per-member corr: 0.003 |
 
 ---
 
@@ -305,6 +305,8 @@ Figures are embedded by referencing the existing repository paths (relative to t
 
 ![Prop vs client impact overlay](../images/ftsemib/prop_vs_nonprop/power_law_prop_vs_nonprop.png)
 
+Note: this overlay refits the `metaorders_info_sameday_filtered_*` tables (Q/V-filtered) and does not apply the `PR < 1.0` filter used in the snapshot table above.
+
 ### Impact surface (heatmaps + interactive HTML)
 
 **Heatmaps**
@@ -329,9 +331,10 @@ These are standalone HTML files; open them locally in a browser for interactivit
 
 **Rolling correlations (5-day smoothing in the shipped artifact set)**
 
-| Within-group | Cross-group | All-vs-all |
-|---|---|---|
-| ![Within-group rolling correlation](../images/ftsemib/prop_vs_nonprop/daily_crowding_rolling_5d.png) | ![Cross-group rolling correlation](../images/ftsemib/prop_vs_nonprop/cross_crowding_rolling_5d.png) | ![All-vs-all rolling correlation](../images/ftsemib/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png) |
+| Within-group | Cross-group |
+|---|---|
+| ![Within-group rolling correlation](../images/ftsemib/prop_vs_nonprop/daily_crowding_rolling_5d.png) | ![Cross-group rolling correlation](../images/ftsemib/prop_vs_nonprop/cross_crowding_rolling_5d.png) 
+<!-- | ![All-vs-all rolling correlation](../images/ftsemib/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png) | -->
 
 **Diagnostics and member-level summaries**
 
@@ -341,7 +344,7 @@ These are standalone HTML files; open them locally in a browser for interactivit
 
 | Per-member correlations | Member × window heatmap |
 |---|---|
-| ![Member prop-client crowding per member](../images/ftsemib/prop_vs_nonprop/member_prop_client_crowding_hist.png) | ![Member prop-client crowding heatmap](../images/ftsemib/prop_vs_nonprop/member_prop_client_crowding_heatmap.png) |
+| ![Member prop-client crowding per member](../images/ftsemib/prop_vs_nonprop/member_prop_client_crowding_hist.png) | ![Member prop-client crowding heatmap](../images/ftsemib/prop_vs_nonprop/member_prop_client_crowding_heatmap_3d.png) |
 
 Additional per-ISIN ACF diagnostics are available under:
 `images/ftsemib/prop_vs_nonprop/acf/` (see `../images/ftsemib/prop_vs_nonprop/acf/`; one PNG per ISIN).

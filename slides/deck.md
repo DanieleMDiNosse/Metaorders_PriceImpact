@@ -26,12 +26,22 @@ style: |
 
   /* Reliable two-column figure sizing (avoid relying on inline style attributes) */
   .cols img {
-    width: 92%;
+    width: var(--img-w, 92%);
     height: auto;
-    max-height: 55vh;
+    max-height: var(--img-maxh, 55vh);
     object-fit: contain;
     display: block;
     margin: 0 auto;
+  }
+
+  /* Single-figure slides: tweak sizing via CSS variables on the wrapper */
+  .figure { text-align: center; }
+  .figure img {
+    width: var(--w, 92%);
+    height: var(--h, auto);
+    max-height: var(--maxh, 60vh);
+    object-fit: contain;
+    display: inline-block;
   }
 ---
 
@@ -156,7 +166,9 @@ $$
 
 ## Impact results (Dec 19, 2025 snapshot)
 
-![Overlay of fitted impact curves](assets/figures/impact_overlay_prop_vs_client.png)
+<div class="figure">
+  <img src="assets/figures/impact_overlay_prop_vs_client.png" alt="Overlay of fitted impact curves" />
+</div>
 
 - **Estimated power-law exponents** (after participation-rate filter):
   - Proprietary: $\gamma = 0.366 \pm 0.008$
@@ -167,9 +179,16 @@ $$
 
 ## Impact surface: size × participation
 
-| Proprietary | Client |
-|---|---|
-| ![Impact surface heatmap (prop)](assets/figures/impact_surface_prop_heatmap.png) | ![Impact surface heatmap (client)](assets/figures/impact_surface_client_heatmap.png) |
+<div class="cols">
+  <div class="col">
+    <div class="small muted" style="text-align: center;">Proprietary</div>
+    <img src="assets/figures/impact_surface_prop_heatmap.png" alt="Impact surface heatmap (prop)" />
+  </div>
+  <div class="col">
+    <div class="small muted" style="text-align: center;">Client</div>
+    <img src="assets/figures/impact_surface_client_heatmap.png" alt="Impact surface heatmap (client)" />
+  </div>
+</div>
 
 - The surface summarizes how mean impact varies jointly with relative size $\phi$ and participation $\eta$.
 - Takeaway: conditioning on participation can change the apparent scaling seen in 1D curves.
@@ -178,9 +197,16 @@ $$
 
 ## Time-resolved impact: during execution + aftermath
 
-| Proprietary | Client |
-|---|---|
-| ![Normalized impact path (prop)](assets/figures/impact_path_prop.png) | ![Normalized impact path (client)](assets/figures/impact_path_client.png) |
+<div class="cols">
+  <div class="col">
+    <div class="small muted" style="text-align: center;">Proprietary</div>
+    <img src="assets/figures/impact_path_prop.png" alt="Normalized impact path (prop)" />
+  </div>
+  <div class="col">
+    <div class="small muted" style="text-align: center;">Client</div>
+    <img src="assets/figures/impact_path_client.png" alt="Normalized impact path (client)" />
+  </div>
+</div>
 
 - Average normalized trajectories quantify impact build-up during execution and the post-trade evolution.
 
@@ -209,7 +235,7 @@ Key design choice:
 
 ## Within-group crowding over time (Dec 17, 2025 snapshot)
 
-![Rolling correlations (within-group)](assets/figures/crowding_within_rolling_5d.png)
+<img src="assets/figures/crowding_within_rolling_5d.png" width="700" heigth="100" alt="Rolling correlations (within-group)" />
 
 - Daily $r_d = \mathrm{Corr}(\varepsilon_i,\ \mathrm{imbalance}^{\text{local}}_i \mid \text{Date}=d)$, smoothed (5-day).
 - Mean daily correlation over days with $n \ge 100$ metaorders:
@@ -221,9 +247,16 @@ Key design choice:
 
 ## Cross-group and “all others” crowding (Dec 17, 2025 snapshot)
 
-| Cross-group | Versus all others |
-|---|---|
-| ![Cross-group rolling correlations](assets/figures/crowding_cross_rolling_5d.png) | ![All-vs-all rolling correlations](assets/figures/crowding_all_vs_all_rolling_5d.png) |
+<div class="cols">
+  <div class="col">
+    <div class="small muted" style="text-align: center;">Cross-group</div>
+    <img src="assets/figures/crowding_cross_rolling_5d.png" alt="Cross-group rolling correlations" />
+  </div>
+  <div class="col">
+    <div class="small muted" style="text-align: center;">Versus all others</div>
+    <img src="assets/figures/crowding_all_vs_all_rolling_5d.png" alt="All-vs-all rolling correlations" />
+  </div>
+</div>
 
 - Mean daily correlations over days with $n \ge 100$ metaorders:
   - Cross-group: prop$\mid$client **-0.018**, client$\mid$prop **-0.003**
@@ -234,9 +267,16 @@ Key design choice:
 
 ## Member-level prop–client crowding (latest run)
 
-| Per-member correlations | Member × window heatmap |
-|---|---|
-| ![Member-level correlations](assets/figures/member_prop_client_corr_bar.png) | ![Member × window heatmap](assets/figures/member_prop_client_heatmap.png) |
+<div class="cols">
+  <div class="col">
+    <div class="small muted" style="text-align: center;">Per-member correlations</div>
+    <img src="assets/figures/member_prop_client_corr_bar.png" alt="Member-level correlations" />
+  </div>
+  <div class="col">
+    <div class="small muted" style="text-align: center;">Member × window heatmap</div>
+    <img src="assets/figures/member_prop_client_heatmap.png" alt="Member × window heatmap" />
+  </div>
+</div>
 
 - Global member-level correlation (prop direction vs same-member client imbalance):
   - $r \approx 0.014$ (95% CI ≈ [0.003, 0.024]), $n \approx 35{,}695$ metaorders.
@@ -268,7 +308,9 @@ Key design choice:
 
 ## Appendix: imbalance distributions (diagnostic)
 
-![Imbalance distributions](assets/figures/imbalance_distribution.png)
+<div class="figure">
+  <img src="assets/figures/imbalance_distribution.png" alt="Imbalance distributions" />
+</div>
 
 - Empirical distributions of imbalance measures used in the crowding correlations.
 - Diagnostic use: check centering, dispersion, and tail mass before interpreting $r$.
