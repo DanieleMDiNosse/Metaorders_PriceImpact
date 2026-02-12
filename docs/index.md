@@ -336,10 +336,12 @@ These are standalone HTML files; open them locally in a browser for interactivit
 | ![Within-group rolling correlation](../images/ftsemib/prop_vs_nonprop/daily_crowding_rolling_5d.png) | ![Cross-group rolling correlation](../images/ftsemib/prop_vs_nonprop/cross_crowding_rolling_5d.png) 
 <!-- | ![All-vs-all rolling correlation](../images/ftsemib/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png) | -->
 
-**Diagnostics and member-level summaries**
+### Diagnostics and member-level summaries
 
 - Imbalance distributions:
-  ![Imbalance distribution](../images/ftsemib/prop_vs_nonprop/imbalance_distribution.png)
+  <!-- ![Imbalance distribution](../images/ftsemib/prop_vs_nonprop/imbalance_distribution.png) -->
+  &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<img src="../images/ftsemib/prop_vs_nonprop/imbalance_distribution.png" width="520" />
+
 - Member-level prop–client crowding:
 
 | Per-member correlations | Member × window heatmap |

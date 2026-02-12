@@ -51,7 +51,10 @@ RUN_METAORDER_DICT_STATS: true
 METAORDER_STATS_LEVEL: member
 METAORDER_STATS_PROPRIETARY: true
 METAORDER_STATS_DATA_DIR: null           # defaults to data/{DATASET_NAME}
-METAORDER_STATS_PARQUET_DIR: null  # null -> same as METAORDER_STATS_DATA_DIR
+METAORDER_STATS_PARQUET_DIR: data  # null -> same as METAORDER_STATS_DATA_DIR
 METAORDER_STATS_OUT_DIR: null
 METAORDER_STATS_DICT_PATH: null    # null -> computed from METAORDER_STATS_* params
 METAORDER_STATS_IMG_DIR: null      # null -> computed as images/{DATASET_NAME}/{level}_{proprietary_tag}
+METAORDER_POWERLAW_MIN_TAIL: 50    # minimum number of points required in the fitted tail x >= xmin
+METAORDER_POWERLAW_NUM_CANDIDATES: 1000  # coarse log-spaced tail-size candidates
+METAORDER_POWERLAW_REFINE_WINDOW: 50   # local +/- index window around best coarse candidate

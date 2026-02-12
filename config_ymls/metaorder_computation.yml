@@ -9,7 +9,7 @@ DEFAULT_FIGSIZE: [9, 5.5]
 
 # Dataset / preprocessing
 LEVEL: member  # "member" or "client"
-PROPRIETARY: false
+PROPRIETARY: true
 RECOMPUTE: true
 TRADING_HOURS: ["09:30:00", "17:30:00"]
 
@@ -28,9 +28,9 @@ OUT_DIR: null                 # optional override; defaults to ${OUT_ROOT}/${DAT
 IMG_DIR: null                 # optional override; defaults to ${IMG_ROOT}/${DATASET_NAME}/${LEVEL}_${PROPRIETARY_TAG}
 
 # Section toggles
-RUN_INTRO: false
+RUN_INTRO: true
 RUN_METAORDER_COMPUTATION: true
-RUN_SIGNATURE_PLOTS: true
+RUN_SIGNATURE_PLOTS: false
 RUN_SQL_FITS: true
 RUN_WLS: true
 RUN_IMPACT_PATH_PLOT: true

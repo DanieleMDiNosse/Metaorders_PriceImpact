@@ -232,3 +232,6 @@ data/
 
 # Zone.Identifier files
 *:Zone.Identifier
+
+# paper folder
+paper/*

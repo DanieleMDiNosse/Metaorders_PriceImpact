@@ -156,7 +156,7 @@ and $M$ is maximal with this property (no strictly larger contiguous
 set has a constant sign). We apply several filters to the detected sequences:
 
 \begin{itemize}
-\item \textbf{Min trades number}. A sequence is kept if |M| $\geq$ 5
+\item \textbf{Min trades number}. A sequence is kept if $|M|$ $\geq$ 5
   \item \textbf{Same day.} All trades in the run must belong to the same
         calendar day; runs spanning the market close are discarded.
   \item \textbf{Single client.} All trades in the run share the same
@@ -338,7 +338,8 @@ fraction of longer executions, see Figure \ref{fig:duration}.
 Within each metaorder, the inter-arrival times between consecutive child
 trades $\Delta t_i^{(\ell)}$ are also broadly distributed, reflecting a
 mixture of rapid sequences of child orders and periods of inactivity, see Figure \ref{fig:interarrival}.
-{\bf FL: Citare le figure, farei un fit sulla forma e lo confronterei con la letteratura (ad esempio Zarinelli et al.}
+
+% {\bf FL: Citare le figure, farei un fit sulla forma e lo confronterei con la letteratura (ad esempio Zarinelli et al.}
 
 \begin{figure}[t]
   \centering
@@ -590,7 +591,8 @@ the log-binned WLS within each quantile yields a family of impact curves
 \[
   \E[I \mid \phi, \eta \in \text{quantile }q] = Y_q \phi^{\gamma_q},
 \]
-summarised in Figure \ref{fig:impact_vs_size}, Figure \ref{fig:impact_by_participation} and \ref{fig:heatmap_impact_by_participation}. {\bf FL: Aggiungere commenti! Molto strano che si incrocino le linee per i non proprietary nei due quantili.}
+summarised in Figure \ref{fig:impact_vs_size}, Figure \ref{fig:impact_by_participation} and \ref{fig:heatmap_impact_by_participation}. 
+% {\bf FL: Aggiungere commenti! Molto strano che si incrocino le linee per i non proprietary nei due quantili.}
 
 \begin{figure}[t]
   \centering
@@ -955,6 +957,107 @@ in \cite{BucciEtAl2020}.
   smoothed curves.}
   \label{fig:daily_crowding_cross}
 \end{figure}
+
+
+\subsection{Crowding conditioned on participation rate}
+\label{subsec:crowding_eta}
+
+The execution participation rate $\eta_i = Q_i / V_i^{\text{window}}$ provides a proxy for the
+``aggressiveness'' of a metaorder, i.e.\ the fraction of the contemporaneous traded volume
+absorbed during its own execution window. We use $\eta_i$ as an execution-state variable and ask
+whether crowding becomes stronger at higher participation.
+
+For each group (proprietary and client), we partition metaorders into deciles of $\eta_i$ using
+pooled quantiles (common bin edges across groups). Within each bin $b$ we compute two
+complementary statistics based on an imbalance proxy $\mathrm{imb}_i$:
+\begin{align}
+  A_b &= \E[\varepsilon_i\,\mathrm{imb}_i \mid \eta_i \in b],
+  \\
+  U_b &= \E[|\mathrm{imb}_i| \mid \eta_i \in b].
+\end{align}
+where $\mathrm{imb}_i$ is either the within-group leave-one-out imbalance $\text{imb}_i^{k,d}$ from
+Eq.~\eqref{eq:local_imbalance} or the cross-group environment imbalance $\mathrm{imb}^{\text{env}}_i$
+defined above. Confidence bands are obtained via a block bootstrap that resamples trading days with
+replacement (1000 replicates), which accounts for cross-sectional dependence within the same date.
+
+\paragraph{Within-group conditioning.}
+Figure~\ref{fig:crowding_vs_eta_local} shows that both groups become more crowded as $\eta$
+increases. The effect is monotone and much stronger for client flow: high-participation client
+metaorders are strongly aligned with the contemporaneous within-client imbalance, while low-$\eta$
+metaorders are close to neutral. Proprietary flow exhibits a milder but statistically significant
+increase. In addition, $U_b$ increases with $\eta$ for both groups, indicating that high-participation
+executions tend to occur on $(k,d)$ pairs where the rest of the same-group flow is more one-sided.
+
+\paragraph{Cross-group conditioning.}
+Figure~\ref{fig:crowding_vs_eta_cross} reveals a different pattern across groups. While the magnitude
+of the other group's imbalance increases with $\eta$ for both proprietary and client metaorders, the
+alignment statistics diverge. Proprietary metaorders are weakly contrarian to the client environment
+across $\eta$ with no pronounced trend, whereas client metaorders become increasingly contrarian to
+the proprietary environment at high $\eta$. This behaviour is consistent with an
+intermediation/risk-transfer picture in which aggressive client demand is partly offset by
+proprietary flow.
+
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llcc@{}}
+\toprule
+Imbalance proxy & Group & $\Delta A$ & $\Delta U$ \\
+\midrule
+$\text{imb}_i^{k,d}$ & Proprietary & $0.0296\,[0.0237,0.0359]$ & $0.0280\,[0.0203,0.0360]$ \\
+$\text{imb}_i^{k,d}$ & Client      & $0.1890\,[0.1680,0.2087]$ & $0.0253\,[0.0164,0.0346]$ \\
+$\mathrm{imb}^{\text{env}}_i$ & Proprietary & $-0.0057\,[-0.0136,0.0028]$ & $0.0453\,[0.0360,0.0547]$ \\
+$\mathrm{imb}^{\text{env}}_i$ & Client      & $-0.0447\,[-0.0551,-0.0358]$ & $0.0244\,[0.0183,0.0305]$ \\
+\bottomrule
+\end{tabular}
+\caption{Change in crowding measures between the top and bottom participation-rate deciles.
+We report $\Delta A$ and $\Delta U$ (top minus bottom decile) with 95\% confidence
+intervals from a day-cluster bootstrap (1000 replicates).}
+\label{tab:crowding_vs_eta_effects}
+\end{table}
+
+
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_local.png}
+    \caption{Mean alignment $\E[\varepsilon_i\,\text{imb}_i^{k,d} \mid \eta]$.}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_local.png}
+    \caption{Mean absolute imbalance $\E[|\text{imb}_i^{k,d}| \mid \eta]$.}
+  \end{subfigure}
+  \caption{Within-group crowding conditioned on participation rate deciles. Shaded regions are
+  95\% confidence bands obtained by resampling trading days with replacement.}
+  \label{fig:crowding_vs_eta_local}
+\end{figure}
+
+
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_cross.png}
+    \caption{Mean alignment $\E[\varepsilon_i\,\mathrm{imb}^{\text{env}}_i \mid \eta]$.}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_cross.png}
+    \caption{Mean absolute imbalance $\E[|\mathrm{imb}^{\text{env}}_i| \mid \eta]$.}
+  \end{subfigure}
+  \caption{Cross-group crowding conditioned on participation rate deciles. The environment
+  imbalance $\mathrm{imb}^{\text{env}}_i$ is constructed from the other group on the same $(k,d)$.}
+  \label{fig:crowding_vs_eta_cross}
+\end{figure}
+
+
 
 \subsection{Crowding vs all others}
 

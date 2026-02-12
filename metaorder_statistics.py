@@ -31,6 +31,7 @@ import builtins
 import logging
 import pickle
 import yaml
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from tqdm import tqdm
@@ -201,6 +202,9 @@ METAORDER_STATS_IMG_DIR = (
         Path(IMG_ROOT) / DATASET_NAME / f"{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}",
     )
 )
+METAORDER_POWERLAW_MIN_TAIL = max(int(_CFG.get("METAORDER_POWERLAW_MIN_TAIL", 50)), 2)
+METAORDER_POWERLAW_NUM_CANDIDATES = max(int(_CFG.get("METAORDER_POWERLAW_NUM_CANDIDATES", 200)), 5)
+METAORDER_POWERLAW_REFINE_WINDOW = max(int(_CFG.get("METAORDER_POWERLAW_REFINE_WINDOW", 50)), 0)
 
 # ---------------------------------------------------------------------
 # Correlation with confidence interval
@@ -462,6 +466,225 @@ def plot_pdf_line(
     return True
 
 
+@dataclass(frozen=True)
+class PowerLawFitResult:
+    """Container for the fitted parameters of a Clauset-style continuous power law."""
+
+    alpha: float
+    xmin: float
+    ks_stat: float
+    n_tail: int
+
+
+def fit_power_law_clauset_continuous(
+    data: Iterable[float],
+    min_tail: int = 50,
+    num_candidates: int = 200,
+    refine_window: int = 50,
+) -> Optional[PowerLawFitResult]:
+    """
+    Summary
+    -------
+    Fit a continuous power law using the Clauset et al. MLE + KS xmin selection.
+
+    Parameters
+    ----------
+    data : Iterable[float]
+        One-dimensional sample of positive observations.
+    min_tail : int, default=50
+        Minimum number of observations required in the fitted tail x >= xmin.
+    num_candidates : int, default=200
+        Number of coarse candidate cutoffs built from log-spaced tail sizes.
+    refine_window : int, default=50
+        Number of start-index positions explored on each side of the best
+        coarse candidate during local refinement.
+
+    Returns
+    -------
+    Optional[PowerLawFitResult]
+        Best-fit parameters and KS distance, or None when no valid tail exists.
+
+    Notes
+    -----
+    - Only finite values strictly greater than zero are used.
+    - Coarse candidate cutoffs are generated from log-spaced tail sizes.
+    - A local refinement pass evaluates neighboring indices around the best
+      coarse candidate.
+    - For each candidate xmin, alpha is estimated with:
+      alpha = 1 + n / sum(log(x_i / xmin)).
+    - The selected xmin minimizes the KS distance between empirical and model CDF.
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(0)
+    >>> x = 1.0 * np.power(1.0 - rng.random(5000), -1.0 / (2.5 - 1.0))
+    >>> fit = fit_power_law_clauset_continuous(x, min_tail=100)
+    >>> fit is not None
+    True
+    """
+    if isinstance(data, np.ndarray):
+        arr = np.asarray(data, dtype=float)
+    else:
+        arr = np.asarray(list(data), dtype=float)
+    arr = arr[np.isfinite(arr) & (arr > 0)]
+    min_tail = max(int(min_tail), 2)
+    num_candidates = max(int(num_candidates), 5)
+    refine_window = max(int(refine_window), 0)
+
+    n = arr.size
+    if n < min_tail:
+        return None
+
+    x_sorted = np.sort(arr)
+    if x_sorted.size < 2:
+        return None
+
+    log_sorted = np.log(x_sorted)
+    suffix_log_sum = np.cumsum(log_sorted[::-1])[::-1]
+    ranks = np.arange(1, n + 1, dtype=float)
+
+    def _evaluate_start_index(start_idx: int) -> Optional[PowerLawFitResult]:
+        # The maximum value is not used as xmin: tail above it is degenerate.
+        if start_idx < 0 or start_idx >= (n - 1):
+            return None
+
+        n_tail = n - start_idx
+        if n_tail < min_tail:
+            return None
+
+        xmin = float(x_sorted[start_idx])
+        if xmin <= 0 or not np.isfinite(xmin):
+            return None
+
+        # sum(log(x_i / xmin)) = sum(log(x_i)) - n_tail * log(xmin)
+        denom = float(suffix_log_sum[start_idx] - n_tail * math.log(xmin))
+        if (not np.isfinite(denom)) or denom <= 0:
+            return None
+
+        alpha = 1.0 + n_tail / denom
+        if (not np.isfinite(alpha)) or alpha <= 1.0:
+            return None
+
+        tail = x_sorted[start_idx:]
+        model_cdf = 1.0 - np.power(tail / xmin, 1.0 - alpha)
+        model_cdf = np.clip(model_cdf, 0.0, 1.0)
+
+        empirical_cdf_low = (ranks[:n_tail] - 1.0) / n_tail
+        empirical_cdf_high = ranks[:n_tail] / n_tail
+        ks_stat = float(
+            max(
+                np.max(np.abs(model_cdf - empirical_cdf_low)),
+                np.max(np.abs(model_cdf - empirical_cdf_high)),
+            )
+        )
+        return PowerLawFitResult(alpha=float(alpha), xmin=xmin, ks_stat=ks_stat, n_tail=int(n_tail))
+
+    def _candidate_start_indices(tail_sizes: np.ndarray) -> np.ndarray:
+        start_indices = n - tail_sizes
+        start_indices = start_indices[(start_indices >= 0) & (start_indices < (n - 1))]
+        if start_indices.size == 0:
+            return np.empty(0, dtype=int)
+
+        start_indices = np.unique(start_indices.astype(int))
+        # Keep one index per distinct xmin to avoid repeated evaluations.
+        distinct: List[int] = []
+        last_xmin: float | None = None
+        for idx in np.sort(start_indices):
+            xmin = float(x_sorted[idx])
+            if last_xmin is None or xmin != last_xmin:
+                distinct.append(int(idx))
+                last_xmin = xmin
+        return np.asarray(distinct, dtype=int)
+
+    # Coarse pass on log-spaced tail sizes (rank space, not raw x space).
+    n_coarse = min(num_candidates, max(n - min_tail + 1, 1))
+    coarse_tail_sizes = np.rint(np.geomspace(min_tail, n, num=n_coarse)).astype(int)
+    coarse_tail_sizes = np.clip(coarse_tail_sizes, min_tail, n)
+    coarse_indices = _candidate_start_indices(np.unique(coarse_tail_sizes))
+    if coarse_indices.size == 0:
+        return None
+
+    best_result: Optional[PowerLawFitResult] = None
+    best_start_idx: Optional[int] = None
+    for start_idx in coarse_indices:
+        fit = _evaluate_start_index(int(start_idx))
+        if fit is None:
+            continue
+        if best_result is None:
+            best_result = fit
+            best_start_idx = int(start_idx)
+            continue
+        if fit.ks_stat < best_result.ks_stat:
+            best_result = fit
+            best_start_idx = int(start_idx)
+        elif np.isclose(fit.ks_stat, best_result.ks_stat, rtol=0.0, atol=1e-12) and fit.n_tail > best_result.n_tail:
+            best_result = fit
+            best_start_idx = int(start_idx)
+
+    if best_result is None or best_start_idx is None:
+        return None
+
+    # Local refinement around the best coarse candidate.
+    if refine_window > 0:
+        refine_lo = max(0, best_start_idx - refine_window)
+        refine_hi = min(n - 2, best_start_idx + refine_window)
+        refine_tail_sizes = n - np.arange(refine_lo, refine_hi + 1, dtype=int)
+        refine_indices = _candidate_start_indices(refine_tail_sizes)
+        for start_idx in refine_indices:
+            fit = _evaluate_start_index(int(start_idx))
+            if fit is None:
+                continue
+            if fit.ks_stat < best_result.ks_stat:
+                best_result = fit
+            elif np.isclose(fit.ks_stat, best_result.ks_stat, rtol=0.0, atol=1e-12) and fit.n_tail > best_result.n_tail:
+                best_result = fit
+
+    return best_result
+
+
+def power_law_pdf(x: Iterable[float], alpha: float, xmin: float) -> np.ndarray:
+    """
+    Summary
+    -------
+    Evaluate the continuous power-law PDF on x for a fitted (alpha, xmin) pair.
+
+    Parameters
+    ----------
+    x : Iterable[float]
+        Evaluation points.
+    alpha : float
+        Power-law exponent, expected > 1.
+    xmin : float
+        Lower cutoff of the power-law tail, expected > 0.
+
+    Returns
+    -------
+    np.ndarray
+        Array with density values; points below xmin are set to 0.
+
+    Notes
+    -----
+    Uses p(x) = (alpha - 1) / xmin * (x / xmin)^(-alpha) for x >= xmin.
+
+    Examples
+    --------
+    >>> vals = power_law_pdf([1.0, 2.0, 4.0], alpha=2.5, xmin=1.0)
+    >>> vals.shape
+    (3,)
+    """
+    if isinstance(x, np.ndarray):
+        x_arr = np.asarray(x, dtype=float)
+    else:
+        x_arr = np.asarray(list(x), dtype=float)
+    density = np.zeros_like(x_arr, dtype=float)
+    if alpha <= 1.0 or xmin <= 0.0:
+        return density
+    mask = np.isfinite(x_arr) & (x_arr >= xmin)
+    if np.any(mask):
+        density[mask] = ((alpha - 1.0) / xmin) * np.power(x_arr[mask] / xmin, -alpha)
+    return density
+
+
 # ---------------------------------------------------------------------
 # Metaorder dictionary statistics (durations, volumes, inter-arrivals)
 # ---------------------------------------------------------------------
@@ -630,23 +853,95 @@ def run_metaorder_dict_statistics(
         logx: bool = False,
         bins: int = 50,
     ):
+        print(f"[Metaorder stats] Fitting power law for {title}...")
         if not data:
             tqdm.write(f"Skipping plot {title}: no data")
             return
         fig, ax = plt.subplots(figsize=(10, 5.5))
-        plotted = plot_pdf_line(ax, data, bins=bins, color="tab:blue", logx=logx, logy=logy)
+        plotted = plot_pdf_line(
+            ax,
+            data,
+            bins=bins,
+            color="tab:blue",
+            label="Empirical density",
+            logx=logx,
+            logy=logy,
+        )
         if not plotted:
             tqdm.write(f"Skipping plot {title}: no valid numeric data")
             plt.close(fig)
             return
-        mean_val = float(np.nanmean(data))
-        median_val = float(np.nanmedian(data))
-        # ax.axvline(mean_val, color="r", linestyle="dashed", linewidth=1, label=f"Mean: {mean_val:.2f}")
-        # ax.axvline(median_val, color="g", linestyle="dashed", linewidth=1, label=f"Median: {median_val:.2f}")
+
+        fit_data = pd.to_numeric(pd.Series(data), errors="coerce").to_numpy(dtype=float)
+        fit_data = fit_data[np.isfinite(fit_data)]
+        if logx:
+            fit_data = fit_data[fit_data > 0]
+
+        fit_result = fit_power_law_clauset_continuous(
+            fit_data,
+            min_tail=METAORDER_POWERLAW_MIN_TAIL,
+            num_candidates=METAORDER_POWERLAW_NUM_CANDIDATES,
+            refine_window=METAORDER_POWERLAW_REFINE_WINDOW,
+        )
+        if fit_result is None:
+            print(
+                f"[Metaorder stats] Power-law fit skipped for {title}: "
+                f"not enough valid tail data (min_tail={METAORDER_POWERLAW_MIN_TAIL})."
+            )
+        else:
+            x_max = float(np.nanmax(fit_data)) if fit_data.size else float("nan")
+            if np.isfinite(x_max) and x_max > fit_result.xmin:
+                if logx:
+                    x_grid = np.logspace(np.log10(fit_result.xmin), np.log10(x_max), 250)
+                else:
+                    x_grid = np.linspace(fit_result.xmin, x_max, 250)
+                # Histogram density is unconditional on the whole sample; scale the
+                # fitted tail density by tail mass for an apples-to-apples overlay.
+                tail_mass = fit_result.n_tail / fit_data.size
+                prefactor = tail_mass * (fit_result.alpha - 1.0) / fit_result.xmin
+                y_grid = tail_mass * power_law_pdf(x_grid, fit_result.alpha, fit_result.xmin)
+                valid = np.isfinite(y_grid) & (y_grid > 0)
+                if np.any(valid):
+                    ax.plot(
+                        x_grid[valid],
+                        y_grid[valid],
+                        color="tab:orange",
+                        linewidth=1.5,
+                        alpha=0.7,
+                        label=(
+                            "Fit: "
+                            fr"$f(x)={prefactor:.2g}\frac{{x}}{{{fit_result.xmin:.2g}}}^{{-{fit_result.alpha:.2f}}}$, "
+                        ),
+                    )
+                    ax.axvline(
+                        fit_result.xmin,
+                        color="tab:orange",
+                        linestyle="--",
+                        linewidth=1,
+                        alpha=0.5,
+                    )
+                    print(
+                        f"[Metaorder stats] Power-law fit for {title}: "
+                        f"alpha={fit_result.alpha:.4f}, xmin={fit_result.xmin:.6g}, "
+                        f"KS={fit_result.ks_stat:.4f}, n_tail={fit_result.n_tail}"
+                    )
+                else:
+                    print(
+                        f"[Metaorder stats] Power-law fit skipped for {title}: "
+                        "fitted density is non-positive on the plotting grid."
+                    )
+            else:
+                print(
+                    f"[Metaorder stats] Power-law fit skipped for {title}: "
+                    "invalid support range after filtering."
+                )
+
         ax.set_xlabel(xlabel)
         ax.set_ylabel("Density")
         ax.set_title(title)
-        ax.legend()
+        handles, _ = ax.get_legend_handles_labels()
+        if handles:
+            ax.legend()
         plt.tight_layout()
         fig.savefig(img_dir / filename)
         plt.close(fig)

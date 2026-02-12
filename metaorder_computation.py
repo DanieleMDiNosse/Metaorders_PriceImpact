@@ -298,8 +298,8 @@ def ensure_transforms():
         new_path = os.path.join(
             PATH_NEW_DATA_FOLDER, f"{os.path.splitext(os.path.basename(path))[0]}.parquet"
         )
-        if os.path.exists(new_path):
-            continue
+        # if os.path.exists(new_path):
+        #     continue
         tqdm.write(f"Transforming {path} -> {new_path}")
         df = pd.read_csv(path, sep=";")
         if len(df.columns) == 1:
