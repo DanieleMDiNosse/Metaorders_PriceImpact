@@ -1,0 +1,51 @@
+# crowding_analysis.py configuration
+
+# Plotting
+TICK_FONT_SIZE: 12
+LABEL_FONT_SIZE: 14
+TITLE_FONT_SIZE: 15
+LEGEND_FONT_SIZE: 12
+DEFAULT_FIGSIZE: [9, 5.5]
+
+# Dataset label
+DATASET_NAME: ftsemib  # e.g., "ftsemib" or "mot"
+
+# Paths
+# You may use placeholders: {DATASET_NAME}.
+PARQUET_PATH: data/parquet
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}  # script appends /prop_vs_nonprop
+
+# Inputs (override if needed)
+PROP_PATH: null
+CLIENT_PATH: null
+
+# Correlation / inference
+ALPHA: 0.05
+BOOTSTRAP_RUNS: 1000
+BOOTSTRAP_HEATMAP: false  # if false: skip permutation p-values and don't filter heatmap cells by significance
+P_VALUE_THRESHOLD: 0.05
+MIN_N: 100
+SMOOTHING_DAYS: 3
+MIN_METAORDERS_PER_MEMBER: 30
+N_MIN_PER_MEMBER_CLIENT: 5
+MEMBER_WINDOW_DAYS: 3
+
+# Daily returns / scatter
+ATTACH_DAILY_RETURNS: true
+PLOT_IMBALANCE_VS_RETURNS: true
+RETURNS_DATA_DIR: null  # null -> PARQUET_PATH
+RETURNS_TRADING_HOURS: ["09:30:00", "17:30:00"]
+DAILY_RETURN_COL: "Daily Return"
+
+# Extra analyses
+ACF_IMBALANCE: true
+DISTRIBUTIONS_IMBALANCE: true
+
+ACF_MAX_LAG: 300
+ACF_BOOTSTRAP_SAMPLES: 100
+IMBALANCE_HIST_BINS: 50
+IMBALANCE_USE_KDE: true
+IMBALANCE_KDE_BW_ADJUST: 1.0
+PARTICIPATION_BINS: 100
+ACF_OUTPUT_DIRNAME: acf

@@ -804,64 +804,52 @@ whenever there are at least a minimum number of metaorders on that day.
 
 \paragraph{Estimation and confidence intervals. }
 
-Given a sample correlation $r$ from $n$ observations, we use Fisher's
-$z$-transform to construct confidence intervals \footnote{Probably a bootstrap is better. The Fisher transformation of the Pearson correlation coefficient assumes that the pair $(\varepsilon_i, \text{imb}_i^{k,d})$ is characterized by a bivariate normal distribution and $\varepsilon_i, \text{imb}_i^{k,d}$ are iid}. Set
-\begin{equation}
-  z = \frac{1}{2}\log\left(\frac{1+r}{1-r}\right),
-\end{equation}
-with standard error
-\begin{equation}
-  SE_z = \frac{1}{\sqrt{n-3}}.
-\end{equation}
-For a two-sided $(1-\alpha)$-confidence interval, define
-$z_{\alpha/2}$ as the $(1-\alpha/2)$ quantile of the standard normal.
-Then
-\begin{equation}
-  [z_{\mathrm{lo}}, z_{\mathrm{hi}}] =
-  [z - z_{\alpha/2} SE_z,\, z + z_{\alpha/2} SE_z],
-\end{equation}
-and transforming back,
-\begin{equation}
-  r_{\mathrm{lo}} = \tanh(z_{\mathrm{lo}}), \qquad
-  r_{\mathrm{hi}} = \tanh(z_{\mathrm{hi}}).
-\end{equation}
+Metaorders executed on the same trading day are not independent, as they
+share market conditions and common shocks. To obtain dependence-aware
+uncertainty, we construct confidence intervals via a \emph{Date-cluster
+bootstrap}: we resample trading days with replacement, recompute the
+relevant correlation on the resampled panel, and report percentile
+$95\%$ confidence intervals (1000 replicates).
 
 \paragraph{Empirical within-group crowding.}
 
 On the current dataset, within-group orderflow imbalance statistics are:
 
 \begin{itemize}
-  \item \textbf{Proprietary flow.}
+  \item Proprietary flow.
     \begin{itemize}
       \item Global correlation:
-            $r = 0.108$ with $95\%$ CI $[0.106, 0.111]$,
-            $n = 588199$ metaorders.
+            $r = 0.108$ with $95\%$ CI $[0.102, 0.114]$,
+            $n = 588{,}334$ metaorders.
       % \item Conditional means over all days all members and all ISINs:
       %       \[
       %         \E[\mathrm{imb} \mid \varepsilon=+1] \approx -0.024, \quad
       %         \E[\mathrm{imb} \mid \varepsilon=-1] \approx -0.08.
       %       \]
       \item Mean daily correlation:
-            $\bar{r}_{\text{prop}} \approx 0.081$ over $251$ days.
+            $\bar{r}_{\text{prop}} = 0.081$ with $95\%$ CI $[0.076, 0.086]$
+            over $251$ days.
     \end{itemize}
 
-  \item \textbf{Client flow.}
+  \item Client flow.
     \begin{itemize}
       \item Global correlation:
-            $r = 0.187$ with $95\%$ CI $[0.184, 0.191]$,
-            $n = 255182$ metaorders.
+            $r = 0.187$ with $95\%$ CI $[0.180, 0.195]$,
+            $n = 255{,}369$ metaorders.
       % \item Conditional means over all days all members and all ISINs:
       %       \[
       %         \E[\mathrm{imb} \mid \varepsilon=+1] \approx +0.088, \quad
       %         \E[\mathrm{imb} \mid \varepsilon=-1] \approx -0.087.
       %       \]
       \item Mean daily correlation:
-            $\bar{r}_{\text{client}} \approx 0.169$ over $251$ days.
+            $\bar{r}_{\text{client}} = 0.169$ with $95\%$ CI $[0.161, 0.177]$
+            over $251$ days.
     \end{itemize}
 \end{itemize}
 
-Thus both client and proprietary metaorders tend to trade \emph{with} the local daily
-imbalance (positive crowding/herding), although client metaorders show a higher and statistically significant correlation value.
+Thus both client and proprietary metaorders tend to trade with the local daily
+imbalance (positive crowding/herding), although client metaorders show a higher and statistically 
+significant correlation value.
 
 \begin{figure}[t]
   \centering
@@ -883,7 +871,7 @@ imbalance (positive crowding/herding), although client metaorders show a higher 
   \label{fig:daily_crowding_local}
 \end{figure}
 
-\subsection{Daily crowding time series and cross-group crowding}
+\subsection{Daily crowding}
 
 As already stated in the previous section, to track how crowding evolves over time, we compute daily correlations
 between direction and orderflow imbalance:
@@ -929,14 +917,26 @@ respectively.
 Empirically, over $251$ days:
 
 \begin{itemize}
-  \item $\bar{r}^{\text{prop}\mid\text{client}} = -0.018$,
-  \item $\bar{r}^{\text{client}\mid\text{prop}} = -0.003$.
+  \item Global correlations:
+    \begin{itemize}
+      \item $\mathrm{Corr}(\varepsilon^{\text{prop}}, \mathrm{imb}^{\text{env}}_{\text{client}}) = -0.023$
+            with $95\%$ CI $[-0.028, -0.018]$.
+      \item $\mathrm{Corr}(\varepsilon^{\text{client}}, \mathrm{imb}^{\text{env}}_{\text{prop}}) = -0.016$
+            with $95\%$ CI $[-0.025, -0.007]$.
+    \end{itemize}
+  \item Mean daily correlations (days with $n \ge 100$):
+    \begin{itemize}
+      \item $\bar{r}^{\text{prop}\mid\text{client}} = -0.018$ with $95\%$ CI $[-0.022, -0.014]$,
+      \item $\bar{r}^{\text{client}\mid\text{prop}} = -0.003$ with $95\%$ CI $[-0.010, 0.004]$.
+    \end{itemize}
 \end{itemize}
 
-(Add CI) Both numbers are slightly negative, indicating a (very) mild tendency for each
-group to trade \emph{against} the imbalance produced by the other group,
+The $\text{prop}\mid\text{client}$ daily correlation is slightly negative, indicating a (very) mild tendency for 
+proprietary group to trade against the imbalance produced by the client group,
 which is reminiscent of the way different institutional styles interact
-in \cite{BucciEtAl2020}.
+in \cite{BucciEtAl2020}. The $\text{client}\mid\text{prop}$ correlation is close to zero with a confidence 
+interval that includes zero, suggesting no clear alignment or anti-alignment of client metaorders with the 
+proprietary environment. The time series of these cross-group correlations is shown in Figure~\ref{fig:daily_crowding_cross}.
 
 \begin{figure}[t]
   \centering
@@ -1081,7 +1081,7 @@ Aggregating over days, we obtain mean daily correlations:
   \item proprietary vs all others:
         $\bar{r}^{\text{prop}\mid\text{all}} \approx 0.041$;
   \item client vs all others:
-        $\bar{r}^{\text{client}\mid\text{all}} \approx 0.112$.
+        $\bar{r}^{\text{client}\mid\text{all}} \approx 0.113$.
 \end{itemize}
 
 Client flow again shows a stronger alignment with the overall daily
@@ -1123,7 +1123,9 @@ by member $m$ on day $d$, aggregated across all ISINs. We define the member-leve
 \end{equation}
 where $Q_j$ and $\epsilon_j$ denote, respectively, the size and direction of client metaorder $j$.
 The statistic $\text{imb}_{m,d}$ is considered valid only when both the member and its associated 
-client cohort initiate a sufficient number of metaorders during day $d$. Using members with at least 30 proprietary and 30 client metaorders over the sample, the mean per-member correlation between proprietary direction and client imbalance is $0.003$.
+client cohort initiate a sufficient number of metaorders during day $d$. Using members with at least 30 proprietary and 30 client metaorders over the sample, there are $10$ such members (out of 45), and the mean per-member correlation between proprietary direction and client imbalance is $0.003$.
+
+Aggregating across all member-level observations, the global correlation between proprietary direction and the member-level client imbalance is $0.011$ with a bootstrap $95\%$ CI $[0.001, 0.021]$.
 
 A more informative analysis focuses on how this correlation evolves over time. Periods displaying 
 larger absolute values may signal episodes of \emph{front running} (when $\text{imb}_{m,d} > 0$) 

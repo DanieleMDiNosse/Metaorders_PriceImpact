@@ -109,7 +109,7 @@ def load_yaml_defaults(config_path: Path) -> Dict[str, Any]:
     Notes
     -----
     This script uses `config_ymls/metaorder_statistics.yml` only for convenient
-    defaults (e.g., DATASET_NAME and root folders). CLI arguments always
+    defaults (e.g., DATASET_NAME and base output/image paths). CLI arguments always
     override YAML values.
 
     Examples
@@ -132,6 +132,20 @@ def _resolve_repo_path(value: str | Path) -> Path:
     if not path.is_absolute():
         path = (_SCRIPT_DIR / path).resolve()
     return path
+
+
+def _format_path_template(template: str, context: Mapping[str, str]) -> str:
+    """Format a path template with placeholders from `context` only."""
+    if "{" not in template:
+        return template
+    try:
+        return template.format(**context)
+    except KeyError as exc:
+        allowed = ", ".join(sorted(context.keys()))
+        raise KeyError(
+            f"Unknown placeholder {exc} in path template '{template}'. "
+            f"Allowed placeholders: {allowed}."
+        ) from exc
 
 
 def resolve_paths(cfg: Mapping[str, Any], args: argparse.Namespace) -> ResolvedPaths:
@@ -158,23 +172,26 @@ def resolve_paths(cfg: Mapping[str, Any], args: argparse.Namespace) -> ResolvedP
     Examples
     --------
     >>> import argparse
-    >>> ns = argparse.Namespace(dataset_name="ftsemib", prop_path=None, client_path=None, out_root="out_files", img_root="images", analysis_tag="crowding_vs_part_rate")
+    >>> ns = argparse.Namespace(dataset_name="ftsemib", prop_path=None, client_path=None, output_file_path="out_files", img_output_path="images", analysis_tag="crowding_vs_part_rate")
     >>> paths = resolve_paths({}, ns)
     >>> paths.dataset_name == "ftsemib"
     True
     """
     dataset_name = str(args.dataset_name or cfg.get("DATASET_NAME") or "ftsemib")
-    out_root = _resolve_repo_path(str(args.out_root or cfg.get("OUT_ROOT") or "out_files"))
-    img_root = _resolve_repo_path(str(args.img_root or cfg.get("IMG_ROOT") or "images"))
+    path_context = {"DATASET_NAME": dataset_name}
+    out_base_cfg = str(args.output_file_path or cfg.get("OUTPUT_FILE_PATH") or "out_files/{DATASET_NAME}")
+    img_base_cfg = str(args.img_output_path or cfg.get("IMG_OUTPUT_PATH") or "images/{DATASET_NAME}")
+    out_base = _resolve_repo_path(_format_path_template(out_base_cfg, path_context))
+    img_base = _resolve_repo_path(_format_path_template(img_base_cfg, path_context))
 
-    prop_default = out_root / dataset_name / "metaorders_info_sameday_filtered_member_proprietary.parquet"
-    client_default = out_root / dataset_name / "metaorders_info_sameday_filtered_member_non_proprietary.parquet"
+    prop_default = out_base / "metaorders_info_sameday_filtered_member_proprietary.parquet"
+    client_default = out_base / "metaorders_info_sameday_filtered_member_non_proprietary.parquet"
 
     prop_path = _resolve_repo_path(args.prop_path) if args.prop_path else prop_default
     client_path = _resolve_repo_path(args.client_path) if args.client_path else client_default
 
-    out_dir = out_root / dataset_name / str(args.analysis_tag)
-    img_dir = img_root / dataset_name / str(args.analysis_tag)
+    out_dir = out_base / str(args.analysis_tag)
+    img_dir = img_base / str(args.analysis_tag)
 
     config_path = _resolve_repo_path(args.config_path) if args.config_path else _DEFAULT_CONFIG_PATH
 
@@ -2042,16 +2059,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--out-root",
+        "--output-file-path",
         type=str,
         default=None,
-        help="Output root folder. Default: YAML OUT_ROOT if set, else out_files.",
+        help="Output base folder. Default: YAML OUTPUT_FILE_PATH if set, else out_files/{DATASET_NAME}.",
     )
     p.add_argument(
-        "--img-root",
+        "--img-output-path",
         type=str,
         default=None,
-        help="Image root folder. Default: YAML IMG_ROOT if set, else images.",
+        help="Image base folder. Default: YAML IMG_OUTPUT_PATH if set, else images/{DATASET_NAME}.",
     )
     p.add_argument(
         "--analysis-tag",

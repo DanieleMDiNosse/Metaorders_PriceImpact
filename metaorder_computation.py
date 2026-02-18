@@ -94,14 +94,25 @@ def _resolve_repo_path(value: Union[str, Path]) -> str:
         path = (_SCRIPT_DIR / path).resolve()
     return str(path)
 
+def _format_path_template(template: str, context: Dict[str, str]) -> str:
+    """
+    Format a path template with a restricted set of placeholders.
 
-def _resolve_opt_repo_path(value: Optional[Union[str, Path]], default: Union[str, Path]) -> str:
-    """Resolve a path, falling back to `default` when the config value is None."""
-    if value is None:
-        return _resolve_repo_path(default)
-    return _resolve_repo_path(value)
+    This allows YAML entries like:
+        IMG_OUTPUT_PATH: images/{DATASET_NAME}
 
-
+    Only placeholders in `context` are allowed to avoid silent mistakes.
+    """
+    if "{" not in template:
+        return template
+    try:
+        return template.format(**context)
+    except KeyError as e:
+        allowed = ", ".join(sorted(context.keys()))
+        raise KeyError(
+            f"Unknown placeholder {e} in path template '{template}'. "
+            f"Allowed placeholders: {allowed}."
+        ) from e
 # Sizes tuned for paper-ready readability (loaded from YAML)
 TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
 LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
@@ -194,29 +205,37 @@ Q_V_DENOMINATOR_MODE = str(_cfg_require("Q_V_DENOMINATOR_MODE"))
 DAILY_VOL_MODE = str(_cfg_require("DAILY_VOL_MODE"))
 
 DATASET_NAME = str(_CFG.get("DATASET_NAME") or "ftsemib")
-DATA_ROOT = _resolve_repo_path(_CFG.get("DATA_ROOT") or "data")
-PATH_DATA_FOLDER = _resolve_opt_repo_path(
-    _CFG.get("PATH_DATA_FOLDER"), Path(DATA_ROOT) / DATASET_NAME
-)
-PATH_NEW_DATA_FOLDER = _resolve_opt_repo_path(
-    _CFG.get("PATH_NEW_DATA_FOLDER"), Path(DATA_ROOT) / DATASET_NAME
-)
-OUT_ROOT = _resolve_repo_path(_CFG.get("OUT_ROOT") or "out_files")
-OUT_DIR = _resolve_opt_repo_path(_CFG.get("OUT_DIR"), Path(OUT_ROOT) / DATASET_NAME)
 PROPRIETARY_TAG = "proprietary" if PROPRIETARY else "non_proprietary"
-IMG_ROOT = _resolve_repo_path(_CFG.get("IMG_ROOT") or "images")
-_img_dir_override = _CFG.get("IMG_DIR")
-IMG_DIR = (
-    _resolve_repo_path(_img_dir_override)
-    if _img_dir_override
-    else _resolve_repo_path(Path(IMG_ROOT) / DATASET_NAME / f"{LEVEL}_{PROPRIETARY_TAG}")
-)
 
+# ---------------------------------------------------------------------------
+# Paths (set only these four in YAML)
+# ---------------------------------------------------------------------------
+_path_context = {"DATASET_NAME": DATASET_NAME, "LEVEL": LEVEL, "PROPRIETARY_TAG": PROPRIETARY_TAG}
 
-os.makedirs(PATH_NEW_DATA_FOLDER, exist_ok=True)
+CSV_LOAD_PATH = str(_cfg_require("CSV_LOAD_PATH"))
+PATH_DATA_FOLDER = _resolve_repo_path(_format_path_template(CSV_LOAD_PATH, _path_context))
+
+PARQUET_PATH = str(_cfg_require("PARQUET_PATH"))
+PARQUET_PATH = _resolve_repo_path(_format_path_template(PARQUET_PATH, _path_context))
+
+OUTPUT_FILE_PATH = str(_cfg_require("OUTPUT_FILE_PATH"))
+OUT_DIR = _resolve_repo_path(_format_path_template(OUTPUT_FILE_PATH, _path_context))
+
+IMG_OUTPUT_PATH = str(_cfg_require("IMG_OUTPUT_PATH"))
+IMG_BASE_DIR = _resolve_repo_path(_format_path_template(IMG_OUTPUT_PATH, _path_context))
+IMG_DIR = str(Path(IMG_BASE_DIR) / f"{LEVEL}_{PROPRIETARY_TAG}")
+
+os.makedirs(PARQUET_PATH, exist_ok=True)
 os.makedirs(OUT_DIR, exist_ok=True)
-os.makedirs(IMG_DIR, exist_ok=True)
-os.makedirs(f"{IMG_DIR}/signature_plots", exist_ok=True)
+# Figures go into deterministic subfolders under `IMG_DIR`, consistent with other scripts:
+#   - PNG:  {IMG_DIR}/png/
+#   - HTML: {IMG_DIR}/html/
+PNG_DIR = str(Path(IMG_DIR) / "png")
+HTML_DIR = str(Path(IMG_DIR) / "html")
+SIGNATURE_PLOTS_DIR = str(Path(PNG_DIR) / "signature_plots")
+os.makedirs(PNG_DIR, exist_ok=True)
+os.makedirs(HTML_DIR, exist_ok=True)
+os.makedirs(SIGNATURE_PLOTS_DIR, exist_ok=True)
 
 # Section toggles
 RUN_INTRO = bool(_cfg_require("RUN_INTRO"))
@@ -272,6 +291,11 @@ def unpack_path(blob: Optional[Union[bytes, bytearray, memoryview, List[float], 
 
 
 def list_raw_csv_paths() -> List[str]:
+    if not os.path.isdir(PATH_DATA_FOLDER):
+        raise FileNotFoundError(
+            f"CSV_LOAD_PATH directory does not exist: {PATH_DATA_FOLDER}. "
+            f"Set CSV_LOAD_PATH in {_CONFIG_PATH}."
+        )
     paths = []
     for p in os.listdir(PATH_DATA_FOLDER):
         if not p.endswith(".csv"):
@@ -284,10 +308,10 @@ def list_raw_csv_paths() -> List[str]:
 
 def list_parquet_paths() -> List[str]:
     paths = []
-    for p in os.listdir(PATH_NEW_DATA_FOLDER):
+    for p in os.listdir(PARQUET_PATH):
         if not p.endswith(".parquet"):
             continue
-        paths.append(os.path.join(PATH_NEW_DATA_FOLDER, p))
+        paths.append(os.path.join(PARQUET_PATH, p))
     return sorted(paths)
 
 
@@ -296,10 +320,10 @@ def ensure_transforms():
     paths = list_raw_csv_paths()
     for path in tqdm(paths, desc="Transforming CSV->parquet", dynamic_ncols=True):
         new_path = os.path.join(
-            PATH_NEW_DATA_FOLDER, f"{os.path.splitext(os.path.basename(path))[0]}.parquet"
+            PARQUET_PATH, f"{os.path.splitext(os.path.basename(path))[0]}.parquet"
         )
-        # if os.path.exists(new_path):
-        #     continue
+        if os.path.exists(new_path):
+            continue
         tqdm.write(f"Transforming {path} -> {new_path}")
         df = pd.read_csv(path, sep=";")
         if len(df.columns) == 1:
@@ -1495,7 +1519,7 @@ def plot_bivariate_fit_surfaces_3d(
                 showlegend=True,
             )
         out_path_html = os.path.join(
-            IMG_DIR, f"{out_prefix}_3d_surface_bivariate_fits_{LEVEL}_{PROPRIETARY_TAG}.html"
+            HTML_DIR, f"{out_prefix}_3d_surface_bivariate_fits_{LEVEL}_{PROPRIETARY_TAG}.html"
         )
         fig_html.write_html(out_path_html, include_plotlyjs="cdn")
         print(f"[Bivariate Fits] Saved interactive 3D HTML plot to {out_path_html}")
@@ -1573,7 +1597,7 @@ def plot_impact_surface_and_heatmap(
     fig.colorbar(surf, ax=ax3d, shrink=0.7, label="Mean normalized impact (log scale)")
     ax3d.set_title(r"Impact surface: mean normalized impact vs Q/V and $\eta$")
     plt.tight_layout()
-    out_path_3d = os.path.join(IMG_DIR, f"{out_prefix}_3d_surface_{LEVEL}_{PROPRIETARY_TAG}.png")
+    out_path_3d = os.path.join(PNG_DIR, f"{out_prefix}_3d_surface_{LEVEL}_{PROPRIETARY_TAG}.png")
     plt.savefig(out_path_3d, dpi=300)
     plt.close(fig)
 
@@ -1596,7 +1620,7 @@ def plot_impact_surface_and_heatmap(
     cbar.set_label("Mean normalized impact (log scale)")
     # ax.set_title(r"Impact heatmap: mean normalized impact vs Q/V and $\eta$")
     plt.tight_layout()
-    out_path_hm = os.path.join(IMG_DIR, f"{out_prefix}_heatmap_{LEVEL}_{PROPRIETARY_TAG}.png")
+    out_path_hm = os.path.join(PNG_DIR, f"{out_prefix}_heatmap_{LEVEL}_{PROPRIETARY_TAG}.png")
     plt.savefig(out_path_hm, dpi=300)
     plt.close(fig)
 
@@ -1652,7 +1676,7 @@ def plot_impact_surface_and_heatmap(
             title="Impact surface: mean normalized impact vs Q/V and η",
         )
         out_path_html = os.path.join(
-            IMG_DIR, f"{out_prefix}_3d_surface_{LEVEL}_{PROPRIETARY_TAG}.html"
+            HTML_DIR, f"{out_prefix}_3d_surface_{LEVEL}_{PROPRIETARY_TAG}.html"
         )
         fig_html.write_html(out_path_html, include_plotlyjs="cdn")
         print(f"[Surface] Saved interactive 3D HTML surface to {out_path_html}")
@@ -2129,7 +2153,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame) -> None:
     plot_fit(ax, binned_all, params_all, log_params=log_params_all)
     ax.set_title("Impact fits (power-law and logarithmic, aggregated)", fontsize=title_size)
     plt.tight_layout()
-    plt.savefig(os.path.join(IMG_DIR, f"power_law_fit_overall_{LEVEL}.png"), dpi=300)
+    plt.savefig(os.path.join(PNG_DIR, f"power_law_fit_overall_{LEVEL}.png"), dpi=300)
     plt.close()
 
     print("--- Overall (All) ---")
@@ -2172,7 +2196,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame) -> None:
                 fits_by_pr[str(label)] = params_sub
             ax.set_title(r"Power-law fits conditioned on $\eta$ (aggregated)", fontsize=title_size)
             plt.tight_layout()
-            plt.savefig(os.path.join(IMG_DIR, f"power_law_fits_by_participation_rate_{LEVEL}.png"), dpi=300)
+            plt.savefig(os.path.join(PNG_DIR, f"power_law_fits_by_participation_rate_{LEVEL}.png"), dpi=300)
             plt.close()
 
             print("--- Conditioned on η (power-law only) ---")
@@ -2222,9 +2246,14 @@ if RUN_INTRO:
         f"LEVEL={LEVEL}, PROPRIETARY={PROPRIETARY}, DATASET={DATASET_NAME}, "
         f"IMPACT_HORIZONS_MIN={IMPACT_HORIZONS_MIN}, RECOMPUTE={RECOMPUTE}"
     )
+    print(
+        "[Intro] Paths — "
+        f"CSV_LOAD_PATH={PATH_DATA_FOLDER}, PARQUET_PATH={PARQUET_PATH}, "
+        f"OUTPUT_FILE_PATH={OUT_DIR}, IMG_OUTPUT_PATH={IMG_BASE_DIR}"
+    )
     ensure_transforms()
     dfs_path_new = list_parquet_paths()
-    print(f"[Intro] Parquet files available for dataset '{DATASET_NAME}': {len(dfs_path_new)}")
+    print(f"[Intro] Parquet files available for dataset '{DATASET_NAME}': {len(dfs_path_new)}\n")
 
 
 # ---------------------------------------------------------------------------
@@ -2336,7 +2365,7 @@ if RUN_SIGNATURE_PLOTS:
 
         plt.suptitle(f"Volatility signature plot ({isin})")
         plt.tight_layout()
-        plt.savefig(os.path.join(f"{IMG_DIR}/signature_plots", f"signature_plot_{isin}.png"))
+        plt.savefig(os.path.join(SIGNATURE_PLOTS_DIR, f"signature_plot_{isin}.png"))
         plt.close()
 
 
@@ -2452,7 +2481,7 @@ if RUN_WLS:
         )
 
     if RUN_IMPACT_PATH_PLOT:
-        out_path = os.path.join(IMG_DIR, f"normalized_impact_path_{LEVEL}_{PROPRIETARY_TAG}.png")
+        out_path = os.path.join(PNG_DIR, f"normalized_impact_path_{LEVEL}_{PROPRIETARY_TAG}.png")
         plot_normalized_impact_path(df, out_path, duration_multiplier=AFTERMATH_DURATION_MULTIPLIER)
 
     if df.empty:

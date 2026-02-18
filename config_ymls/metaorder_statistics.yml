@@ -1,4 +1,4 @@
-# metaorder_statistics.py configuration
+# metaorder_statistics.py configuration (metaorder dictionary statistics)
 
 # Plotting
 TICK_FONT_SIZE: 12
@@ -7,54 +7,26 @@ TITLE_FONT_SIZE: 15
 LEGEND_FONT_SIZE: 12
 DEFAULT_FIGSIZE: [9, 5.5]
 
-# Dataset selection (choose subfolder under data/out_files/images)
+# Dataset label
 DATASET_NAME: ftsemib  # e.g., "ftsemib" or "mot"
-DATA_ROOT: data
-OUT_ROOT: out_files
-IMG_ROOT: images
 
-# Inputs (override if needed; defaults derived from DATASET_NAME/ROOTs)
-PROP_PATH: null
-CLIENT_PATH: null
+# Paths
+# You may use placeholders: {DATASET_NAME}, {METAORDER_STATS_LEVEL}, {METAORDER_STATS_PROPRIETARY_TAG}.
+PARQUET_PATH: data/parquet
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}  # script appends /{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}
 
-# Correlation / inference
-ALPHA: 0.05
-BOOTSTRAP_RUNS: 100
-BOOTSTRAP_HEATMAP: false  # if false: skip permutation p-values and don't filter heatmap cells by significance
-P_VALUE_THRESHOLD: 0.05
-MIN_N: 100
-SMOOTHING_DAYS: 5
-MIN_METAORDERS_PER_MEMBER: 30
-N_MIN_PER_MEMBER_CLIENT: 5
-MEMBER_WINDOW_DAYS: 3
-PLOT_DIR: null  # defaults to images/{DATASET_NAME}/prop_vs_nonprop
-
-# Daily returns / scatter
-ATTACH_DAILY_RETURNS: true
-PLOT_IMBALANCE_VS_RETURNS: true
-RETURNS_DATA_DIR: null  # defaults to data/{DATASET_NAME}
-RETURNS_TRADING_HOURS: ["09:30:00", "17:30:00"]
-DAILY_RETURN_COL: "Daily Return"
-
-# Extra analyses
-ACF_IMBALANCE: true
-DISTRIBUTIONS_IMBALANCE: true
-
-ACF_MAX_LAG: 300
-ACF_BOOTSTRAP_SAMPLES: 100
-IMBALANCE_HIST_BINS: 50
-PARTICIPATION_BINS: 100
-ACF_OUTPUT_DIRNAME: acf
+# Trade-tape filtering
+TRADING_HOURS: ["09:30:00", "17:30:00"]
 
 # Metaorder dictionary stats (from metaorders_dict_all_*.pkl)
 RUN_METAORDER_DICT_STATS: true
 METAORDER_STATS_LEVEL: member
-METAORDER_STATS_PROPRIETARY: true
-METAORDER_STATS_DATA_DIR: null           # defaults to data/{DATASET_NAME}
-METAORDER_STATS_PARQUET_DIR: data  # null -> same as METAORDER_STATS_DATA_DIR
-METAORDER_STATS_OUT_DIR: null
-METAORDER_STATS_DICT_PATH: null    # null -> computed from METAORDER_STATS_* params
-METAORDER_STATS_IMG_DIR: null      # null -> computed as images/{DATASET_NAME}/{level}_{proprietary_tag}
-METAORDER_POWERLAW_MIN_TAIL: 50    # minimum number of points required in the fitted tail x >= xmin
+METAORDER_STATS_PROPRIETARY: false
+METAORDER_STATS_DICT_PATH: null  # null -> {OUTPUT_FILE_PATH}/metaorders_dict_all_{level}_{proprietary_tag}.pkl
+
+# Power-law tail fits for metaorder volumes
+METAORDER_POWERLAW_FIT_ENABLED: false  # set false to disable power-law fitting overlays on distribution plots
+METAORDER_POWERLAW_MIN_TAIL: 50  # minimum number of points required in the fitted tail x >= xmin
 METAORDER_POWERLAW_NUM_CANDIDATES: 1000  # coarse log-spaced tail-size candidates
-METAORDER_POWERLAW_REFINE_WINDOW: 50   # local +/- index window around best coarse candidate
+METAORDER_POWERLAW_REFINE_WINDOW: 50  # local +/- index window around best coarse candidate

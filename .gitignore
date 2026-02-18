@@ -225,7 +225,7 @@ data/
 *.pickle
 
 # pdfs
-*.pdf
+# *.pdf
 
 # notebooks
 *.ipynb

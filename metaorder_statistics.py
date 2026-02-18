@@ -1,25 +1,33 @@
 #!/usr/bin/env python3
 """
-Imbalance / crowding analysis for proprietary vs non-proprietary metaorders.
+Metaorder dictionary statistics (durations, volumes, inter-arrivals, participation).
 
-- Loads two files: proprietary and (optionally) non-proprietary.
-- Computes per-(ISIN, Date) *local* imbalance excluding each metaorder itself.
-- Computes correlations between Direction and local imbalance, with
-  95% confidence intervals (Fisher's z).
-- Reproduces the "global imbalance" correlation as a sanity check.
-- Additionally computes *daily* correlations Corr(Direction, imbalance_local)
-  with CIs for both groups, and (optionally) saves plots across days.
-- Optionally builds aggregate density plots from the raw metaorders_dict output
-  (durations, volumes, inter-arrivals, participation).
+What this script does
+---------------------
+This script produces distributional summaries and plots from the metaorder-index
+dictionary produced by `metaorder_computation.py` (the `metaorders_dict_all_*`
+pickle). It loads the corresponding per-ISIN trade tapes (parquet files) and
+computes metaorder-level quantities such as:
 
-Usage (with defaults pointing to parquet files):
-    python imbalance_analysis.py
+- durations
+- inter-arrival times
+- metaorder volumes
+- Q/V and participation-rate proxies
+- metaorders-per-member counts
 
-Or explicitly:
-    python imbalance_analysis.py \
-        --prop out_files/metaorders_info_sameday_filtered_member_proprietary.parquet \
-        --client out_files/metaorders_info_sameday_filtered_member_non_proprietary.parquet \
-        --min-n 100
+It then exports figures under the configured output folder.
+
+How to run
+----------
+1) Edit `config_ymls/metaorder_statistics.yml` (dataset name, dict path, tape folder, proprietary flag).
+2) Run:
+
+    python metaorder_statistics.py
+
+Outputs
+-------
+- Figures: `images/{DATASET_NAME}/{METAORDER_STATS_LEVEL}_{proprietary_tag}/png/` and `html/`
+- Log file: `metaorder_statistics.log`
 """
 
 from __future__ import annotations
@@ -33,7 +41,7 @@ import pickle
 import yaml
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 from tqdm import tqdm
 
 import numpy as np
@@ -42,8 +50,11 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")  # non-interactive backend (good for scripts / servers)
 import matplotlib.pyplot as plt
+from matplotlib import cycler
 import seaborn as sns
-sns.set_theme()
+
+import plotly.express as px
+import plotly.io as pio
 
 # ---------------------------------------------------------------------
 # Configuration loader (YAML)
@@ -71,11 +82,22 @@ def _resolve_repo_path(value: str) -> Path:
     return path
 
 
-def _resolve_opt_repo_path(value: Optional[str | Path], default: Path) -> Path:
-    """Resolve a path, falling back to `default` when the config value is None."""
-    if value is None:
-        return _resolve_repo_path(str(default))
-    return _resolve_repo_path(str(value))
+def _format_path_template(template: str, context: Mapping[str, str]) -> str:
+    """
+    Format a path template with a restricted placeholder set.
+
+    Allowed placeholders are the keys in `context`.
+    """
+    if "{" not in template:
+        return template
+    try:
+        return template.format(**context)
+    except KeyError as e:
+        allowed = ", ".join(sorted(context.keys()))
+        raise KeyError(
+            f"Unknown placeholder {e} in path template '{template}'. "
+            f"Allowed placeholders: {allowed}."
+        ) from e
 
 
 # Sizes tuned for print-friendly plots (loaded from YAML)
@@ -84,13 +106,29 @@ LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
 TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
 LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
 DEFAULT_FIGSIZE = tuple(_cfg_require("DEFAULT_FIGSIZE"))
+THEME_COLORWAY = ["#5B8FF9", "#91CC75", "#EE6666", "#5470C6", "#FAC858", "#73C0DE"]
+THEME_GRID_COLOR = "#E5ECF6"
+THEME_BG_COLOR = "#FFFFFF"
+THEME_FONT_FAMILY = "DejaVu Sans"
+
+sns.set_theme(style="whitegrid", palette=THEME_COLORWAY)
+pio.templates.default = "plotly_white"
 
 plt.rcParams.update({
     "font.size": TICK_FONT_SIZE,
     "xtick.labelsize": TICK_FONT_SIZE,
     "ytick.labelsize": TICK_FONT_SIZE,
+    "font.family": THEME_FONT_FAMILY,
     "axes.labelsize": LABEL_FONT_SIZE,
     "axes.titlesize": TITLE_FONT_SIZE,
+    "axes.grid": True,
+    "axes.facecolor": THEME_BG_COLOR,
+    "axes.prop_cycle": cycler(color=THEME_COLORWAY),
+    "figure.facecolor": THEME_BG_COLOR,
+    "savefig.facecolor": THEME_BG_COLOR,
+    "grid.color": THEME_GRID_COLOR,
+    "grid.linestyle": ":",
+    "grid.alpha": 0.7,
     "legend.fontsize": LEGEND_FONT_SIZE,
     "figure.figsize": DEFAULT_FIGSIZE,
 })
@@ -112,7 +150,32 @@ _original_print = builtins.print
 
 
 def log_print(*args, **kwargs):
-    """Print to stdout and append the same message to the script log file."""
+    """
+    Summary
+    -------
+    Print to stdout and append the same message to this script's log file.
+
+    Parameters
+    ----------
+    *args
+        Positional arguments forwarded to `print`.
+    **kwargs
+        Keyword arguments forwarded to `print` (e.g. `sep`, `end`, `flush`).
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    - The module monkey-patches `builtins.print` to this function so that
+      printed diagnostics are also persisted to `metaorder_statistics.log`.
+
+    Examples
+    --------
+    >>> log_print(\"hello\", 1, 2, sep=\"|\")
+    hello|1|2
+    """
     sep = kwargs.get("sep", " ")
     message = sep.join(str(a) for a in args)
     logger.info(message)
@@ -125,304 +188,62 @@ builtins.print = log_print
 # Configuration (loaded from YAML)
 # ---------------------------------------------------------------------
 DATASET_NAME = str(_CFG.get("DATASET_NAME") or "ftsemib")
-DATA_ROOT = _resolve_repo_path(str(_CFG.get("DATA_ROOT") or "data"))
-OUT_ROOT = _resolve_repo_path(str(_CFG.get("OUT_ROOT") or "out_files"))
-IMG_ROOT = _resolve_repo_path(str(_CFG.get("IMG_ROOT") or "images"))
 
-_prop_path_cfg = _CFG.get("PROP_PATH")
-_client_path_cfg = _CFG.get("CLIENT_PATH")
-PROP_PATH = _resolve_opt_repo_path(
-    _prop_path_cfg,
-    Path(OUT_ROOT) / DATASET_NAME / "metaorders_info_sameday_filtered_member_proprietary.parquet",
-)
-CLIENT_PATH = _resolve_opt_repo_path(
-    _client_path_cfg,
-    Path(OUT_ROOT) / DATASET_NAME / "metaorders_info_sameday_filtered_member_non_proprietary.parquet",
-)
-
-ALPHA = float(_cfg_require("ALPHA"))  # significance level for confidence intervals
-BOOTSTRAP_RUNS = int(_cfg_require("BOOTSTRAP_RUNS"))  # number of permutation/bootstraps for p-values
-BOOTSTRAP_HEATMAP = bool(_cfg_require("BOOTSTRAP_HEATMAP"))  # toggle permutation test + significance filtering in heatmaps
-P_VALUE_THRESHOLD = float(_cfg_require("P_VALUE_THRESHOLD"))  # significance cutoff for filtering plotted correlations
-MIN_N = int(_cfg_require("MIN_N"))  # minimum number of metaorders per day to include in the analysis
-SMOOTHING_DAYS = int(_cfg_require("SMOOTHING_DAYS"))  # number of days to smooth the correlation
-MIN_METAORDERS_PER_MEMBER = int(_cfg_require("MIN_METAORDERS_PER_MEMBER"))
-N_MIN_PER_MEMBER_CLIENT = int(_cfg_require("N_MIN_PER_MEMBER_CLIENT"))
-MEMBER_WINDOW_DAYS = int(_cfg_require("MEMBER_WINDOW_DAYS"))
-PLOT_DIR = _resolve_opt_repo_path(
-    _CFG.get("PLOT_DIR"), Path(IMG_ROOT) / DATASET_NAME / "prop_vs_nonprop"
-)
-
-# Daily returns / imbalance-return scatter
-ATTACH_DAILY_RETURNS = bool(_cfg_require("ATTACH_DAILY_RETURNS"))
-PLOT_IMBALANCE_VS_RETURNS = bool(_cfg_require("PLOT_IMBALANCE_VS_RETURNS"))
-RETURNS_DATA_DIR = _resolve_opt_repo_path(
-    _CFG.get("RETURNS_DATA_DIR"), Path(DATA_ROOT) / DATASET_NAME
-)
-RETURNS_TRADING_HOURS = tuple(_cfg_require("RETURNS_TRADING_HOURS"))
-DAILY_RETURN_COL = str(_cfg_require("DAILY_RETURN_COL"))
-
-# Toggles for imbalance-specific analyses
-ACF_IMBALANCE = bool(_cfg_require("ACF_IMBALANCE"))
-DISTRIBUTIONS_IMBALANCE = bool(_cfg_require("DISTRIBUTIONS_IMBALANCE"))
-
-# Plotting parameters
-ACF_MAX_LAG = int(_cfg_require("ACF_MAX_LAG"))
-ACF_BOOTSTRAP_SAMPLES = int(_cfg_require("ACF_BOOTSTRAP_SAMPLES"))
-IMBALANCE_HIST_BINS = int(_cfg_require("IMBALANCE_HIST_BINS"))
-PARTICIPATION_BINS = int(_cfg_require("PARTICIPATION_BINS"))
-ACF_OUTPUT_DIRNAME = str(_cfg_require("ACF_OUTPUT_DIRNAME"))
+# Trading-hours filter applied when loading the per-ISIN trade tapes.
+TRADING_HOURS = tuple(_cfg_require("TRADING_HOURS"))
 
 # Metaorder dictionary stats (raw metaorder indices, not the per-metaorder info parquet)
 RUN_METAORDER_DICT_STATS = bool(_cfg_require("RUN_METAORDER_DICT_STATS"))
 METAORDER_STATS_LEVEL = str(_cfg_require("METAORDER_STATS_LEVEL"))
 METAORDER_STATS_PROPRIETARY = bool(_cfg_require("METAORDER_STATS_PROPRIETARY"))
 METAORDER_STATS_PROPRIETARY_TAG = "proprietary" if METAORDER_STATS_PROPRIETARY else "non_proprietary"
-METAORDER_STATS_DATA_DIR = _resolve_opt_repo_path(
-    _CFG.get("METAORDER_STATS_DATA_DIR"), Path(DATA_ROOT) / DATASET_NAME
-)
-_stats_parquet_override = _CFG.get("METAORDER_STATS_PARQUET_DIR")
-METAORDER_STATS_PARQUET_DIR = (
-    _resolve_opt_repo_path(_stats_parquet_override, METAORDER_STATS_DATA_DIR)
-)
-METAORDER_STATS_OUT_DIR = _resolve_opt_repo_path(
-    _CFG.get("METAORDER_STATS_OUT_DIR"), Path(OUT_ROOT) / DATASET_NAME
-)
+
+_path_context = {
+    "DATASET_NAME": DATASET_NAME,
+    "METAORDER_STATS_LEVEL": METAORDER_STATS_LEVEL,
+    "METAORDER_STATS_PROPRIETARY_TAG": METAORDER_STATS_PROPRIETARY_TAG,
+}
+
+PARQUET_PATH = str(_cfg_require("PARQUET_PATH"))
+PARQUET_DIR = _resolve_repo_path(_format_path_template(PARQUET_PATH, _path_context))
+log_print(f"Using parquet directory: {PARQUET_DIR}")
+
+OUTPUT_FILE_PATH = str(_cfg_require("OUTPUT_FILE_PATH"))
+OUTPUT_DIR = _resolve_repo_path(_format_path_template(OUTPUT_FILE_PATH, _path_context))
+
+IMG_OUTPUT_PATH = str(_cfg_require("IMG_OUTPUT_PATH"))
+IMG_BASE_DIR = _resolve_repo_path(_format_path_template(IMG_OUTPUT_PATH, _path_context))
+
 _stats_dict_override = _CFG.get("METAORDER_STATS_DICT_PATH")
-METAORDER_STATS_DICT_PATH = (
-    _resolve_opt_repo_path(
-        _stats_dict_override,
-        METAORDER_STATS_OUT_DIR / f"metaorders_dict_all_{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}.pkl",
+if _stats_dict_override is None:
+    METAORDER_STATS_DICT_PATH = (
+        OUTPUT_DIR / f"metaorders_dict_all_{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}.pkl"
     )
-)
-_stats_img_override = _CFG.get("METAORDER_STATS_IMG_DIR")
-METAORDER_STATS_IMG_DIR = (
-    _resolve_opt_repo_path(
-        _stats_img_override,
-        Path(IMG_ROOT) / DATASET_NAME / f"{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}",
+else:
+    METAORDER_STATS_DICT_PATH = _resolve_repo_path(
+        _format_path_template(str(_stats_dict_override), _path_context)
     )
-)
+
+PLOT_DIR = IMG_BASE_DIR / f"{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}"
+PNG_DIR = Path(PLOT_DIR) / "png"
+HTML_DIR = Path(PLOT_DIR) / "html"
+for _figure_dir in (Path(PLOT_DIR), PNG_DIR, HTML_DIR):
+    _figure_dir.mkdir(parents=True, exist_ok=True)
+
+METAORDER_POWERLAW_FIT_ENABLED = bool(_CFG.get("METAORDER_POWERLAW_FIT_ENABLED", True))
 METAORDER_POWERLAW_MIN_TAIL = max(int(_CFG.get("METAORDER_POWERLAW_MIN_TAIL", 50)), 2)
 METAORDER_POWERLAW_NUM_CANDIDATES = max(int(_CFG.get("METAORDER_POWERLAW_NUM_CANDIDATES", 200)), 5)
 METAORDER_POWERLAW_REFINE_WINDOW = max(int(_CFG.get("METAORDER_POWERLAW_REFINE_WINDOW", 50)), 0)
 
-# ---------------------------------------------------------------------
-# Correlation with confidence interval
-# ---------------------------------------------------------------------
-def corr_with_ci(
-    x: Iterable[float],
-    y: Iterable[float],
-    alpha: float = 0.05,
-) -> Tuple[float, float, float, int]:
-    """
-    Compute Pearson correlation r and a (1 - alpha) CI using
-    a non-parametric bootstrap (percentile interval) over (x, y) pairs.
 
-    Returns
-    -------
-    r : float
-        Pearson correlation.
-    lo : float
-        Lower bound of the CI.
-    hi : float
-        Upper bound of the CI.
-    n : int
-        Sample size used in the correlation.
-    """
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-
-    mask = ~np.isnan(x) & ~np.isnan(y)
-    x = x[mask]
-    y = y[mask]
-    n = x.size
-
-    # For very small samples, treat correlation and CI as undefined to avoid
-    # unstable bootstrap behavior.
-    if n <= 3:
-        return float("nan"), float("nan"), float("nan"), n
-
-    # Point estimate
-    r = float(np.corrcoef(x, y)[0, 1])
-
-    # Bootstrap percentile CI
-    if BOOTSTRAP_RUNS <= 0 or not np.isfinite(r):
-        return r, float("nan"), float("nan"), n
-
-    rng = np.random.default_rng()
-    boot_rs = np.empty(BOOTSTRAP_RUNS, dtype=float)
-    for i in range(BOOTSTRAP_RUNS):
-        idx = rng.integers(0, n, size=n)
-        xb = x[idx]
-        yb = y[idx]
-        # If the bootstrap sample is degenerate, mark as NaN
-        if np.all(xb == xb[0]) or np.all(yb == yb[0]):
-            boot_rs[i] = np.nan
-        else:
-            boot_rs[i] = np.corrcoef(xb, yb)[0, 1]
-
-    valid = boot_rs[~np.isnan(boot_rs)]
-    if valid.size == 0:
-        lo = hi = float("nan")
-    else:
-        lo = float(np.quantile(valid, alpha / 2.0))
-        hi = float(np.quantile(valid, 1.0 - alpha / 2.0))
-
-    return r, lo, hi, n
+def _png_output_path(path_like: str | Path) -> Path:
+    """Return a PNG output path under the canonical `png/` directory."""
+    return PNG_DIR / Path(path_like).name
 
 
-def corr_with_bootstrap_p(
-    x: Iterable[float],
-    y: Iterable[float],
-    n_bootstrap: int = BOOTSTRAP_RUNS,
-) -> Tuple[float, float, int]:
-    """
-    Compute Pearson correlation and a two-sided permutation p-value by shuffling y.
-    Returns (r, p_value, n). If n_bootstrap <= 0, p_value is NaN.
-    """
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    mask = ~np.isnan(x) & ~np.isnan(y)
-    x = x[mask]
-    y = y[mask]
-    n = x.size
-    if n < 3:
-        return float("nan"), float("nan"), n
-    r = float(np.corrcoef(x, y)[0, 1])
-    if n_bootstrap <= 0 or not np.isfinite(r):
-        return r, float("nan"), n
-
-    rng = np.random.default_rng()
-    perm_rs = np.empty(n_bootstrap, dtype=float)
-    for i in range(n_bootstrap):
-        y_perm = rng.permutation(y)
-        perm_rs[i] = np.corrcoef(x, y_perm)[0, 1]
-
-    # Two-sided p-value
-    if np.isnan(perm_rs).all():
-        p_val = float("nan")
-    else:
-        greater = np.mean(perm_rs >= r)
-        smaller = np.mean(perm_rs <= r)
-        p_val = 2 * min(greater, smaller)
-        p_val = min(1.0, p_val)
-    return r, float(p_val), n
-
-
-def extract_date(period_list):
-    if len(period_list) > 0:
-        # Keep as pandas Timestamp to avoid object-dtype `datetime.date` columns,
-        # which some parquet engines (e.g. fastparquet) can't serialize reliably.
-        return pd.to_datetime(period_list[0]).normalize()
-    return None
-
-
-# ---------------------------------------------------------------------
-# Daily returns helpers
-# ---------------------------------------------------------------------
-def list_isin_parquet_paths(data_dir: Path) -> List[Path]:
-    if not data_dir.exists():
-        print(f"[Daily returns] Data directory not found: {data_dir}")
-        return []
-    paths: List[Path] = []
-    for path in data_dir.iterdir():
-        name = path.name
-        if not name.endswith(".parquet"):
-            continue
-        if path.stem.upper() == "ALTRI_FTSEMIB":
-            continue
-        paths.append(path)
-    return sorted(paths)
-
-
-def compute_daily_returns_for_path(parquet_path: Path, trading_hours: Tuple[str, str]) -> pd.Series:
-    trades = pd.read_parquet(parquet_path, columns=["Trade Time", "Price Last Contract"])
-    if trades.empty:
-        return pd.Series(dtype=float)
-
-    trades = trades.dropna(subset=["Trade Time", "Price Last Contract"]).copy()
-    trades["Trade Time"] = pd.to_datetime(trades["Trade Time"], errors="coerce")
-    trades = trades.dropna(subset=["Trade Time"])
-    start, end = trading_hours
-    mask_hours = trades["Trade Time"].dt.time.between(pd.to_datetime(start).time(), pd.to_datetime(end).time())
-    trades = trades.loc[mask_hours]
-    trades = trades.sort_values("Trade Time", kind="mergesort")
-    trades = trades[trades["Price Last Contract"] > 0]
-    if trades.empty:
-        return pd.Series(dtype=float)
-
-    daily_close = trades.groupby(trades["Trade Time"].dt.date)["Price Last Contract"].last()
-    daily_close = daily_close.sort_index()
-    if daily_close.size < 2:
-        return pd.Series(dtype=float)
-
-    returns = np.log(daily_close).diff()
-    return returns.replace([np.inf, -np.inf], np.nan)
-
-
-def build_daily_returns_lookup(
-    data_dir: Path,
-    isins: Sequence[str],
-    trading_hours: Tuple[str, str] = ("09:30:00", "17:30:00"),
-) -> Dict[Tuple[str, dt.date], float]:
-    isin_set = {str(isin) for isin in isins if pd.notna(isin)}
-    if not isin_set:
-        return {}
-
-    paths = list_isin_parquet_paths(data_dir)
-    paths = [p for p in paths if p.stem in isin_set]
-    lookup: Dict[Tuple[str, dt.date], float] = {}
-    for path in tqdm(paths, desc="Computing daily returns per ISIN"):
-        returns = compute_daily_returns_for_path(path, trading_hours)
-        if returns.empty:
-            continue
-        isin = path.stem
-        for date_key, ret in returns.items():
-            try:
-                date_obj = pd.to_datetime(date_key).date()
-            except Exception:
-                continue
-            lookup[(isin, date_obj)] = float(ret) if pd.notnull(ret) else np.nan
-    return lookup
-
-
-def attach_daily_returns_column(
-    metaorders: pd.DataFrame,
-    daily_returns: Dict[Tuple[str, dt.date], float],
-    new_col: str,
-) -> Tuple[pd.DataFrame, bool]:
-    out = metaorders.copy()
-
-    if ("ISIN" not in out.columns) or ("Date" not in out.columns):
-        placeholder = pd.Series(np.nan, index=out.index, dtype=float)
-        existing = out[new_col] if new_col in out.columns else None
-        changed = existing is None or not placeholder.equals(existing)
-        out[new_col] = placeholder
-        return out, changed
-
-    def _to_date(val):
-        if val is None or (isinstance(val, float) and np.isnan(val)):
-            return None
-        # datetime is a subclass of date -> check datetime first.
-        if isinstance(val, dt.datetime):
-            return val.date()
-        if isinstance(val, dt.date):
-            return val
-        try:
-            return pd.to_datetime(val).date()
-        except Exception:
-            return None
-
-    values = []
-    for isin, date_val in zip(out.get("ISIN", []), out.get("Date", [])):
-        key = (str(isin), _to_date(date_val))
-        values.append(daily_returns.get(key, np.nan))
-
-    new_series = pd.Series(values, index=out.index, dtype=float)
-    existing = out[new_col] if new_col in out.columns else None
-    changed = existing is None or not new_series.equals(existing)
-    out[new_col] = new_series
-    return out, changed
+def _html_output_path(path_like: str | Path) -> Path:
+    """Return an HTML output path under the canonical `html/` directory."""
+    return HTML_DIR / Path(path_like).name
 
 
 # ---------------------------------------------------------------------
@@ -439,7 +260,46 @@ def plot_pdf_line(
     logx: bool = False,
     logy: bool = False,
 ) -> bool:
-    """Plot a 1D PDF as a line using histogram density estimates."""
+    """
+    Summary
+    -------
+    Plot a 1D density line using histogram-based PDF estimates.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Target axes.
+    data : Iterable[float]
+        Sample values.
+    bins : int | str | Sequence[float], default=50
+        Histogram bin specification forwarded to `numpy.histogram`.
+    label : str | None, default=None
+        Legend label.
+    color : str | None, default=None
+        Line color.
+    marker : str, default=\"o\"
+        Matplotlib marker.
+    markersize : float, default=2.5
+        Marker size.
+    logx : bool, default=False
+        If True, use a log scale on the x axis (non-positive values are dropped).
+    logy : bool, default=False
+        If True, use a log scale on the y axis.
+
+    Returns
+    -------
+    plotted : bool
+        True if a line was drawn, False if no valid data were available.
+
+    Notes
+    -----
+    - This helper avoids KDE dependencies and behaves robustly for small samples.
+
+    Examples
+    --------
+    >>> fig, ax = plt.subplots()
+    >>> _ = plot_pdf_line(ax, [1, 2, 3], bins=3)
+    """
     arr = pd.to_numeric(pd.Series(list(data)), errors="coerce").to_numpy(dtype=float)
     arr = arr[np.isfinite(arr)]
     if logx:
@@ -459,6 +319,48 @@ def plot_pdf_line(
         linestyle="-",
         markersize=markersize,
     )
+    if logx:
+        ax.set_xscale("log")
+    if logy:
+        ax.set_yscale("log")
+    return True
+
+
+def _plot_kde_line(
+    ax: plt.Axes,
+    data: Iterable[float],
+    label: str | None = None,
+    color: str | None = None,
+    bw_adjust: float = 1.0,
+    logx: bool = False,
+    logy: bool = False,
+) -> bool:
+    """Plot a 1D KDE line and return False when density estimation is not feasible."""
+    arr = pd.to_numeric(pd.Series(list(data)), errors="coerce").to_numpy(dtype=float)
+    arr = arr[np.isfinite(arr)]
+    if logx:
+        arr = arr[arr > 0]
+    if arr.size < 2:
+        return False
+
+    # KDE is undefined for near-constant samples (singular covariance).
+    if np.allclose(arr, arr[0]):
+        return False
+
+    try:
+        sns.kdeplot(
+            x=arr,
+            ax=ax,
+            label=label,
+            color=color,
+            bw_adjust=bw_adjust,
+            fill=False,
+            cut=0,
+            linewidth=1.5,
+        )
+    except Exception:
+        return False
+
     if logx:
         ax.set_xscale("log")
     if logy:
@@ -689,6 +591,29 @@ def power_law_pdf(x: Iterable[float], alpha: float, xmin: float) -> np.ndarray:
 # Metaorder dictionary statistics (durations, volumes, inter-arrivals)
 # ---------------------------------------------------------------------
 def list_metaorder_parquet_paths(data_dir: Path) -> List[Path]:
+    """
+    Summary
+    -------
+    List per-ISIN parquet trade-tape files in a directory.
+
+    Parameters
+    ----------
+    data_dir : Path
+        Directory expected to contain `*.parquet` files, one per ISIN.
+
+    Returns
+    -------
+    list[Path]
+        Sorted list of parquet paths in `data_dir`.
+
+    Notes
+    -----
+    - This helper does not recurse into subdirectories.
+
+    Examples
+    --------
+    >>> paths = list_metaorder_parquet_paths(Path(\"data/parquet\"))
+    """
     if not data_dir.exists():
         print(f"[Metaorder stats] Parquet directory not found: {data_dir}")
         return []
@@ -705,7 +630,35 @@ def load_trades_filtered_for_stats(
     proprietary: Optional[bool],
     trading_hours: Tuple[str, str] = ("09:30:00", "17:30:00"),
 ) -> pd.DataFrame:
-    """Load trades for stats, optionally filtering by proprietary flag."""
+    """
+    Summary
+    -------
+    Load a per-ISIN trade tape and apply basic filters used in metaorder statistics.
+
+    Parameters
+    ----------
+    path : Path
+        Parquet path for one ISIN's trade tape.
+    proprietary : bool | None
+        If True, keep only proprietary aggressive trades; if False, keep only
+        non-proprietary aggressive trades; if None, keep all trades.
+    trading_hours : tuple[str, str], default=(\"09:30:00\", \"17:30:00\")
+        Inclusive trading-hours filter applied on `Trade Time`.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered trade tape with a stable ordering and an `ISIN` column.
+
+    Notes
+    -----
+    - The function adds a `__row_id__` column to ensure stable sorting when multiple
+      trades share the same timestamp.
+
+    Examples
+    --------
+    >>> trades = load_trades_filtered_for_stats(Path(\"data/parquet/ENEL.parquet\"), proprietary=True)
+    """
     trades = pd.read_parquet(path)
     if proprietary is True:
         trades = trades[trades["Trade Type Aggressive"] == "Dealing_on_own_account"].copy()
@@ -733,11 +686,44 @@ def run_metaorder_dict_statistics(
     proprietary: bool,
     trading_hours: Tuple[str, str] = ("09:30:00", "17:30:00"),
 ) -> None:
+    """
+    Compute distributional summaries from a metaorder-index dictionary and save figures.
+
+    Parameters
+    ----------
+    metaorders_dict_path:
+        Pickle path to the `metaorders_dict_all_*` object produced by `metaorder_computation.py`.
+        Expected structure: `{isin: {member_or_client_id: [list_of_metaorders_as_trade_index_lists]}}`.
+    parquet_dir:
+        Directory containing per-ISIN `*.parquet` trade tapes (filename stem is treated as ISIN).
+    img_dir:
+        Output directory for figures.
+    proprietary:
+        Whether the metaorders dictionary corresponds to proprietary (True) or non-proprietary (False) metaorders.
+        This is used only to choose the trade filtering for the per-ISIN tapes.
+    trading_hours:
+        Inclusive (start, end) trading-hours filter as `("HH:MM:SS", "HH:MM:SS")`.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    - Figures are primarily matplotlib-based for robustness (PNG output without extra deps).
+    - For the "metaorders per member" plot, we also write a Plotly HTML companion and
+      try to export a Plotly PNG (requires `kaleido`); when that export fails, we
+      fall back to a matplotlib line plot while keeping the historical PNG filename.
+    """
     if not metaorders_dict_path.exists():
         print(f"[Metaorder stats] Metaorder dictionary not found: {metaorders_dict_path}")
         return
 
     img_dir.mkdir(parents=True, exist_ok=True)
+    html_dir = img_dir / "html"
+    png_dir = img_dir / "png"
+    html_dir.mkdir(parents=True, exist_ok=True)
+    png_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         metaorders_dict_all = pickle.load(metaorders_dict_path.open("rb"))
@@ -832,17 +818,68 @@ def run_metaorder_dict_statistics(
 
     print(f"[Metaorder stats] Total metaorders (all ISINs): {total_metaorders}")
     if counts_by_member:
-        members, counts = zip(*sorted(counts_by_member.items(), key=lambda x: x[1], reverse=True))
-        plt.figure(figsize=(12, 6.5))
-        plt.bar(np.arange(len(counts)), counts)
-        plt.xlabel("Member ID")
-        plt.ylabel("Number of metaorders")
-        plt.title("Metaorders per member")
-        plt.xticks(rotation=90)
-        plt.yscale("log")
-        plt.tight_layout()
-        plt.savefig(img_dir / "metaorders_per_member_all.png")
-        plt.close()
+        # Distribution profile: sort members by metaorder count and plot the profile as a line.
+        # This is more readable than a histogram when counts are heavy-tailed and member IDs are many.
+        sorted_items = sorted(counts_by_member.items(), key=lambda x: x[1], reverse=True)
+        members, counts = zip(*sorted_items)
+        counts_arr = np.asarray(counts, dtype=float)
+        ranks = np.arange(1, len(counts_arr) + 1, dtype=int)
+
+        counts_df = pd.DataFrame(
+            {
+                "rank": ranks,
+                "n_metaorders": counts_arr,
+                "member": [str(m) for m in members],
+            }
+        )
+
+        fig_profile = px.line(
+            counts_df,
+            x="rank",
+            y="n_metaorders",
+            markers=True,
+            labels={
+                "rank": "Member",
+                "n_metaorders": "Number of metaorders",
+            },
+        )
+        fig_profile.update_traces(
+            line=dict(color="#5B8FF9", width=2.0),
+            marker=dict(color="#5B8FF9", size=6),
+            customdata=counts_df[["member"]].to_numpy(),
+            hovertemplate="Rank %{x}<br>Member %{customdata[0]}<br>Metaorders %{y}<extra></extra>",
+        )
+        fig_profile.update_yaxes(type="log")
+        fig_profile.update_layout(
+            template="plotly_white",
+            font={"family": THEME_FONT_FAMILY, "size": TICK_FONT_SIZE, "color": "#1F2937"},
+            colorway=THEME_COLORWAY,
+            paper_bgcolor=THEME_BG_COLOR,
+            plot_bgcolor=THEME_BG_COLOR,
+            margin=dict(l=60, r=20, t=60, b=60),
+        )
+
+        html_path = html_dir / "metaorders_per_member_all.html"
+        fig_profile.write_html(html_path)
+        print(f"[Metaorder stats] Saved HTML to {html_path}")
+
+        plotly_png_path = png_dir / "metaorders_per_member_all.png"
+        try:
+            fig_profile.write_image(plotly_png_path)
+            print(f"[Metaorder stats] Saved PNG to {plotly_png_path}")
+        except Exception as exc:
+            print(f"[Metaorder stats][warn] Could not export Plotly PNG (kaleido missing?): {exc}")
+            # Matplotlib fallback for environments without Plotly static export support.
+            plt.figure(figsize=(12, 6.5))
+            plt.plot(ranks, counts_arr, color="#5B8FF9", linewidth=1.8)
+            plt.scatter(ranks, counts_arr, color="#5B8FF9", s=10, alpha=0.7)
+            plt.xlabel("Member rank (sorted by # metaorders)")
+            plt.ylabel("Number of metaorders")
+            plt.yscale("log")
+            plt.tight_layout()
+            plt.savefig(plotly_png_path)
+            plt.close()
+            print(f"[Metaorder stats] Saved PNG (matplotlib fallback) to {plotly_png_path}")
 
     def _pdf_plot(
         data: List[float],
@@ -853,7 +890,6 @@ def run_metaorder_dict_statistics(
         logx: bool = False,
         bins: int = 50,
     ):
-        print(f"[Metaorder stats] Fitting power law for {title}...")
         if not data:
             tqdm.write(f"Skipping plot {title}: no data")
             return
@@ -877,73 +913,79 @@ def run_metaorder_dict_statistics(
         if logx:
             fit_data = fit_data[fit_data > 0]
 
-        fit_result = fit_power_law_clauset_continuous(
-            fit_data,
-            min_tail=METAORDER_POWERLAW_MIN_TAIL,
-            num_candidates=METAORDER_POWERLAW_NUM_CANDIDATES,
-            refine_window=METAORDER_POWERLAW_REFINE_WINDOW,
-        )
-        if fit_result is None:
+        if not METAORDER_POWERLAW_FIT_ENABLED:
             print(
-                f"[Metaorder stats] Power-law fit skipped for {title}: "
-                f"not enough valid tail data (min_tail={METAORDER_POWERLAW_MIN_TAIL})."
+                f"[Metaorder stats] Power-law fit disabled by config for {title} "
+                "(METAORDER_POWERLAW_FIT_ENABLED=False)."
             )
         else:
-            x_max = float(np.nanmax(fit_data)) if fit_data.size else float("nan")
-            if np.isfinite(x_max) and x_max > fit_result.xmin:
-                if logx:
-                    x_grid = np.logspace(np.log10(fit_result.xmin), np.log10(x_max), 250)
-                else:
-                    x_grid = np.linspace(fit_result.xmin, x_max, 250)
-                # Histogram density is unconditional on the whole sample; scale the
-                # fitted tail density by tail mass for an apples-to-apples overlay.
-                tail_mass = fit_result.n_tail / fit_data.size
-                prefactor = tail_mass * (fit_result.alpha - 1.0) / fit_result.xmin
-                y_grid = tail_mass * power_law_pdf(x_grid, fit_result.alpha, fit_result.xmin)
-                valid = np.isfinite(y_grid) & (y_grid > 0)
-                if np.any(valid):
-                    ax.plot(
-                        x_grid[valid],
-                        y_grid[valid],
-                        color="tab:orange",
-                        linewidth=1.5,
-                        alpha=0.7,
-                        label=(
-                            "Fit: "
-                            fr"$f(x)={prefactor:.2g}\frac{{x}}{{{fit_result.xmin:.2g}}}^{{-{fit_result.alpha:.2f}}}$, "
-                        ),
-                    )
-                    ax.axvline(
-                        fit_result.xmin,
-                        color="tab:orange",
-                        linestyle="--",
-                        linewidth=1,
-                        alpha=0.5,
-                    )
-                    print(
-                        f"[Metaorder stats] Power-law fit for {title}: "
-                        f"alpha={fit_result.alpha:.4f}, xmin={fit_result.xmin:.6g}, "
-                        f"KS={fit_result.ks_stat:.4f}, n_tail={fit_result.n_tail}"
-                    )
+            print(f"[Metaorder stats] Fitting power law for {title}...")
+            fit_result = fit_power_law_clauset_continuous(
+                fit_data,
+                min_tail=METAORDER_POWERLAW_MIN_TAIL,
+                num_candidates=METAORDER_POWERLAW_NUM_CANDIDATES,
+                refine_window=METAORDER_POWERLAW_REFINE_WINDOW,
+            )
+            if fit_result is None:
+                print(
+                    f"[Metaorder stats] Power-law fit skipped for {title}: "
+                    f"not enough valid tail data (min_tail={METAORDER_POWERLAW_MIN_TAIL})."
+                )
+            else:
+                x_max = float(np.nanmax(fit_data)) if fit_data.size else float("nan")
+                if np.isfinite(x_max) and x_max > fit_result.xmin:
+                    if logx:
+                        x_grid = np.logspace(np.log10(fit_result.xmin), np.log10(x_max), 250)
+                    else:
+                        x_grid = np.linspace(fit_result.xmin, x_max, 250)
+                    # Histogram density is unconditional on the whole sample; scale the
+                    # fitted tail density by tail mass for an apples-to-apples overlay.
+                    tail_mass = fit_result.n_tail / fit_data.size
+                    prefactor = tail_mass * (fit_result.alpha - 1.0) / fit_result.xmin
+                    y_grid = tail_mass * power_law_pdf(x_grid, fit_result.alpha, fit_result.xmin)
+                    valid = np.isfinite(y_grid) & (y_grid > 0)
+                    if np.any(valid):
+                        ax.plot(
+                            x_grid[valid],
+                            y_grid[valid],
+                            color="tab:orange",
+                            linewidth=1.5,
+                            alpha=0.7,
+                            label=(
+                                "Fit: "
+                                fr"$f(x)={prefactor:.2g}\frac{{x}}{{{fit_result.xmin:.2g}}}^{{-{fit_result.alpha:.2f}}}$, "
+                            ),
+                        )
+                        ax.axvline(
+                            fit_result.xmin,
+                            color="tab:orange",
+                            linestyle="--",
+                            linewidth=1,
+                            alpha=0.5,
+                        )
+                        print(
+                            f"[Metaorder stats] Power-law fit for {title}: "
+                            f"alpha={fit_result.alpha:.4f}, xmin={fit_result.xmin:.6g}, "
+                            f"KS={fit_result.ks_stat:.4f}, n_tail={fit_result.n_tail}"
+                        )
+                    else:
+                        print(
+                            f"[Metaorder stats] Power-law fit skipped for {title}: "
+                            "fitted density is non-positive on the plotting grid."
+                        )
                 else:
                     print(
                         f"[Metaorder stats] Power-law fit skipped for {title}: "
-                        "fitted density is non-positive on the plotting grid."
+                        "invalid support range after filtering."
                     )
-            else:
-                print(
-                    f"[Metaorder stats] Power-law fit skipped for {title}: "
-                    "invalid support range after filtering."
-                )
 
         ax.set_xlabel(xlabel)
         ax.set_ylabel("Density")
-        ax.set_title(title)
         handles, _ = ax.get_legend_handles_labels()
         if handles:
             ax.legend()
         plt.tight_layout()
-        fig.savefig(img_dir / filename)
+        fig.savefig(png_dir / filename)
         plt.close(fig)
 
     _pdf_plot(
@@ -954,1593 +996,59 @@ def run_metaorder_dict_statistics(
         logx=True,
     )
     _pdf_plot([t / 60 for t in inter_arrivals], "Inter-arrival times", "Minutes", "interarrival_all.png", logx=True)
-    _pdf_plot(meta_volumes, "Metaorder volumes", "Volume", "volumes_all.png", logx=True)
+    _pdf_plot(meta_volumes, "Metaorder volumes", "Q", "volumes_all.png", logx=True)
     _pdf_plot([q for q in q_over_v], "Q/V ", "Q/V", "q_over_v_all.png", logx=True)
     _pdf_plot(
         [r for r in participation_rates],
         r"$\eta$",
-        "Metaorder volume / volume during metaorder",
+        r"$\eta$",
         "participation_rate_all.png",
         logx=True,
     )
 
 
 # ---------------------------------------------------------------------
-# Local imbalance per (ISIN, Date)
-# ---------------------------------------------------------------------
-def add_daily_imbalance(
-    df: pd.DataFrame,
-    group_cols=("ISIN", "Date"),
-    side_col: str = "Direction",
-    vol_col: str = "Q",
-    new_col: str = "imbalance_local",
-) -> pd.DataFrame:
-    """
-    For each group (e.g. ISIN, Date) and each metaorder i in that group, compute:
-        imbalance_i = sum_{j != i} Q_j * D_j / sum_{j != i} Q_j
-
-    This is the signed volume imbalance of *other* metaorders on the same
-    stock & day, in the spirit of Bucci / Brière.
-    """
-
-    df = df.copy()
-    group_cols = list(group_cols)
-    grouped = df.groupby(group_cols, group_keys=False, dropna=False, sort=False)
-
-    # Signed volume of each metaorder; temporary helper column
-    df["__QD__"] = df[vol_col].to_numpy(dtype=float) * df[side_col].to_numpy(dtype=float)
-    total_Q = grouped[vol_col].transform("sum")
-    total_QD = grouped["__QD__"].transform("sum")
-
-    denom = total_Q - df[vol_col]
-    numer = total_QD - df["__QD__"]
-
-    df[new_col] = np.where(denom > 0, numer / denom, np.nan)
-
-    return df.drop(columns="__QD__")
-
-
-# ---------------------------------------------------------------------
-# Print information, correlations, and intuition
-# ---------------------------------------------------------------------
-def analyze_flow(
-    df: pd.DataFrame,
-    label: str,
-    imb_col: str = "imbalance_local",
-    side_col: str = "Direction",
-    vol_col: str = "Q",
-    alpha: float = 0.05,
-) -> None:
-    print("\n" + "=" * 80)
-    print(f"Analysis for: {label}")
-    print("=" * 80)
-    print(f"Total metaorders        : {len(df):,}")
-    print(f"Unique ISINs            : {df['ISIN'].nunique():,}")
-    print(f"Unique trading dates    : {df['Date'].nunique():,}")
-
-    if "Q/V" in df.columns:
-        qv_min = df["Q/V"].min()
-        qv_max = df["Q/V"].max()
-        print(f"Q/V range               : {qv_min:.2e} – {qv_max:.2e}")
-
-    if "Participation Rate" in df.columns:
-        pr_mean = df["Participation Rate"].mean()
-        pr_std = df["Participation Rate"].std()
-        print(f"Participation rate mean±std : {pr_mean:.3f} ± {pr_std:.3f}")
-
-    # Quality of local imbalance
-    na_share = df[imb_col].isna().mean()
-    print(f"\nShare of NaN {imb_col}: {na_share:.2%}")
-    if na_share > 0:
-        print("  -> NaNs come from (ISIN,Date) with a single metaorder (no 'others').")
-
-    # Correlation between sign and *local* imbalance
-    x = df[side_col].astype(float).to_numpy()
-    y = df[imb_col].astype(float).to_numpy()
-    r_loc, lo_loc, hi_loc, n_loc = corr_with_ci(x, y, alpha=alpha)
-    r_loc_p, p_loc, _ = corr_with_bootstrap_p(x, y, n_bootstrap=BOOTSTRAP_RUNS)
-
-    if math.isnan(r_loc):
-        print("\nCorr(Direction, local imbalance): not enough data (n < 3).")
-    else:
-        print(
-            f"\nCorr({side_col}, {imb_col}) = {r_loc:.3f} "
-            f"(p (bootstrap) = {p_loc:.3f}, 95% CI [{lo_loc:.3f}, {hi_loc:.3f}], n={n_loc})"
-        )
-
-    # Conditional means of local imbalance
-    for side, name in [(1, "buys"), (-1, "sells")]:
-        mask = df[side_col] == side
-        if mask.any():
-            m = df.loc[mask, imb_col].mean()
-            print(f"Mean {imb_col} | {name:5s}: {m:+.3f}")
-        else:
-            print(f"No {name} in this sample.")
-
-    # Intuition from local correlation
-    if not math.isnan(r_loc):
-        if r_loc > 0.05:
-            msg = (
-                "trades tend to go WITH the *daily* metaorder imbalance "
-                "(crowded / herding)."
-            )
-        elif r_loc < -0.05:
-            msg = (
-                "trades tend to go AGAINST the *daily* metaorder imbalance "
-                "(contrarian / liquidity-providing)."
-            )
-        else:
-            msg = (
-                "trade direction is roughly UNCORRELATED with the *daily* imbalance "
-                "(idiosyncratic flow)."
-            )
-        print(f"\nIntuition (local): For {label}, {msg}")
-
-    # Optional: reproduce *global* imbalance and its (mechanically negative) correlation
-    Q = df[vol_col].to_numpy(dtype=float)
-    D = df[side_col].to_numpy(dtype=float)
-    total_Q = Q.sum()
-    total_QD = (Q * D).sum()
-    denom = total_Q - Q
-    global_imb = np.where(denom > 0, (total_QD - Q * D) / denom, np.nan)
-
-    mask = denom > 0
-    if mask.any():
-        r_glob, lo_glob, hi_glob, n_glob = corr_with_ci(D[mask], global_imb[mask], alpha=alpha)
-        print(
-            f"\nSanity check: Corr(Direction, *global* imbalance) = {r_glob:.3f} "
-            f"(95% CI [{lo_glob:.3f}, {hi_glob:.3f}], n={n_glob})"
-        )
-        print(
-            "  -> This correlation is expected to be mechanically NEGATIVE even for\n"
-            "     random signs, because each metaorder is subtracted from the total\n"
-            "     when computing its own 'others' imbalance."
-        )
-
-
-# ---------------------------------------------------------------------
-# Daily correlation time series
-# ---------------------------------------------------------------------
-def daily_crowding_ts(
-    df: pd.DataFrame,
-    side_col: str = "Direction",
-    imb_col: str = "imbalance_local",
-    date_col: str = "Date",
-    alpha: float = 0.05,
-) -> pd.DataFrame:
-    """
-    For each Date, compute Corr(Direction, imbalance_local) + CI.
-    Returns a DataFrame with columns: Date, r, lo, hi, n.
-    """
-    rows = []
-    for d, g in df.groupby(date_col, sort=True):
-        x = g[side_col].to_numpy(dtype=float)
-        y = g[imb_col].to_numpy(dtype=float)
-        r, lo, hi, n = corr_with_ci(x, y, alpha=alpha)
-        r_b, p_val, _ = corr_with_bootstrap_p(x, y, n_bootstrap=BOOTSTRAP_RUNS)
-        rows.append({"Date": d, "r": r, "lo": lo, "hi": hi, "p": p_val, "n": n})
-
-    out = pd.DataFrame(rows).sort_values("Date").reset_index(drop=True)
-    return out
-
-
-def compute_environment_imbalance(
-    source_df: pd.DataFrame,
-    group_cols=("ISIN", "Date"),
-    side_col: str = "Direction",
-    vol_col: str = "Q",
-    new_col: str = "imbalance_env",
-) -> pd.DataFrame:
-    """
-    Compute imbalance on (ISIN, Date) using only the source_df metaorders.
-    This is used for cross-group crowding where the environment is the *other* group.
-    """
-    tmp = source_df.copy()
-    tmp["__QD__"] = tmp[vol_col].to_numpy(dtype=float) * tmp[side_col].to_numpy(dtype=float)
-    group_cols = list(group_cols)
-    agg = (
-        tmp.groupby(group_cols, dropna=False, sort=False)
-        .agg(total_Q=(vol_col, "sum"), total_QD=("__QD__", "sum"))
-        .reset_index()
-    )
-    agg[new_col] = np.where(agg["total_Q"] > 0, agg["total_QD"] / agg["total_Q"], np.nan)
-    return agg[group_cols + [new_col]]
-
-
-def attach_environment_imbalance(
-    target_df: pd.DataFrame,
-    environment_df: pd.DataFrame,
-    new_col: str,
-    group_cols=("ISIN", "Date"),
-    side_col: str = "Direction",
-    vol_col: str = "Q",
-) -> pd.DataFrame:
-    """Attach environment imbalance (computed on environment_df) to each target row."""
-    env_imb = compute_environment_imbalance(
-        environment_df,
-        group_cols=group_cols,
-        side_col=side_col,
-        vol_col=vol_col,
-        new_col=new_col,
-    )
-    target_clean = target_df.drop(columns=[new_col], errors="ignore")
-    return target_clean.merge(env_imb, on=list(group_cols), how="left", sort=False)
-
-
-def attach_member_client_imbalance(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    new_col: str = "imbalance_client_member_env",
-    member_col: str = "Member",
-    date_col: str = "Date",
-    side_col: str = "Direction",
-    vol_col: str = "Q",
-) -> pd.DataFrame:
-    """
-    Attach client-flow imbalance aggregated at the (Member, Date) level
-    to each proprietary metaorder.
-
-    For each (Member, Date), we compute the signed-volume imbalance using only
-    client metaorders (across all ISINs for that member/day), and merge it onto
-    the proprietary dataframe keyed by (Member, Date).
-    """
-    env_imb = compute_environment_imbalance(
-        metaorders_non_proprietary,
-        group_cols=(member_col, date_col),
-        side_col=side_col,
-        vol_col=vol_col,
-        new_col=new_col,
-    )
-    target_clean = metaorders_proprietary.drop(columns=[new_col], errors="ignore")
-    return target_clean.merge(env_imb, on=[member_col, date_col], how="left", sort=False)
-
-
-def plot_daily_crowding(
-    daily_prop: pd.DataFrame,
-    daily_client: pd.DataFrame,
-    out_prefix: str = "daily_crowding",
-    smoothing_days: int = 20,
-    label_prop: str = "Prop: r(Direction, imbalance)",
-    label_client: str = "Client: r(Direction, imbalance)",
-    title: str = "Daily crowding: Corr(Direction, daily imbalance_local)",
-    smoothed_title: str | None = None,
-) -> None:
-    """
-    Save two plots:
-    - daily_crowding_daily_corr.png : daily correlations with CI bands
-    - daily_crowding_rolling_{N}d.png: rolling mean of daily correlations
-    """
-    if smoothing_days < 1:
-        raise ValueError("smoothing_days must be >= 1")
-
-    out_prefix_path = Path(out_prefix)
-    out_prefix_path.parent.mkdir(parents=True, exist_ok=True)
-    # 1) Raw daily correlations with CI bands
-    fig, ax = plt.subplots(figsize=(12, 6.5))
-
-    # Proprietary
-    ax.plot(
-        daily_prop["Date"],
-        daily_prop["r"],
-        label=label_prop,
-        linewidth=1.5,
-    )
-    ax.fill_between(
-        daily_prop["Date"],
-        daily_prop["lo"],
-        daily_prop["hi"],
-        alpha=0.2,
-    )
-
-    # Client
-    ax.plot(
-        daily_client["Date"],
-        daily_client["r"],
-        label=label_client,
-        linestyle="--",
-        linewidth=1.5,
-    )
-    ax.fill_between(
-        daily_client["Date"],
-        daily_client["lo"],
-        daily_client["hi"],
-        alpha=0.2,
-    )
-
-    ax.axhline(0.0, color="black", linestyle=":", linewidth=1)
-    ax.set_ylabel("Daily correlation")
-    ax.set_xlabel("Date")
-    ax.set_title(title)
-    ax.legend()
-    fig.autofmt_xdate()
-    plt.tight_layout()
-    out_path1 = out_prefix_path.parent / f"{out_prefix_path.name}_daily_corr.png"
-    fig.savefig(out_path1, bbox_inches="tight")
-    plt.close(fig)
-    print(f"\n[Daily plots] Saved daily correlation plot to: {out_path1}")
-
-    # 2) Rolling mean smoothing of the daily correlations
-    daily_prop = daily_prop.copy()
-    daily_client = daily_client.copy()
-    # Allow rolling averages to appear once we have at least some data points.
-    min_periods = min(5, smoothing_days)
-    daily_prop["r_roll"] = daily_prop["r"].rolling(
-        window=smoothing_days,
-        min_periods=min_periods,
-    ).mean()
-    daily_client["r_roll"] = daily_client["r"].rolling(
-        window=smoothing_days,
-        min_periods=min_periods,
-    ).mean()
-
-    fig, ax = plt.subplots(figsize=(12, 6.5))
-    ax.plot(
-        daily_prop["Date"],
-        daily_prop["r_roll"],
-        label=f"Prop {smoothing_days}-day mean",
-        linewidth=1.5,
-    )
-    ax.plot(
-        daily_client["Date"],
-        daily_client["r_roll"],
-        label=f"Client {smoothing_days}-day mean",
-        linewidth=1.5,
-    )
-    ax.axhline(0.0, color="black", linestyle=":", linewidth=1)
-    ax.set_ylabel(f"{smoothing_days}-day rolling correlation")
-    ax.set_xlabel("Date")
-    resolved_smoothed_title = (
-        smoothed_title
-        if smoothed_title is not None
-        else f"Smoothed daily crowding ({smoothing_days}-day rolling mean)"
-    )
-    ax.set_title(resolved_smoothed_title)
-    ax.legend()
-    fig.autofmt_xdate()
-    plt.tight_layout()
-    out_path2 = out_prefix_path.parent / f"{out_prefix_path.name}_rolling_{smoothing_days}d.png"
-    fig.savefig(out_path2, bbox_inches="tight")
-    plt.close(fig)
-    print(f"[Daily plots] Saved rolling correlation plot to: {out_path2}")
-
-
-def run_daily_crowding_analysis(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    alpha: float = 0.05,
-    min_n: int = 100,
-    out_prefix: str = "daily_crowding",
-    make_plots: bool = True,
-    smoothing_days: int = 20,
-) -> None:
-    """
-    Compute daily Corr(Direction, imbalance_local) for prop and client,
-    print summary, and optionally save plots using a configurable smoothing window.
-    """
-    print("\n" + "=" * 80)
-    print("Daily crowding analysis (per trading day)")
-    print("=" * 80)
-
-    daily_prop = daily_crowding_ts(metaorders_proprietary, alpha=alpha)
-    daily_client = daily_crowding_ts(metaorders_non_proprietary, alpha=alpha)
-
-    # Filter by minimum sample size per day
-    daily_prop_f = daily_prop[daily_prop["n"] >= min_n].reset_index(drop=True)
-    daily_client_f = daily_client[daily_client["n"] >= min_n].reset_index(drop=True)
-
-    print(f"\nProprietary days with n >= {min_n}: {len(daily_prop_f)} "
-          f"(out of {len(daily_prop)})")
-    print(f"Client days with n >= {min_n}: {len(daily_client_f)} "
-          f"(out of {len(daily_client)})")
-
-    if not daily_prop_f.empty:
-        print(
-            f"\nProp mean daily correlation (unfiltered): {daily_prop['r'].mean():.3f}"
-        )
-        print(
-            f"Prop mean daily correlation (n >= {min_n}): {daily_prop_f['r'].mean():.3f}"
-        )
-    if not daily_client_f.empty:
-        print(
-            f"\nClient mean daily correlation (unfiltered): {daily_client['r'].mean():.3f}"
-        )
-        print(
-            f"Client mean daily correlation (n >= {min_n}): {daily_client_f['r'].mean():.3f}"
-        )
-
-    if make_plots and (not daily_prop_f.empty) and (not daily_client_f.empty):
-        plot_daily_crowding(
-            daily_prop_f,
-            daily_client_f,
-            out_prefix=out_prefix,
-            smoothing_days=smoothing_days,
-        )
-    else:
-        print("\n[Daily plots] Skipped plot generation (no data after filtering or disabled).")
-
-
-def run_cross_group_crowding_analysis(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    alpha: float = 0.05,
-    min_n: int = 100,
-    out_prefix: str = "cross_crowding",
-    make_plots: bool = True,
-    smoothing_days: int = 20,
-) -> None:
-    """
-    Prop vs client (and vice-versa) crowding:
-    Corr(Direction_group, imbalance built from the other group on the same ISIN/day).
-    """
-    print("\n" + "=" * 80)
-    print("Cross-group crowding (prop vs client)")
-    print("=" * 80)
-
-    prop_env_col = "imbalance_client_env"
-    client_env_col = "imbalance_prop_env"
-    prop_with_client = attach_environment_imbalance(
-        metaorders_proprietary,
-        metaorders_non_proprietary,
-        new_col=prop_env_col,
-    )
-    client_with_prop = attach_environment_imbalance(
-        metaorders_non_proprietary,
-        metaorders_proprietary,
-        new_col=client_env_col,
-    )
-
-    daily_prop_env = daily_crowding_ts(prop_with_client, imb_col=prop_env_col, alpha=alpha)
-    daily_client_env = daily_crowding_ts(client_with_prop, imb_col=client_env_col, alpha=alpha)
-
-    daily_prop_f = daily_prop_env[daily_prop_env["n"] >= min_n].reset_index(drop=True)
-    daily_client_f = daily_client_env[daily_client_env["n"] >= min_n].reset_index(drop=True)
-
-    print(f"\nProp vs client days with n >= {min_n}: {len(daily_prop_f)} "
-          f"(out of {len(daily_prop_env)})")
-    print(f"Client vs prop days with n >= {min_n}: {len(daily_client_f)} "
-          f"(out of {len(daily_client_env)})")
-
-    if not daily_prop_f.empty:
-        print(
-            f"\nProp vs client mean daily correlation (unfiltered): {daily_prop_env['r'].mean():.3f}"
-        )
-        print(
-            f"Prop vs client mean daily correlation (n >= {min_n}): {daily_prop_f['r'].mean():.3f}"
-        )
-    if not daily_client_f.empty:
-        print(
-            f"\nClient vs prop mean daily correlation (unfiltered): {daily_client_env['r'].mean():.3f}"
-        )
-        print(
-            f"Client vs prop mean daily correlation (n >= {min_n}): {daily_client_f['r'].mean():.3f}"
-        )
-
-    if make_plots and (not daily_prop_f.empty) and (not daily_client_f.empty):
-        plot_daily_crowding(
-            daily_prop_f,
-            daily_client_f,
-            out_prefix=out_prefix,
-            smoothing_days=smoothing_days,
-            label_prop="Prop vs client: r(Direction_prop, client imbalance)",
-            label_client="Client vs prop: r(Direction_client, prop imbalance)",
-            title="Cross-group crowding: Corr(Direction, other-group imbalance)",
-            smoothed_title=f"Smoothed cross-group crowding ({smoothing_days}-day rolling mean)",
-        )
-    else:
-        print("\n[Cross-group plots] Skipped plot generation (no data after filtering or disabled).")
-
-
-def run_all_vs_all_crowding_analysis(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    alpha: float = 0.05,
-    min_n: int = 100,
-    out_prefix: str = "all_vs_all_crowding",
-    make_plots: bool = True,
-    smoothing_days: int = 20,
-) -> None:
-    """
-    Corr(Direction_group, imbalance of all other metaorders on the same ISIN/day),
-    where 'others' includes both prop and client and excludes the metaorder itself.
-    """
-    print("\n" + "=" * 80)
-    print("Crowding versus all others (prop + client)")
-    print("=" * 80)
-
-    combined = pd.concat([metaorders_proprietary, metaorders_non_proprietary], ignore_index=True)
-    combined_with_all = add_daily_imbalance(
-        combined,
-        group_cols=("ISIN", "Date"),
-        side_col="Direction",
-        vol_col="Q",
-        new_col="imbalance_all_others",
-    )
-
-    prop_all = combined_with_all[combined_with_all["Group"] == "prop"].reset_index(drop=True)
-    client_all = combined_with_all[combined_with_all["Group"] == "client"].reset_index(drop=True)
-
-    daily_prop_all = daily_crowding_ts(prop_all, imb_col="imbalance_all_others", alpha=alpha)
-    daily_client_all = daily_crowding_ts(client_all, imb_col="imbalance_all_others", alpha=alpha)
-
-    daily_prop_f = daily_prop_all[daily_prop_all["n"] >= min_n].reset_index(drop=True)
-    daily_client_f = daily_client_all[daily_client_all["n"] >= min_n].reset_index(drop=True)
-
-    print(f"\nProp vs all days with n >= {min_n}: {len(daily_prop_f)} "
-          f"(out of {len(daily_prop_all)})")
-    print(f"Client vs all days with n >= {min_n}: {len(daily_client_f)} "
-          f"(out of {len(daily_client_all)})")
-
-    if not daily_prop_f.empty:
-        print(
-            f"\nProp vs all mean daily correlation (unfiltered): {daily_prop_all['r'].mean():.3f}"
-        )
-        print(
-            f"Prop vs all mean daily correlation (n >= {min_n}): {daily_prop_f['r'].mean():.3f}"
-        )
-    if not daily_client_f.empty:
-        print(
-            f"\nClient vs all mean daily correlation (unfiltered): {daily_client_all['r'].mean():.3f}"
-        )
-        print(
-            f"Client vs all mean daily correlation (n >= {min_n}): {daily_client_f['r'].mean():.3f}"
-        )
-
-    if make_plots and (not daily_prop_f.empty) and (not daily_client_f.empty):
-        plot_daily_crowding(
-            daily_prop_f,
-            daily_client_f,
-            out_prefix=out_prefix,
-            smoothing_days=smoothing_days,
-            label_prop="Prop vs all others",
-            label_client="Client vs all others",
-            title="Crowding versus all other metaorders",
-            smoothed_title=f"Smoothed crowding vs all ({smoothing_days}-day rolling mean)",
-        )
-    else:
-        print("\n[All-others plots] Skipped plot generation (no data after filtering or disabled).")
-
-
-def run_member_level_prop_client_crowding_analysis(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    env_col: str = "imbalance_client_member_env",
-    alpha: float = 0.05,
-    min_metaorders_per_member: int = MIN_METAORDERS_PER_MEMBER,
-    out_prefix: str = "member_prop_client_crowding",
-    make_plots: bool = True,
-    member_window_days: int = MEMBER_WINDOW_DAYS,
-    n_min_per_member_client: int = N_MIN_PER_MEMBER_CLIENT,
-) -> None:
-    """
-    Member-level crowding between proprietary direction and client flow:
-    Corr(Direction_prop, client imbalance aggregated at (Member, Date)).
-    If make_plots is True, builds a non-overlapping member_window_days-day heatmap.
-    """
-    print("\n" + "=" * 80)
-    print("Member-level crowding (prop vs own clients)")
-    print("=" * 80)
-
-    required_cols = {"Member", "Direction", env_col, "Date"}
-    missing = required_cols - set(metaorders_proprietary.columns)
-    if missing:
-        print(
-            f"\n[Member crowding] Missing required columns in proprietary dataframe; "
-            f"skipping member-level analysis. Missing: {missing}"
-        )
-        return
-    if env_col not in metaorders_proprietary.columns:
-        print(
-            f"\n[Member crowding] Column '{env_col}' not found in proprietary dataframe; "
-            "skipping member-level analysis."
-        )
-        return
-
-    member_window_days = int(member_window_days)
-    if member_window_days <= 0:
-        raise ValueError("member_window_days must be >= 1")
-
-    df = metaorders_proprietary[list(required_cols)].copy()
-    df["Direction"] = pd.to_numeric(df["Direction"], errors="coerce")
-    df[env_col] = pd.to_numeric(df[env_col], errors="coerce")
-    df = df.replace([np.inf, -np.inf], np.nan)
-
-    # Global correlation across all proprietary metaorders
-    r_global, lo_global, hi_global, n_global = corr_with_ci(
-        df["Direction"],
-        df[env_col],
-        alpha=alpha,
-    )
-    r_global_b, p_global, _ = corr_with_bootstrap_p(
-        df["Direction"],
-        df[env_col],
-        n_bootstrap=BOOTSTRAP_RUNS,
-    )
-    if math.isnan(r_global):
-        print("\n[Member crowding] Global Corr(Direction_prop, client member-imbalance): not enough data (n < 3).")
-    else:
-        print(
-            f"\nGlobal Corr(Direction_prop, {env_col}) = {r_global:.3f} "
-            f"(p (bootstrap) = {p_global:.3f}, 95% CI [{lo_global:.3f}, {hi_global:.3f}], n={n_global})"
-        )
-
-    # Per-member correlations
-    rows = []
-    for member, g in df.groupby("Member", sort=True):
-        r_m, lo_m, hi_m, n_m = corr_with_ci(g["Direction"], g[env_col], alpha=alpha)
-        r_m_b, p_m, _ = corr_with_bootstrap_p(g["Direction"], g[env_col], n_bootstrap=BOOTSTRAP_RUNS)
-        rows.append(
-            {
-                "Member": member,
-                "r": r_m,
-                "lo": lo_m,
-                "hi": hi_m,
-                "p": p_m,
-                "n": n_m,
-            }
-        )
-
-    stats = pd.DataFrame(rows)
-    if stats.empty:
-        print("\n[Member crowding] No proprietary metaorders available for member-level analysis.")
-        return
-
-    stats = stats.sort_values("Member").reset_index(drop=True)
-
-    # Add total client-metaorder counts per member and apply symmetric thresholds
-    client_counts_total = (
-        metaorders_non_proprietary.groupby("Member").size().rename("n_client_total")
-        if not metaorders_non_proprietary.empty
-        else pd.Series(dtype=int)
-    )
-    stats = stats.merge(
-        client_counts_total.reset_index(),
-        on="Member",
-        how="left",
-    )
-    stats["n_client_total"] = stats["n_client_total"].fillna(0).astype(int)
-
-    stats_filtered = stats[
-        (stats["n"] >= min_metaorders_per_member)
-        & (stats["n_client_total"] >= min_metaorders_per_member)
-    ].reset_index(drop=True)
-
-    print(
-        f"\n[Member crowding] Members with n_prop >= {min_metaorders_per_member} "
-        f"and n_client >= {min_metaorders_per_member}: "
-        f"{len(stats_filtered)} (out of {len(stats)})"
-    )
-    if not stats_filtered.empty:
-        mean_r = stats_filtered["r"].mean(skipna=True)
-        print(f"[Member crowding] Mean per-member correlation (n >= {min_metaorders_per_member}): {mean_r:.3f}")
-    else:
-        print("[Member crowding] No members pass the minimum metaorder threshold; skipping exports.")
-        return
-
-    out_prefix_path = Path(out_prefix)
-    out_prefix_path.parent.mkdir(parents=True, exist_ok=True)
-
-    parquet_path = out_prefix_path.parent / f"{out_prefix_path.name}_per_member.parquet"
-    stats_filtered.to_parquet(parquet_path, index=False)
-    print(f"[Member crowding] Saved per-member statistics to: {parquet_path}")
-
-    if make_plots:
-        r_vals = stats_filtered["r"].dropna()
-        if r_vals.empty:
-            print("[Member crowding] No finite per-member correlations to plot per-member bar chart.")
-        else:
-            # Sort members by correlation for a more informative plot
-            plot_df = stats_filtered.dropna(subset=["r"]).copy()
-            plot_df = plot_df.sort_values("r").reset_index(drop=True)
-            members = plot_df["Member"].astype(str).tolist()
-            r_sorted = plot_df["r"].to_numpy()
-            x = np.arange(len(members))
-
-            fig, ax = plt.subplots(
-                figsize=(max(12, 0.3 * len(members)), 7)
-            )
-            ax.bar(x, r_sorted, color="tab:blue", alpha=0.7, edgecolor="black")
-            ax.axhline(0.0, color="black", linestyle=":", linewidth=1)
-            ax.set_xticks(x)
-            ax.set_xticklabels(members, rotation=90)
-            ax.set_xlabel("Member")
-            ax.set_ylabel(r"$\mathrm{Corr}(\epsilon_i, \mathrm{imb}_{m, d_i})$")
-            # ax.set_title("Per-member prop/client crowding correlations")
-            plt.tight_layout()
-            bar_path = out_prefix_path.parent / f"{out_prefix_path.name}_hist.png"
-            fig.savefig(bar_path, bbox_inches="tight")
-            plt.close(fig)
-            print(f"[Member crowding] Saved per-member correlation bar chart to: {bar_path}")
-
-        # Member–window (member_window_days-day, non-overlapping) heatmap with minimum counts
-        # Build non-overlapping windows from the union of prop+client dates
-        all_dates = sorted(
-            set(pd.to_datetime(metaorders_proprietary["Date"]).dt.date.dropna()).union(
-                set(pd.to_datetime(metaorders_non_proprietary.get("Date", pd.Series([], dtype=object))).dt.date.dropna())
-            )
-        )
-        if not all_dates:
-            print("[Member crowding] No dates available to build member–window heatmap.")
-            return
-
-        window_labels: dict = {}
-        window_order: list[str] = []
-        for idx in range(0, len(all_dates), member_window_days):
-            chunk = all_dates[idx : idx + member_window_days]
-            start = chunk[0]
-            end = chunk[-1]
-            label = f"{start}_to_{end}"
-            window_order.append(label)
-            for d in chunk:
-                window_labels[d] = label
-
-        # Assign windows to proprietary metaorders
-        df_win = df.copy()
-        df_win["__Date_dt__"] = pd.to_datetime(df_win["Date"]).dt.date
-        df_win["Window"] = df_win["__Date_dt__"].map(window_labels)
-        df_win = df_win.dropna(subset=["Window"])
-
-        # Prop counts per (Member, Window)
-        prop_counts = (
-            df_win.groupby(["Member", "Window"], sort=False)
-            .size()
-            .rename("n_prop")
-            .reset_index()
-        )
-
-        # Client counts per (Member, Window)
-        client_dates = metaorders_non_proprietary.copy()
-        client_dates["__Date_dt__"] = pd.to_datetime(client_dates["Date"]).dt.date
-        client_dates["Window"] = client_dates["__Date_dt__"].map(window_labels)
-        client_counts = (
-            client_dates.dropna(subset=["Window"])
-            .groupby(["Member", "Window"], sort=False)
-            .size()
-            .rename("n_client")
-            .reset_index()
-        )
-
-        # Merge counts into prop data for filtering
-        df_win = df_win.merge(prop_counts, on=["Member", "Window"], how="left")
-        df_win = df_win.merge(client_counts, on=["Member", "Window"], how="left")
-        df_win["n_client"] = df_win["n_client"].fillna(0).astype(int)
-
-        # Compute correlations per (Member, Window) with minimum counts.
-        # If BOOTSTRAP_HEATMAP is True, we also compute permutation p-values and
-        # filter non-significant cells (set them to NaN) before plotting.
-        window_rows = []
-        grouped_win = df_win.groupby(["Member", "Window"], sort=True)
-        for (member, window_label), g in grouped_win:
-            n_prop = int(g["n_prop"].iloc[0]) if "n_prop" in g else len(g)
-            n_client = int(g["n_client"].iloc[0]) if "n_client" in g else 0
-            r_win = float("nan")
-            p_win = float("nan")
-            n_win = len(g)
-            if n_prop >= n_min_per_member_client and n_client >= n_min_per_member_client:
-                n_boot = BOOTSTRAP_RUNS if BOOTSTRAP_HEATMAP else 0
-                r_win_b, p_win, n_win = corr_with_bootstrap_p(
-                    g["Direction"], g[env_col], n_bootstrap=n_boot
-                )
-                if (not BOOTSTRAP_HEATMAP) or (not np.isfinite(p_win)) or (p_win <= P_VALUE_THRESHOLD):
-                    r_win = r_win_b
-            window_rows.append(
-                {
-                    "Member": member,
-                    "Window": window_label,
-                    "r": r_win,
-                    "p": p_win,
-                    "n_prop": n_prop,
-                    "n_client": n_client,
-                    "n_used": n_win,
-                }
-            )
-
-        window_stats = pd.DataFrame(window_rows)
-        if window_stats.empty:
-            print("[Member crowding] No data available to build member–window heatmap.")
-        else:
-            # Order windows by their start date using window_order
-            window_cat = pd.CategoricalDtype(categories=window_order, ordered=True)
-            window_stats["Window"] = window_stats["Window"].astype(window_cat)
-            pivot = window_stats.pivot(index="Window", columns="Member", values="r")
-            pivot = pivot.sort_index()
-
-            if pivot.empty:
-                print("[Member crowding] Member–window heatmap pivot is empty; skipping plot.")
-            else:
-                n_windows, n_members = pivot.shape
-                fig_width = max(12, 0.3 * n_members)
-                fig_height = max(6, 0.2 * n_windows)
-
-                fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-                sns.heatmap(
-                    pivot,
-                    ax=ax,
-                    cmap="coolwarm",
-                    vmin=-1.0,
-                    vmax=1.0,
-                    center=0.0,
-                    cbar_kws={"label": r"$\mathrm{Corr}(\epsilon_i, \mathrm{imb}_{m, d_i})$"},
-                )
-                ax.set_xlabel("Member")
-                ax.set_ylabel(f"{member_window_days}-day window (non-overlapping)")
-                ax.set_title(
-                    rf"Member-level crowding ({member_window_days}-day blocks, $n_{{\mathrm{{prop}}}}\geq {n_min_per_member_client}$ & $n_{{\mathrm{{client}}}}\geq {n_min_per_member_client}$)"
-                )
-                plt.tight_layout()
-                heatmap_path = out_prefix_path.parent / f"{out_prefix_path.name}_heatmap_{member_window_days}d.png"
-                fig.savefig(heatmap_path, bbox_inches="tight")
-                plt.close(fig)
-                print(f"[Member crowding] Saved member–window heatmap to: {heatmap_path}")
-
-
-def compute_daily_metaorder_counts(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-) -> pd.DataFrame:
-    """Return a DataFrame with daily counts per group and their imbalance."""
-    prop_counts = metaorders_proprietary.groupby("Date").size().rename("Proprietary")
-    client_counts = metaorders_non_proprietary.groupby("Date").size().rename("Client")
-
-    daily_metaorders = (
-        pd.concat([prop_counts, client_counts], axis=1)
-        .fillna(0)
-        .astype(int)
-    )
-    daily_metaorders.index = pd.to_datetime(daily_metaorders.index)
-    daily_metaorders = daily_metaorders.sort_index()
-
-    total_counts = daily_metaorders["Proprietary"] + daily_metaorders["Client"]
-    with np.errstate(divide="ignore", invalid="ignore"):
-        daily_metaorders["imbalance_counts"] = np.where(
-            total_counts > 0,
-            (daily_metaorders["Proprietary"] - daily_metaorders["Client"]) / total_counts,
-            np.nan,
-        )
-    return daily_metaorders
-
-
-def plot_daily_count_imbalance(daily_metaorders: pd.DataFrame, out_prefix: str) -> None:
-    """Save a time-series plot and PDF estimate of the daily count imbalance."""
-    out_prefix_path = Path(out_prefix)
-    out_prefix_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Time-series plot
-    fig, ax = plt.subplots(figsize=(12, 6.5))
-    ax.plot(
-        daily_metaorders.index,
-        daily_metaorders["imbalance_counts"],
-        color="tab:blue",
-        linewidth=1.5,
-    )
-    ax.axhline(0.0, color="black", linestyle=":", linewidth=1)
-    ax.set_xlabel("Date")
-    ax.set_ylabel("(N_prop - N_client) / (N_prop + N_client)")
-    ax.set_title("Daily metaorder count imbalance")
-    fig.autofmt_xdate()
-    plt.tight_layout()
-    ts_path = out_prefix_path.parent / f"{out_prefix_path.name}_imbalance_timeseries.png"
-    fig.savefig(ts_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"\n[Daily count plots] Saved imbalance time-series to: {ts_path}")
-
-    # PDF of imbalance distribution
-    fig, ax = plt.subplots(figsize=(12, 7))
-    plotted = plot_pdf_line(
-        ax,
-        daily_metaorders["imbalance_counts"].dropna(),
-        bins="auto",
-        color="tab:blue",
-    )
-    ax.set_title("Distribution of daily count imbalance")
-    ax.set_xlabel("Imbalance")
-    ax.set_ylabel("Density")
-    if plotted:
-        plt.tight_layout()
-        hist_path = out_prefix_path.parent / f"{out_prefix_path.name}_imbalance_histogram.png"
-        fig.savefig(hist_path, bbox_inches="tight")
-        print(f"[Daily count plots] Saved imbalance density plot to: {hist_path}")
-    else:
-        ax.text(0.5, 0.5, "No valid data", ha="center", va="center")
-        plt.tight_layout()
-        hist_path = out_prefix_path.parent / f"{out_prefix_path.name}_imbalance_histogram.png"
-        fig.savefig(hist_path, bbox_inches="tight")
-        print(f"[Daily count plots] Imbalance density plot skipped (no data).")
-    plt.close(fig)
-
-
-def run_daily_count_imbalance_analysis(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    out_prefix: str,
-    make_plots: bool = True,
-) -> None:
-    """Compute and optionally plot daily count imbalance between prop and client flow."""
-    print("\n" + "=" * 80)
-    print("Daily count imbalance")
-    print("=" * 80)
-
-    daily_metaorders = compute_daily_metaorder_counts(
-        metaorders_proprietary,
-        metaorders_non_proprietary,
-    )
-
-    print("\nFirst few rows of daily counts and imbalance:")
-    print(daily_metaorders.head())
-
-    mean_imb = daily_metaorders["imbalance_counts"].mean()
-    std_imb = daily_metaorders["imbalance_counts"].std()
-    print(f"\nMean imbalance: {mean_imb:+.3f}")
-    print(f"Std imbalance : {std_imb:.3f}")
-
-    if make_plots and not daily_metaorders.empty:
-        plot_daily_count_imbalance(daily_metaorders, out_prefix=out_prefix)
-    else:
-        print("\n[Daily count plots] Skipped plot generation (no data or disabled).")
-
-
-def compute_binned_abs_imbalance(
-    df: pd.DataFrame,
-    participation_col: str = "Participation Rate",
-    imbalance_col: str = "imbalance_local",
-    bins: int = 100,
-) -> pd.DataFrame:
-    """
-    Return a DataFrame with mean absolute imbalance grouped by participation-rate bins.
-    """
-    if bins < 1:
-        raise ValueError("bins must be >= 1")
-    if participation_col not in df.columns or imbalance_col not in df.columns:
-        return pd.DataFrame()
-
-    numeric = (
-        df[[participation_col, imbalance_col]]
-        .apply(pd.to_numeric, errors="coerce")
-        .replace([np.inf, -np.inf], np.nan)
-        .dropna()
-    )
-    if numeric.empty:
-        return pd.DataFrame()
-
-    numeric["abs_imbalance"] = numeric[imbalance_col].abs()
-    pr_min = numeric[participation_col].min()
-    pr_max = numeric[participation_col].max()
-
-    if pr_min == pr_max:
-        return pd.DataFrame(
-            {
-                "bin_center": [pr_min],
-                "avg_abs_imbalance": [numeric["abs_imbalance"].mean()],
-                "count": [len(numeric)],
-            }
-        )
-
-    bin_edges = np.linspace(pr_min, pr_max, bins + 1)
-    numeric["bin"] = pd.cut(
-        numeric[participation_col],
-        bins=bin_edges,
-        include_lowest=True,
-        duplicates="drop",
-    )
-    grouped = numeric.groupby("bin", observed=False)
-    agg = grouped["abs_imbalance"].agg(["mean", "size"]).reset_index()
-    agg = agg.rename(columns={"mean": "avg_abs_imbalance", "size": "count"})
-    agg["bin_center"] = agg["bin"].apply(
-        lambda interval: (interval.left + interval.right) / 2.0 if isinstance(interval, pd.Interval) else np.nan
-    )
-    agg = agg.sort_values("bin_center").reset_index(drop=True)
-    return agg[["bin_center", "avg_abs_imbalance", "count"]]
-
-
-def plot_participation_vs_abs_imbalance(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    out_path: str | Path,
-    bins: int = 100,
-    participation_col: str = "Participation Rate",
-    imbalance_col: str = "imbalance_local",
-) -> None:
-    """
-    Plot mean absolute imbalance as a function of participation rate for prop vs client flow.
-    """
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    curves = []
-    for df, label in [
-        (metaorders_proprietary, "Proprietary"),
-        (metaorders_non_proprietary, "Client"),
-    ]:
-        summary = compute_binned_abs_imbalance(
-            df,
-            participation_col=participation_col,
-            imbalance_col=imbalance_col,
-            bins=bins,
-        )
-        if summary.empty:
-            print(f"[Participation plot] Skipping {label.lower()} data (insufficient valid rows).")
-            continue
-        curves.append((summary, label))
-
-    if not curves:
-        print("\n[Participation plot] No data available to plot participation vs |imbalance|.")
-        return
-
-    fig, ax = plt.subplots(figsize=(12, 7))
-    for summary, label in curves:
-        ax.plot(
-            summary["bin_center"],
-            summary["avg_abs_imbalance"],
-            label=label,
-            linewidth=1.5,
-        )
-
-    ax.set_xlabel(r"$\eta$")
-    ax.set_ylabel("Average |imbalance_local| per bin")
-    ax.set_title(r"Average absolute imbalance vs $\eta$")
-    ax.legend()
-    ax.grid(True, linestyle=":", linewidth=0.5, alpha=0.7)
-    plt.tight_layout()
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"\n[Participation plot] Saved participation vs |imbalance| plot to: {out_path}")
-
-
-def plot_imbalance_vs_daily_return(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    out_path: str | Path,
-    imbalance_col: str = "imbalance_local",
-    return_col: str = DAILY_RETURN_COL,
-) -> None:
-    """Scatter plot of imbalance vs daily returns for proprietary and client flow."""
-    required_cols = {imbalance_col, return_col}
-    missing_prop = required_cols - set(metaorders_proprietary.columns)
-    missing_client = required_cols - set(metaorders_non_proprietary.columns)
-    if missing_prop or missing_client:
-        print(
-            "\n[Imbalance vs returns] Missing columns; skip plot. "
-            f"Prop missing: {missing_prop}, client missing: {missing_client}"
-        )
-        return
-
-    frames = []
-    for df, label in [
-        (metaorders_proprietary, "Proprietary"),
-        (metaorders_non_proprietary, "Client"),
-    ]:
-        if df.empty:
-            continue
-        subset = df[[imbalance_col, return_col]].copy()
-        subset["Group"] = label
-        frames.append(subset)
-
-    if not frames:
-        print("\n[Imbalance vs returns] No data available to build scatter plot.")
-        return
-
-    combined = pd.concat(frames, ignore_index=True)
-    combined[imbalance_col] = pd.to_numeric(combined[imbalance_col], errors="coerce")
-    combined[return_col] = pd.to_numeric(combined[return_col], errors="coerce")
-    valid = combined.dropna(subset=[imbalance_col, return_col])
-    if valid.empty:
-        print("\n[Imbalance vs returns] No overlapping non-NaN imbalance/return pairs to plot.")
-        return
-
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    fig, ax = plt.subplots(figsize=(12, 7))
-    for label, g in valid.groupby("Group"):
-        ax.scatter(
-            g[imbalance_col],
-            g[return_col],
-            s=12,
-            alpha=0.5,
-            label=label,
-        )
-    ax.axhline(0.0, color="black", linestyle=":", linewidth=1)
-    ax.axvline(0.0, color="black", linestyle=":", linewidth=1)
-    ax.set_xlabel("Imbalance (others on same ISIN/day)")
-    ax.set_ylabel("Daily log return (close-to-close)")
-    ax.set_title("Imbalance vs daily returns")
-    ax.legend()
-    ax.grid(True, linestyle=":", linewidth=0.5, alpha=0.7)
-    plt.tight_layout()
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"\n[Imbalance vs returns] Saved scatter plot to: {out_path}")
-
-
-def plot_imbalance_distributions(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    plot_dir: str | Path,
-    bins: int = 50,
-) -> None:
-    """Plot distributions of within-group and cross-group imbalances split by buy/sell."""
-    plot_dir = Path(plot_dir)
-    plot_dir.mkdir(parents=True, exist_ok=True)
-
-    within_series = [
-        (
-            metaorders_proprietary.loc[metaorders_proprietary["Direction"] == 1, "imbalance_local"],
-            "Prop buy",
-        ),
-        (
-            metaorders_proprietary.loc[metaorders_proprietary["Direction"] == -1, "imbalance_local"],
-            "Prop sell",
-        ),
-        (
-            metaorders_non_proprietary.loc[metaorders_non_proprietary["Direction"] == 1, "imbalance_local"],
-            "Client buy",
-        ),
-        (
-            metaorders_non_proprietary.loc[metaorders_non_proprietary["Direction"] == -1, "imbalance_local"],
-            "Client sell",
-        ),
-    ]
-
-    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(12, 14))
-    within_ax, cross_ax = axes
-
-    added_within = False
-    for series, label in within_series:
-        data = pd.to_numeric(series, errors="coerce").dropna()
-        if data.empty:
-            continue
-        added_within = plot_pdf_line(within_ax, data, bins=bins, label=label) or added_within
-    within_ax.set_title("Within-group imbalance distributions (PDF)")
-    within_ax.set_xlabel("imbalance_local")
-    within_ax.set_ylabel("Density")
-    if added_within:
-        within_ax.legend()
-    else:
-        within_ax.text(0.5, 0.5, "No within-group data", ha="center", va="center")
-
-    added_cross = False
-    has_cross_cols = ("imbalance_client_env" in metaorders_proprietary.columns) and (
-        "imbalance_prop_env" in metaorders_non_proprietary.columns
-    )
-    if not has_cross_cols:
-        cross_ax.text(0.5, 0.5, "Cross-group imbalance columns not found", ha="center", va="center")
-        print("\n[Imbalance distribution] Cross-group imbalance columns not found; skipping cross density plot.")
-    else:
-        cross_series = [
-            (
-                metaorders_proprietary.loc[metaorders_proprietary["Direction"] == 1, "imbalance_client_env"],
-                "Prop buy (client env)",
-            ),
-            (
-                metaorders_proprietary.loc[metaorders_proprietary["Direction"] == -1, "imbalance_client_env"],
-                "Prop sell (client env)",
-            ),
-            (
-                metaorders_non_proprietary.loc[metaorders_non_proprietary["Direction"] == 1, "imbalance_prop_env"],
-                "Client buy (prop env)",
-            ),
-            (
-                metaorders_non_proprietary.loc[metaorders_non_proprietary["Direction"] == -1, "imbalance_prop_env"],
-                "Client sell (prop env)",
-            ),
-        ]
-
-        for series, label in cross_series:
-            data = pd.to_numeric(series, errors="coerce").dropna()
-            if data.empty:
-                continue
-            added_cross = plot_pdf_line(cross_ax, data, bins=bins, label=label) or added_cross
-
-        cross_ax.set_title("Cross-group imbalance distributions (PDF)")
-        cross_ax.set_xlabel("Environment imbalance")
-        cross_ax.set_ylabel("Density")
-        if added_cross:
-            cross_ax.legend()
-        else:
-            cross_ax.text(0.5, 0.5, "No cross-group data", ha="center", va="center")
-
-    plt.tight_layout()
-    out_path = plot_dir / "imbalance_distribution.png"
-    if added_within or added_cross:
-        fig.savefig(out_path, bbox_inches="tight")
-        print(f"\n[Imbalance distribution] Saved combined density plot to: {out_path}")
-    else:
-        print("\n[Imbalance distribution] Skipped density plot (no data).")
-    plt.close(fig)
-
-
-def compute_autocorr_fft(series: Iterable[float], max_lag: int) -> tuple[np.ndarray, np.ndarray]:
-    """Fast ACF via FFT; returns lags and autocorrelation values up to max_lag."""
-    arr = np.asarray(series, dtype=float)
-    arr = arr[~np.isnan(arr)]
-    n = arr.size
-    if n == 0:
-        return np.array([], dtype=int), np.array([], dtype=float)
-    arr = arr - arr.mean()
-    max_lag = min(max_lag, n - 1)
-    if max_lag < 0:
-        return np.array([], dtype=int), np.array([], dtype=float)
-
-    var0 = float(np.dot(arr, arr))
-    if var0 == 0.0:
-        lags = np.arange(max_lag + 1, dtype=int)
-        return lags, np.ones_like(lags, dtype=float)
-
-    n_fft = 1 << (2 * n - 1).bit_length()
-    fx = np.fft.rfft(arr, n=n_fft)
-    acf_full = np.fft.irfft(fx * np.conjugate(fx), n=n_fft)[:n]
-    acf_full = acf_full / var0
-    lags = np.arange(max_lag + 1, dtype=int)
-    return lags, acf_full[: max_lag + 1]
-
-
-def bootstrap_noise_band(series: Iterable[float], max_lag: int, n_bootstrap: int) -> tuple[np.ndarray, np.ndarray]:
-    """Bootstrap permutation noise band for the ACF (excludes lag 0)."""
-    base = np.asarray(series, dtype=float)
-    base = base[~np.isnan(base)]
-    n = base.size
-    if n == 0 or max_lag < 1:
-        return np.array([], dtype=float), np.array([], dtype=float)
-    max_lag = min(max_lag, n - 1)
-
-    boot = np.empty((n_bootstrap, max_lag))
-    for b in range(n_bootstrap):
-        perm = np.random.permutation(base)
-        _, acf_tmp = compute_autocorr_fft(perm, max_lag)
-        boot[b] = acf_tmp[1 : max_lag + 1]
-
-    lower = np.quantile(boot, 0.05, axis=0)
-    upper = np.quantile(boot, 0.95, axis=0)
-    return lower, upper
-
-
-def plot_direction_autocorrelation(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    out_path: str | Path,
-    max_lag: int = 300,
-    n_bootstrap: int = 100,
-) -> None:
-    """Plot autocorrelation of metaorder signs for proprietary vs client flow with noise bands."""
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    lags_prop, acf_prop = compute_autocorr_fft(metaorders_proprietary["Direction"], max_lag)
-    lags_client, acf_client = compute_autocorr_fft(metaorders_non_proprietary["Direction"], max_lag)
-
-    if lags_prop.size == 0 and lags_client.size == 0:
-        print("\n[ACF] No data available to plot autocorrelations.")
-        return
-
-    lower_prop, upper_prop = bootstrap_noise_band(metaorders_proprietary["Direction"], max_lag, n_bootstrap)
-    lower_client, upper_client = bootstrap_noise_band(metaorders_non_proprietary["Direction"], max_lag, n_bootstrap)
-
-    fig, axes = plt.subplots(1, 2, figsize=(14, 7.5), sharey=True)
-    configs = [
-        ("Proprietary", lags_prop, acf_prop, lower_prop, upper_prop, axes[0]),
-        ("Client", lags_client, acf_client, lower_client, upper_client, axes[1]),
-    ]
-
-    for title, lags, acf_vals, lower, upper, ax in configs:
-        if lags.size <= 1:
-            ax.set_visible(False)
-            continue
-        if lower.size and upper.size and lower.shape[0] == lags.size - 1:
-            ax.fill_between(lags[1:], lower, upper, color="gray", alpha=0.3, label="95% noise band")
-        ax.plot(lags[1:], acf_vals[1:], label="Empirical ACF")
-        ax.set_xlim(0, max_lag)
-        ax.set_xlabel("Lag")
-        ax.set_yscale("symlog", linthresh=1e-3)
-        ax.set_title(f"Autocorrelation of metaorder signs ({title.lower()})")
-        ax.grid(True, linestyle=":", linewidth=0.5)
-        ax.legend()
-
-    axes[0].set_ylabel("Autocorrelation")
-    plt.tight_layout()
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"\n[ACF] Saved metaorder sign autocorrelation plot to: {out_path}")
-
-
-def plot_direction_autocorrelation_per_isin(
-    metaorders_proprietary: pd.DataFrame,
-    metaorders_non_proprietary: pd.DataFrame,
-    out_dir: str | Path,
-    max_lag: int = 300,
-    n_bootstrap: int = 100,
-) -> None:
-    """Compute and save per-ISIN autocorrelation plots with bootstrap bands."""
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    all_isins = sorted(
-        set(metaorders_proprietary.get("ISIN", pd.Series(dtype=object)).dropna().astype(str)).union(
-            set(metaorders_non_proprietary.get("ISIN", pd.Series(dtype=object)).dropna().astype(str))
-        )
-    )
-    if not all_isins:
-        print("\n[ACF] No ISINs found; skipping per-ISIN autocorrelation plots.")
-        return
-
-    for isin in tqdm(all_isins, desc="Per-ISIN ACF"):
-        prop_sub = metaorders_proprietary[metaorders_proprietary["ISIN"].astype(str) == isin]
-        client_sub = metaorders_non_proprietary[metaorders_non_proprietary["ISIN"].astype(str) == isin]
-
-        if prop_sub.empty and client_sub.empty:
-            continue
-
-        lags_prop, acf_prop = compute_autocorr_fft(prop_sub["Direction"], max_lag) if not prop_sub.empty else (np.array([]), np.array([]))
-        lags_client, acf_client = compute_autocorr_fft(client_sub["Direction"], max_lag) if not client_sub.empty else (np.array([]), np.array([]))
-
-        lower_prop, upper_prop = (
-            bootstrap_noise_band(prop_sub["Direction"], max_lag, n_bootstrap) if not prop_sub.empty else (np.array([]), np.array([]))
-        )
-        lower_client, upper_client = (
-            bootstrap_noise_band(client_sub["Direction"], max_lag, n_bootstrap) if not client_sub.empty else (np.array([]), np.array([]))
-        )
-
-        if (lags_prop.size <= 1) and (lags_client.size <= 1):
-            continue
-
-        fig, axes = plt.subplots(1, 2, figsize=(14, 7.5), sharey=True)
-        configs = [
-            ("Proprietary", lags_prop, acf_prop, lower_prop, upper_prop, axes[0]),
-            ("Client", lags_client, acf_client, lower_client, upper_client, axes[1]),
-        ]
-
-        for title, lags, acf_vals, lower, upper, ax in configs:
-            if lags.size <= 1:
-                ax.set_visible(False)
-                continue
-            if lower.size and upper.size and lower.shape[0] == lags.size - 1:
-                ax.fill_between(lags[1:], lower, upper, color="gray", alpha=0.3, label="95% noise band")
-            ax.plot(lags[1:], acf_vals[1:], label="Empirical ACF")
-            ax.set_xlim(0, max_lag)
-            ax.set_xlabel("Lag")
-            # ax.set_yscale("symlog", linthresh=1e-3)
-            ax.set_title(f"{title} — ISIN {isin}")
-            ax.grid(True, linestyle=":", linewidth=0.5)
-            ax.legend()
-
-        axes[0].set_ylabel("Autocorrelation")
-        plt.tight_layout()
-        out_path = out_dir / f"{isin}_acf.png"
-        fig.savefig(out_path, bbox_inches="tight")
-        plt.close(fig)
 
 
 # ---------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------
-def load_metaorders(path: str | Path) -> pd.DataFrame:
-    path_obj = Path(path)
-    suffix = path_obj.suffix.lower()
-
-    if suffix == ".csv":
-        df = pd.read_csv(path_obj)
-    elif suffix in {".parquet"}:
-        df = pd.read_parquet(path_obj)
-    elif suffix in {".pkl", ".pickle"}:
-        df = pd.read_pickle(path_obj)
-    else:
-        raise ValueError(
-            "Unsupported file extension for metaorders: "
-            f"{path_obj.name} (expected .csv, .parquet, .pkl, or .pickle)"
-        )
-
-    # Basic sanity checks / conversions
-    if "Date" not in df.columns:
-        print(f"Adding 'Date' column from 'Period' for file: {path_obj}")
-        df["Date"] = df["Period"].apply(extract_date)
-
-    df = df.copy()
-    # Parquet writers generally expect a real datetime dtype, not object-dtype
-    # Python `datetime.date` values.
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.normalize()
-
-    required = ["ISIN", "Q", "Direction"]
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        raise ValueError(f"Missing required columns in {path}: {missing}")
-
-    return df
-
 
 def main() -> None:
-    if RUN_METAORDER_DICT_STATS:
-        run_metaorder_dict_statistics(
-            metaorders_dict_path=METAORDER_STATS_DICT_PATH,
-            parquet_dir=METAORDER_STATS_PARQUET_DIR,
-            img_dir=METAORDER_STATS_IMG_DIR,
-            proprietary=METAORDER_STATS_PROPRIETARY,
-            trading_hours=RETURNS_TRADING_HOURS,
-        )
+    """
+    Summary
+    -------
+    Run metaorder-dictionary distribution statistics as configured in YAML.
 
-    # Load data
-    metaorders_proprietary = load_metaorders(PROP_PATH)
-    metaorders_non_proprietary = load_metaorders(CLIENT_PATH)
-    metaorders_proprietary["Group"] = "prop"
-    metaorders_non_proprietary["Group"] = "client"
+    Parameters
+    ----------
+    None
 
-    # Add within-group and cross-group imbalances, then persist if we added anything new
-    prop_updated = False
-    client_updated = False
+    Returns
+    -------
+    None
 
-    if "imbalance_local" in metaorders_proprietary.columns:
-        print("\n[Prop vs Non-Prop] Daily imbalance already present in proprietary metaorders dataframe. Skipping within-group calculation.")
-    else:
-        metaorders_proprietary = add_daily_imbalance(metaorders_proprietary)
-        prop_updated = True
+    Notes
+    -----
+    - Inputs/outputs are controlled by `config_ymls/metaorder_statistics.yml`.
+    - This script is intentionally focused on metaorder-dictionary summaries;
+      crowding/imbalance analysis lives in `crowding_analysis.py`.
 
-    if "imbalance_local" in metaorders_non_proprietary.columns:
-        print("\n[Prop vs Non-Prop] Daily imbalance already present in non-proprietary metaorders dataframe. Skipping within-group calculation.")
-    else:
-        metaorders_non_proprietary = add_daily_imbalance(metaorders_non_proprietary)
-        client_updated = True
+    Examples
+    --------
+    >>> # From the repository root:
+    >>> # python metaorder_statistics.py
+    """
+    if not RUN_METAORDER_DICT_STATS:
+        print("[Metaorder stats] RUN_METAORDER_DICT_STATS is false; nothing to do.")
+        return
 
-    prop_env_col = "imbalance_client_env"
-    client_env_col = "imbalance_prop_env"
-
-    if prop_env_col in metaorders_proprietary.columns:
-        print("\n[Prop vs Non-Prop] Cross-group imbalance already present in proprietary metaorders dataframe. Skipping client-environment calculation.")
-    else:
-        metaorders_proprietary = attach_environment_imbalance(
-            metaorders_proprietary,
-            metaorders_non_proprietary,
-            new_col=prop_env_col,
-        )
-        prop_updated = True
-
-    if client_env_col in metaorders_non_proprietary.columns:
-        print("\n[Prop vs Non-Prop] Cross-group imbalance already present in non-proprietary metaorders dataframe. Skipping proprietary-environment calculation.")
-    else:
-        metaorders_non_proprietary = attach_environment_imbalance(
-            metaorders_non_proprietary,
-            metaorders_proprietary,
-            new_col=client_env_col,
-        )
-        client_updated = True
-
-    member_env_col = "imbalance_client_member_env"
-    if member_env_col in metaorders_proprietary.columns:
-        print("\n[Prop vs Non-Prop] Member-level client imbalance already present in proprietary metaorders dataframe. Skipping member-environment calculation.")
-    else:
-        metaorders_proprietary = attach_member_client_imbalance(
-            metaorders_proprietary,
-            metaorders_non_proprietary,
-            new_col=member_env_col,
-        )
-        prop_updated = True
-
-    if ATTACH_DAILY_RETURNS:
-        all_isins: List[str] = sorted(
-            set(metaorders_proprietary["ISIN"].astype(str)).union(metaorders_non_proprietary["ISIN"].astype(str))
-        )
-        daily_returns = build_daily_returns_lookup(
-            RETURNS_DATA_DIR,
-            isins=all_isins,
-            trading_hours=RETURNS_TRADING_HOURS,
-        )
-        if not daily_returns and (DAILY_RETURN_COL in metaorders_proprietary.columns) and (
-            DAILY_RETURN_COL in metaorders_non_proprietary.columns
-        ):
-            print("\n[Daily returns] Lookup is empty; keeping existing daily return columns unchanged.")
-        else:
-            metaorders_proprietary, prop_ret_updated = attach_daily_returns_column(
-                metaorders_proprietary,
-                daily_returns,
-                new_col=DAILY_RETURN_COL,
-            )
-            metaorders_non_proprietary, client_ret_updated = attach_daily_returns_column(
-                metaorders_non_proprietary,
-                daily_returns,
-                new_col=DAILY_RETURN_COL,
-            )
-            prop_updated = prop_updated or prop_ret_updated
-            client_updated = client_updated or client_ret_updated
-
-    if prop_updated:
-        metaorders_proprietary.to_parquet(PROP_PATH)
-        print(f"\n[Prop vs Non-Prop] Saved proprietary metaorders with imbalance columns to: {PROP_PATH}")
-    if client_updated:
-        metaorders_non_proprietary.to_parquet(CLIENT_PATH)
-        print(f"\n[Prop vs Non-Prop] Saved non-proprietary metaorders with imbalance columns to: {CLIENT_PATH}")
-    if not prop_updated and not client_updated:
-        print("\n[Prop vs Non-Prop] No new columns to persist on disk.")
-
-    if ATTACH_DAILY_RETURNS and PLOT_IMBALANCE_VS_RETURNS:
-        plot_imbalance_vs_daily_return(
-            metaorders_proprietary,
-            metaorders_non_proprietary,
-            out_path=PLOT_DIR / "imbalance_vs_daily_returns.png",
-            imbalance_col="imbalance_local",
-            return_col=DAILY_RETURN_COL,
-        )
-
-    participation_plot_path = PLOT_DIR / "participation_vs_abs_imbalance.png"
-    plot_participation_vs_abs_imbalance(
-        metaorders_proprietary,
-        metaorders_non_proprietary,
-        out_path=participation_plot_path,
-        bins=PARTICIPATION_BINS,
-    )
-
-    if DISTRIBUTIONS_IMBALANCE:
-        plot_imbalance_distributions(
-            metaorders_proprietary,
-            metaorders_non_proprietary,
-            plot_dir=PLOT_DIR,
-            bins=IMBALANCE_HIST_BINS,
-        )
-
-    if ACF_IMBALANCE:
-        plot_direction_autocorrelation_per_isin(
-            metaorders_proprietary,
-            metaorders_non_proprietary,
-            out_dir=PLOT_DIR / ACF_OUTPUT_DIRNAME,
-            max_lag=ACF_MAX_LAG,
-            n_bootstrap=ACF_BOOTSTRAP_SAMPLES,
-        )
-
-    # Global analysis on full sample
-    analyze_flow(
-        metaorders_proprietary,
-        "Proprietary metaorders",
-        alpha=ALPHA,
-    )
-    analyze_flow(
-        metaorders_non_proprietary,
-        "Non-proprietary (client) metaorders",
-        alpha=ALPHA,
-    )
-
-    # Daily time-series analysis + plots
-    run_daily_crowding_analysis(
-        metaorders_proprietary,
-        metaorders_non_proprietary,
-        alpha=ALPHA,
-        min_n=MIN_N,
-        out_prefix=str(PLOT_DIR / "daily_crowding"),
-        make_plots=True,
-        smoothing_days=SMOOTHING_DAYS,
-    )
-
-    # Cross-group crowding: prop vs client environments
-    run_cross_group_crowding_analysis(
-        metaorders_proprietary,
-        metaorders_non_proprietary,
-        alpha=ALPHA,
-        min_n=MIN_N,
-        out_prefix=str(PLOT_DIR / "cross_crowding"),
-        make_plots=True,
-        smoothing_days=SMOOTHING_DAYS,
-    )
-
-    # Versus all others (prop + client) with self-exclusion
-    run_all_vs_all_crowding_analysis(
-        metaorders_proprietary,
-        metaorders_non_proprietary,
-        alpha=ALPHA,
-        min_n=MIN_N,
-        out_prefix=str(PLOT_DIR / "all_vs_all_crowding"),
-        make_plots=True,
-        smoothing_days=SMOOTHING_DAYS,
-    )
-
-    run_member_level_prop_client_crowding_analysis(
-        metaorders_proprietary,
-        metaorders_non_proprietary,
-        env_col="imbalance_client_member_env",
-        alpha=ALPHA,
-        min_metaorders_per_member=MIN_METAORDERS_PER_MEMBER,
-        out_prefix=str(PLOT_DIR / "member_prop_client_crowding"),
-        make_plots=True,
-    )
-
-    run_daily_count_imbalance_analysis(
-        metaorders_proprietary,
-        metaorders_non_proprietary,
-        out_prefix=str(PLOT_DIR / "daily_counts"),
-        make_plots=True,
+    run_metaorder_dict_statistics(
+        metaorders_dict_path=METAORDER_STATS_DICT_PATH,
+        parquet_dir=PARQUET_DIR,
+        img_dir=PLOT_DIR,
+        proprietary=METAORDER_STATS_PROPRIETARY,
+        trading_hours=TRADING_HOURS,
     )
 
 
