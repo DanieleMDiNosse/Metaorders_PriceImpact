@@ -14,44 +14,47 @@ Core questions the code supports:
 ### One-command pipeline (recommended)
 - `bash run_all_pipelines.sh`
   - Activates conda env `main`.
-  - Runs `metaorder_computation.py` twice (`PROPRIETARY=true/false`) then `metaorder_statistics.py` twice, then `member_statistics.py`.
+  - Runs `scripts/metaorder_computation.py` twice (`PROPRIETARY=true/false`), `scripts/metaorder_statistics.py` twice, then `scripts/crowding_analysis.py`, then `scripts/member_statistics.py`.
   - Temporarily edits YAML configs under `config_ymls/` and restores them on exit.
 
 ### Core scripts (paper backend)
-- `metaorder_computation.py`
+- `scripts/metaorder_computation.py`
   - Inputs: raw trades (`data/csv/*.csv`) and/or derived tapes (`data/parquet/*.parquet`) depending on config.
+  - Enriches trade tapes with member nationality when `RUN_INTRO: true` and `data/members_nationality.parquet` is present (adds `Aggressive Member Nationality`).
   - Outputs (under `out_files/{DATASET_NAME}/`): metaorder dictionaries (`*.pkl`) and per‑metaorder tables (`*.parquet`).
   - Outputs (under `images/{DATASET_NAME}/{LEVEL}_{proprietary_tag}/`): impact fits, surfaces, distributions, and (optionally) normalized impact paths. `png` subfolder for the png image version, `html` for the html version.
   - Config: `config_ymls/metaorder_computation.yml`.
-  - Optional CLI filters (affect output filenames via suffixes):
-    - `--nationality {IT,ST}`
-    - `--client-type {PG,PF}`
+  - Key config knobs:
+    - `LEVEL: member|client`, `PROPRIETARY: true|false`
+    - `MEMBER_NATIONALITY: null|it|foreign` (optional filter applied on the tape column `Aggressive Member Nationality`)
 
-- `metaorder_statistics.py` (metaorder distributions + auxiliary diagnostics)
+- `scripts/metaorder_statistics.py` (metaorder distributions + auxiliary diagnostics)
   - Inputs: per‑metaorder parquet(s) from `out_files/{DATASET_NAME}/...` and (optionally) trade tapes from `data/parquet/`.
-  - Outputs: distribution figures and diagnostics under `images/{DATASET_NAME}/{METAORDER_STATS_LEVEL}_{proprietary_tag}/` plus `metaorder_statistics.log`.
+  - Outputs: distribution figures and diagnostics under `images/{DATASET_NAME}/{METAORDER_STATS_LEVEL}_{proprietary_tag}/png/` and `.../html/` plus `metaorder_statistics.log`.
   - Config: `config_ymls/metaorder_statistics.yml`.
 
-- `crowding_analysis.py` (canonical “prop vs client” crowding figures)
-  - Inputs: filtered per‑metaorder parquets produced by `metaorder_computation.py`.
-  - Outputs: `images/{DATASET_NAME}/prop_vs_nonprop/` and `crowding_analysis.log`.
+- `scripts/crowding_analysis.py` (canonical “prop vs client” crowding figures)
+  - Inputs: filtered per‑metaorder parquets produced by `scripts/metaorder_computation.py`.
+  - Outputs: `images/{DATASET_NAME}/prop_vs_nonprop/png/`, `.../html/`, and `crowding_analysis.log`.
   - Config: `config_ymls/crowding_analysis.yml`.
 
-- `crowding_vs_part_rate.py` (crowding vs participation rate “η”)
+- `scripts/crowding_vs_part_rate.py` (crowding vs participation rate “η”)
   - Inputs: same metaorder parquets as crowding analysis.
   - Outputs:
     - tables/logs in `out_files/{DATASET_NAME}/{analysis_tag}/` (default `analysis_tag=crowding_vs_part_rate`)
-    - figures in `images/{DATASET_NAME}/{analysis_tag}/`
+    - figures in `images/{DATASET_NAME}/{analysis_tag}/png/` and `.../html/`
     - writes `run_manifest.json` in the output folder (use this as the paper traceability template).
 
-- `metaorder_clustering.py`
+- `scripts/metaorder_clustering.py`
   - PCA + k‑means clustering on metaorder features; can run on proprietary, client, or both.
-  - Outputs in `out_files/{DATASET_NAME}/kmeans_pca_clustering_{level}_{group}/` and `images/{DATASET_NAME}/kmeans_pca_clustering_{level}_{group}/`.
+  - Outputs in `out_files/{DATASET_NAME}/kmeans_pca_clustering_{level}_{group}/` and `images/{DATASET_NAME}/kmeans_pca_clustering_{level}_{group}/html/` plus `.../png/`.
 
 ### Utilities / supporting scripts
-- `member_statistics.py`: member/ISIN descriptive plots; outputs to `images/{DATASET_NAME}/member_statistics/`.
-- `plot_prop_nonprop_fits.py`: overlays proprietary vs client impact fits from filtered parquets.
+- `scripts/member_statistics.py`: member/ISIN descriptive plots; outputs to `images/{DATASET_NAME}/member_statistics/png/` and `.../html/` (reads per-ISIN tapes from `data/parquet/`).
+  - If `Aggressive Member Nationality` is available in the tapes, the member coverage bars are colored by inferred member nationality (IT vs FOREIGN; UNKNOWN/MIXED when needed).
+- `scripts/plot_prop_nonprop_fits.py`: overlays proprietary vs client impact fits from filtered parquets.
 - `utils.py`: schema mapping (`map_trade_codes`), canonical trade view (`build_trades_view`), realized volatility estimators, metaorder detection helpers.
+- `moimpact/`: small shared library used across scripts (YAML config loading, path templating, logging helpers, plot styling, and correlation/bootstrap utilities).
 - `docs/`: method notes aligned with the implementation (start at `docs/index.md`).
 
 ---
@@ -61,6 +64,7 @@ Core questions the code supports:
 These are *config-driven* (YAML), but the current defaults in this working tree are:
 - Raw per‑ISIN CSVs: `data/csv/*.csv`
 - Derived per‑ISIN “tapes” (parquet): `data/parquet/*.parquet`
+- Member metadata used for nationality tags: `data/members_nationality.parquet` (columns: `FIRM_ID_MODIF`, `NAZIONALITA`)
 
 ### Generated artifacts (do not hand-edit)
 - Tables / serialized objects: `out_files/{DATASET_NAME}/`
@@ -99,7 +103,7 @@ The goal is **traceability**: every figure/table in `paper/` must be reproducibl
    - Copy the exact YAML(s) used for the run into the run output folder (or store an equivalent structured manifest).
 2. **Record provenance**
    - Record: git commit hash, command line, timestamp, dataset name, and key config values.
-   - Prefer the pattern already implemented in `crowding_vs_part_rate.py` (`run_manifest.json`).
+   - Prefer the pattern already implemented in `scripts/crowding_vs_part_rate.py` (`run_manifest.json`).
 3. **Determinism**
    - Any randomness (bootstrap/permutation, k‑means, t‑SNE) must run with an explicit, recorded seed.
 4. **No manual numbers**

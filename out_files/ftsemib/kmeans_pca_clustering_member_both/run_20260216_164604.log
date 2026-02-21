@@ -1,0 +1,41 @@
+2026-02-16 16:46:04,444 | INFO | Starting metaorder clustering run.
+2026-02-16 16:46:04,444 | INFO | Arguments: {'config_path': 'config_ymls/metaorder_computation.yml', 'dataset_name': 'ftsemib', 'level': None, 'group': 'both', 'out_root': None, 'img_root': None, 'prop_path': None, 'client_path': None, 'out_dir': None, 'img_dir': None, 'features': None, 'pca_variance_threshold': 0.75, 'pc_feature_contrib_threshold': 0.5, 'k_min': 2, 'k_max': 12, 'silhouette_sample_size': 50000, 'n_init': 50, 'seed': 0, 'scaler': 'standard', 'clip_quantiles': None, 'plots': 'plotly', 'dry_run': False, 'load': False, 'log_file': None}
+2026-02-16 16:46:04,444 | INFO | Resolved paths: {'dataset_name': 'ftsemib', 'level': 'member', 'out_root': 'out_files', 'img_root': 'images', 'prop_path': 'out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet', 'client_path': 'out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet', 'out_dir': 'out_files/ftsemib/kmeans_pca_clustering_member_both', 'img_dir': 'images/ftsemib/kmeans_pca_clustering_member_both'}
+2026-02-16 16:46:04,444 | INFO | Effective output directory: out_files/ftsemib/kmeans_pca_clustering_member_both
+2026-02-16 16:46:04,445 | INFO | Effective image directory: images/ftsemib/kmeans_pca_clustering_member_both
+2026-02-16 16:46:05,340 | INFO | Loaded metaorders rows: 843869
+2026-02-16 16:46:05,346 | INFO | Rows by group: {'proprietary': 588334, 'client': 255535}
+2026-02-16 16:46:05,970 | INFO | Engineered features added: DurationSeconds and 6 absolute impact columns.
+2026-02-16 16:46:05,970 | INFO | Candidate feature columns (13): ['Q', 'Q/V', 'Participation Rate', 'Vt/V', 'N Child', 'Daily Vol', 'DurationSeconds', 'AbsImpact', 'AbsImpact_1m', 'AbsImpact_3m', 'AbsImpact_10m', 'AbsImpact_30m', 'AbsImpact_60m']
+2026-02-16 16:46:06,437 | INFO | Rows after preprocessing: 843869
+2026-02-16 16:46:06,481 | INFO | Applied scaler: standard
+2026-02-16 16:46:06,632 | INFO | Retained 6 PCs at variance threshold 0.7500 (cum=0.8034).
+2026-02-16 16:46:06,634 | INFO | Selected 11 original features for clustering (per-PC contribution threshold 0.5000).
+2026-02-16 16:46:06,634 | INFO | Selected features: ['Participation Rate', 'Q/V', 'Vt/V', 'Q', 'Daily Vol', 'DurationSeconds', 'AbsImpact_1m', 'AbsImpact', 'AbsImpact_60m', 'AbsImpact_3m', 'N Child']
+2026-02-16 16:46:06,635 | INFO | PC1 (EVR=0.3013) selected features: ['AbsImpact_1m', 'Vt/V', 'AbsImpact', 'AbsImpact_3m']
+2026-02-16 16:46:06,635 | INFO | PC2 (EVR=0.1595) selected features: ['Q/V', 'Q', 'Daily Vol', 'N Child']
+2026-02-16 16:46:06,635 | INFO | PC3 (EVR=0.1254) selected features: ['Participation Rate', 'DurationSeconds']
+2026-02-16 16:46:06,635 | INFO | PC4 (EVR=0.0847) selected features: ['AbsImpact_60m', 'AbsImpact_1m', 'N Child', 'AbsImpact']
+2026-02-16 16:46:06,636 | INFO | PC5 (EVR=0.0787) selected features: ['Daily Vol', 'N Child']
+2026-02-16 16:46:06,636 | INFO | PC6 (EVR=0.0538) selected features: ['Q']
+2026-02-16 16:46:06,643 | INFO | Clustering matrix shape: (843869, 11)
+2026-02-16 16:46:06,643 | INFO | Selected transformed columns: ['__x_Participation Rate', '__x_Q/V', '__x_Vt/V', '__x_Q', '__x_Daily Vol', '__x_DurationSeconds', '__x_AbsImpact_1m', '__x_AbsImpact', '__x_AbsImpact_60m', '__x_AbsImpact_3m', '__x_N Child']
+2026-02-16 16:53:19,396 | INFO | Silhouette scores by k: [{'k': 2, 'silhouette': 0.18325313381091532, 'inertia': 7405973.653338414}, {'k': 3, 'silhouette': 0.13965231776809703, 'inertia': 6716269.634866495}, {'k': 4, 'silhouette': 0.13484324725713695, 'inertia': 6161780.611828196}, {'k': 5, 'silhouette': 0.12030091440221728, 'inertia': 5755125.411040115}, {'k': 6, 'silhouette': 0.12152573199093937, 'inertia': 5509543.325769238}, {'k': 7, 'silhouette': 0.10692923945613944, 'inertia': 5290224.346986581}, {'k': 8, 'silhouette': 0.10957565720908075, 'inertia': 5090054.924735929}, {'k': 9, 'silhouette': 0.1141175686296375, 'inertia': 4929032.262767276}, {'k': 10, 'silhouette': 0.10636495808459025, 'inertia': 4779126.245871981}, {'k': 11, 'silhouette': 0.10097988175663028, 'inertia': 4649584.693264117}, {'k': 12, 'silhouette': 0.10592112852571953, 'inertia': 4525746.9045384135}]
+2026-02-16 16:53:19,397 | INFO | Selected k (silhouette argmax): 2
+2026-02-16 16:53:42,630 | INFO | Plots written to image directory.
+2026-02-16 16:53:42,630 | INFO | Clustering completed.
+2026-02-16 16:53:42,630 | INFO | Rows loaded: 843869
+2026-02-16 16:53:42,630 | INFO | Rows after preprocessing: 843869
+2026-02-16 16:53:42,630 | INFO | Candidate feature columns (13): ['Q', 'Q/V', 'Participation Rate', 'Vt/V', 'N Child', 'Daily Vol', 'DurationSeconds', 'AbsImpact', 'AbsImpact_1m', 'AbsImpact_3m', 'AbsImpact_10m', 'AbsImpact_30m', 'AbsImpact_60m']
+2026-02-16 16:53:42,630 | INFO | Clustering feature columns (11): ['Participation Rate', 'Q/V', 'Vt/V', 'Q', 'Daily Vol', 'DurationSeconds', 'AbsImpact_1m', 'AbsImpact', 'AbsImpact_60m', 'AbsImpact_3m', 'N Child']
+2026-02-16 16:53:42,630 | INFO | PCA components selected: 6
+2026-02-16 16:53:42,630 | INFO | Selected k (silhouette argmax): 2
+2026-02-16 16:53:42,630 | INFO | Clustered parquet: out_files/ftsemib/kmeans_pca_clustering_member_both/clustered_metaorders.parquet
+2026-02-16 16:53:42,630 | INFO | Silhouette curve CSV: out_files/ftsemib/kmeans_pca_clustering_member_both/silhouette_scores.csv
+2026-02-16 16:53:42,630 | INFO | Cluster summary CSV: out_files/ftsemib/kmeans_pca_clustering_member_both/cluster_summary.csv
+2026-02-16 16:53:42,630 | INFO | PCA report JSON: out_files/ftsemib/kmeans_pca_clustering_member_both/pca_report.json
+2026-02-16 16:53:42,630 | INFO | PCA scores parquet: out_files/ftsemib/kmeans_pca_clustering_member_both/pca_scores.parquet
+2026-02-16 16:53:42,630 | INFO | Feature selection summary CSV: out_files/ftsemib/kmeans_pca_clustering_member_both/pca_feature_selection_summary.csv
+2026-02-16 16:53:42,630 | INFO | Feature selection per-PC CSV: out_files/ftsemib/kmeans_pca_clustering_member_both/pca_feature_selection_per_pc.csv
+2026-02-16 16:53:42,630 | INFO | Image directory: images/ftsemib/kmeans_pca_clustering_member_both
+2026-02-16 16:53:42,630 | INFO | Run log written to: out_files/ftsemib/kmeans_pca_clustering_member_both/run_20260216_164604.log

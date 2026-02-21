@@ -1,0 +1,11 @@
+[Intro] Ensuring parquet transforms are up to date...
+[Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=False, DATASET=ftsemib,   MEMBER_NATIONALITY=foreign,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+[Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+[Intro] Transforming CSV->parquet:   0%|          | 0/41 [00:00<?, ?it/s][Intro] Transforming CSV->parquet:  10%|▉         | 4/41 [00:00<00:00, 37.68it/s][Intro] Transforming CSV->parquet:  24%|██▍       | 10/41 [00:00<00:00, 48.99it/s][Intro] Transforming CSV->parquet:  37%|███▋      | 15/41 [00:00<00:00, 45.59it/s][Intro] Transforming CSV->parquet:  51%|█████     | 21/41 [00:00<00:00, 49.28it/s][Intro] Transforming CSV->parquet:  68%|██████▊   | 28/41 [00:00<00:00, 55.94it/s][Intro] Transforming CSV->parquet:  83%|████████▎ | 34/41 [00:00<00:00, 45.74it/s][Intro] Transforming CSV->parquet:  95%|█████████▌| 39/41 [00:00<00:00, 36.87it/s][Intro] Transforming CSV->parquet: 100%|██████████| 41/41 [00:00<00:00, 42.38it/s]
+[Intro] Parquet files available for dataset 'ftsemib': 41
+

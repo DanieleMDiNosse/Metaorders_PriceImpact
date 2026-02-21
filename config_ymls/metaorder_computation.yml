@@ -7,17 +7,22 @@ TITLE_FONT_SIZE: 15
 LEGEND_FONT_SIZE: 12
 DEFAULT_FIGSIZE: [9, 5.5]
 
+# Side decomposition
+# If true, decompose (some) outputs into buy vs sell metaorders (Direction=+1/-1).
+SPLIT_BY_SIDE: false
+
 # Dataset / preprocessing
 LEVEL: member  # "member" or "client"
-PROPRIETARY: true
+PROPRIETARY: false
 RECOMPUTE: true
 TRADING_HOURS: ["09:30:00", "17:30:00"]
+MEMBER_NATIONALITY: foreign  # null|all for no filter, or "it" / "foreign"
 
 # Dataset label (used only for logging / filename tags unless you use it in templates below)
 DATASET_NAME: ftsemib  # e.g., "ftsemib" or "mot"
 
 # Paths
-# You may use placeholders: {DATASET_NAME}, {LEVEL}, {PROPRIETARY_TAG}.
+# You may use placeholders: {DATASET_NAME}, {LEVEL}, {PROPRIETARY_TAG}, {MEMBER_NATIONALITY_TAG}.
 CSV_LOAD_PATH: data/csv
 PARQUET_PATH: data/parquet
 OUTPUT_FILE_PATH: out_files/{DATASET_NAME}

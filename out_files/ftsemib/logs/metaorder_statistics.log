@@ -1,0 +1,334 @@
+2026-02-19 10:39:44,588 - Using parquet directory: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+2026-02-19 10:39:45,477 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-19 10:42:34,877 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-19 10:42:34,919 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-19 10:42:36,304 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-19 10:42:36,305 - [Metaorder stats][Nationality] proprietary_tag=proprietary, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-19 10:42:36,305 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-19 10:42:36,416 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-19 10:42:36,571 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:42:37,691 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:42:38,150 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:42:38,668 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:42:39,111 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:44:49,806 - [Intro] Metaorder statistics run started...
+2026-02-19 10:44:49,806 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=False, PROPRIETARY_TAG=non_proprietary, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-19 10:44:49,806 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-19 10:44:50,237 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-19 10:46:36,681 - [Metaorder stats] Total metaorders (all ISINs): 256371
+2026-02-19 10:46:36,744 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/metaorders_per_member_all.html
+2026-02-19 10:46:38,101 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/metaorders_per_member_all.png
+2026-02-19 10:46:38,101 - [Metaorder stats][Nationality] proprietary_tag=non_proprietary, it=24111, foreign=232260, known=256371, unknown=0, mixed=0
+2026-02-19 10:46:38,101 - [Metaorder stats][Nationality] Percentages (known only) -> it=9.40%, foreign=90.60%
+2026-02-19 10:46:38,210 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/nationality_share_non_proprietary.png
+2026-02-19 10:46:38,277 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:46:39,061 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:46:39,311 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:46:39,595 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:46:39,880 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:52:34,848 - [Intro] Metaorder statistics run started...
+2026-02-19 10:52:34,848 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=False, PROPRIETARY_TAG=non_proprietary, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-19 10:52:34,848 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-19 10:52:35,240 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-19 10:52:46,744 - [Intro] Metaorder statistics run started...
+2026-02-19 10:52:46,744 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=True, PROPRIETARY_TAG=proprietary, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-19 10:52:46,744 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-19 10:52:47,660 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-19 10:54:22,779 - [Metaorder stats] Total metaorders (all ISINs): 256371
+2026-02-19 10:54:22,828 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/metaorders_per_member_all.html
+2026-02-19 10:54:24,102 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/metaorders_per_member_all.png
+2026-02-19 10:54:24,102 - [Metaorder stats][Nationality] proprietary_tag=non_proprietary, it=24111, foreign=232260, known=256371, unknown=0, mixed=0
+2026-02-19 10:54:24,102 - [Metaorder stats][Nationality] Percentages (known only) -> it=9.40%, foreign=90.60%
+2026-02-19 10:54:24,197 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/nationality_share_non_proprietary.png
+2026-02-19 10:54:24,257 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:54:25,027 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:54:25,241 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:54:25,481 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:54:25,762 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:55:37,868 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-19 10:55:37,920 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-19 10:55:39,156 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-19 10:55:39,156 - [Metaorder stats][Nationality] proprietary_tag=proprietary, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-19 10:55:39,156 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-19 10:55:39,251 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-19 10:55:39,378 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:55:40,427 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:55:40,821 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:55:41,231 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-19 10:55:41,655 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:32:26,219 - [Intro] Metaorder statistics run started...
+2026-02-20 09:32:26,220 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=True, PROPRIETARY_TAG=proprietary, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 09:32:26,220 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 09:32:26,962 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 09:35:24,308 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-20 09:35:25,803 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-20 09:35:25,803 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-20 09:35:25,803 - [Metaorder stats][Nationality] proprietary_tag=proprietary, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-20 09:35:25,803 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-20 09:35:27,154 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-20 09:35:27,241 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:35:29,164 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:35:30,766 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:35:32,329 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:35:33,918 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:35:36,639 - [Intro] Metaorder statistics run started...
+2026-02-20 09:35:36,639 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=False, PROPRIETARY_TAG=non_proprietary, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 09:35:36,639 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 09:35:37,077 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 09:37:27,122 - [Metaorder stats] Total metaorders (all ISINs): 256371
+2026-02-20 09:37:28,580 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/metaorders_per_member_all.html
+2026-02-20 09:37:28,580 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/metaorders_per_member_all.png
+2026-02-20 09:37:28,580 - [Metaorder stats][Nationality] proprietary_tag=non_proprietary, it=24111, foreign=232260, known=256371, unknown=0, mixed=0
+2026-02-20 09:37:28,580 - [Metaorder stats][Nationality] Percentages (known only) -> it=9.40%, foreign=90.60%
+2026-02-20 09:37:29,926 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/nationality_share_non_proprietary.png
+2026-02-20 09:37:29,964 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:37:31,828 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:37:33,346 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:37:34,801 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 09:37:36,286 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:14:24,052 - [Intro] Metaorder statistics run started...
+2026-02-20 11:14:24,052 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=True, PROPRIETARY_TAG=proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 11:14:24,052 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 11:14:24,675 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 11:17:06,132 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-20 11:17:07,448 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-20 11:17:07,448 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-20 11:17:07,448 - [Metaorder stats][Nationality] proprietary_tag=proprietary, member_nationality_tag=all, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-20 11:17:07,448 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-20 11:17:08,674 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-20 11:17:08,756 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:17:10,515 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:17:11,946 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:17:13,362 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:17:14,777 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:17:17,144 - [Intro] Metaorder statistics run started...
+2026-02-20 11:17:17,144 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=False, PROPRIETARY_TAG=non_proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 11:17:17,144 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 11:17:17,483 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 11:18:56,354 - [Metaorder stats] Total metaorders (all ISINs): 256371
+2026-02-20 11:18:57,701 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/metaorders_per_member_all.html
+2026-02-20 11:18:57,701 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/metaorders_per_member_all.png
+2026-02-20 11:18:57,701 - [Metaorder stats][Nationality] proprietary_tag=non_proprietary, member_nationality_tag=all, it=24111, foreign=232260, known=256371, unknown=0, mixed=0
+2026-02-20 11:18:57,701 - [Metaorder stats][Nationality] Percentages (known only) -> it=9.40%, foreign=90.60%
+2026-02-20 11:18:58,951 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/nationality_share_non_proprietary.png
+2026-02-20 11:18:58,988 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:19:00,580 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:19:01,912 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:19:03,291 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 11:19:04,658 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:48:59,481 - [Intro] Metaorder statistics run started...
+2026-02-20 15:48:59,481 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=True, PROPRIETARY_TAG=proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 15:48:59,481 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 15:49:00,136 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 15:51:44,568 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-20 15:51:46,021 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-20 15:51:46,021 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-20 15:51:46,021 - [Metaorder stats][Nationality] proprietary_tag=proprietary, member_nationality_tag=all, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-20 15:51:46,021 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-20 15:51:47,667 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-20 15:51:47,789 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:51:49,802 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:51:51,509 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:51:53,372 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:51:55,313 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:51:58,446 - [Intro] Metaorder statistics run started...
+2026-02-20 15:51:58,446 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=False, PROPRIETARY_TAG=non_proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 15:51:58,446 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 15:51:58,827 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 15:53:37,390 - [Metaorder stats] Total metaorders (all ISINs): 256371
+2026-02-20 15:53:38,798 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/metaorders_per_member_all.html
+2026-02-20 15:53:38,798 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/metaorders_per_member_all.png
+2026-02-20 15:53:38,798 - [Metaorder stats][Nationality] proprietary_tag=non_proprietary, member_nationality_tag=all, it=24111, foreign=232260, known=256371, unknown=0, mixed=0
+2026-02-20 15:53:38,798 - [Metaorder stats][Nationality] Percentages (known only) -> it=9.40%, foreign=90.60%
+2026-02-20 15:53:40,291 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/nationality_share_non_proprietary.png
+2026-02-20 15:53:40,380 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:53:42,713 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:53:44,192 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:53:45,925 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 15:53:47,664 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:04:15,808 - [Intro] Metaorder statistics run started...
+2026-02-20 17:04:15,808 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=True, PROPRIETARY_TAG=proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 17:04:15,808 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 17:04:16,459 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 17:07:01,447 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-20 17:07:02,750 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-20 17:07:02,750 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-20 17:07:02,750 - [Metaorder stats][Nationality] proprietary_tag=proprietary, member_nationality_tag=all, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-20 17:07:02,750 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-20 17:07:04,043 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-20 17:07:04,157 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:07:06,127 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:07:07,625 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:07:09,153 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:07:10,660 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:07:13,507 - [Intro] Metaorder statistics run started...
+2026-02-20 17:07:13,507 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=False, PROPRIETARY_TAG=non_proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 17:07:13,507 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 17:07:13,884 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 17:08:54,020 - [Metaorder stats] Total metaorders (all ISINs): 256371
+2026-02-20 17:08:55,448 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/metaorders_per_member_all.html
+2026-02-20 17:08:55,448 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/metaorders_per_member_all.png
+2026-02-20 17:08:55,448 - [Metaorder stats][Nationality] proprietary_tag=non_proprietary, member_nationality_tag=all, it=24111, foreign=232260, known=256371, unknown=0, mixed=0
+2026-02-20 17:08:55,448 - [Metaorder stats][Nationality] Percentages (known only) -> it=9.40%, foreign=90.60%
+2026-02-20 17:08:57,049 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/nationality_share_non_proprietary.png
+2026-02-20 17:08:57,105 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:08:58,883 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:09:00,237 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:09:01,740 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:09:03,246 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:43:10,351 - [Intro] Metaorder statistics run started...
+2026-02-20 17:43:10,351 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=True, PROPRIETARY_TAG=proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=False, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 17:43:10,351 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 17:43:11,008 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 17:45:58,920 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-20 17:46:00,223 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-20 17:46:00,223 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-20 17:46:00,223 - [Metaorder stats][Nationality] proprietary_tag=proprietary, member_nationality_tag=all, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-20 17:46:00,223 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-20 17:46:01,554 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-20 17:46:01,797 - [Metaorder stats] Power-law fit disabled by config for Metaorder duration (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:46:04,501 - [Metaorder stats] Power-law fit disabled by config for Inter-arrival times (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:46:06,389 - [Metaorder stats] Power-law fit disabled by config for Metaorder volumes (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:46:08,113 - [Metaorder stats] Power-law fit disabled by config for Q/V  (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:46:09,619 - [Metaorder stats] Power-law fit disabled by config for $\eta$ (METAORDER_POWERLAW_FIT_ENABLED=False).
+2026-02-20 17:51:29,569 - [Intro] Metaorder statistics run started...
+2026-02-20 17:51:29,570 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=True, PROPRIETARY_TAG=proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=True, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 17:51:29,570 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 17:51:30,345 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 17:54:30,681 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-20 17:54:32,182 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-20 17:54:32,182 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-20 17:54:32,182 - [Metaorder stats][Nationality] proprietary_tag=proprietary, member_nationality_tag=all, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-20 17:54:32,182 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-20 17:54:33,597 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-20 17:54:33,712 - [Metaorder stats] Fitting power law for Metaorder duration...
+2026-02-20 18:04:05,599 - [Intro] Metaorder statistics run started...
+2026-02-20 18:04:05,600 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=True, PROPRIETARY_TAG=proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=True, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 18:04:05,600 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 18:04:06,284 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 18:07:03,507 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-20 18:07:04,807 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-20 18:07:04,807 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-20 18:07:04,807 - [Metaorder stats][Nationality] proprietary_tag=proprietary, member_nationality_tag=all, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-20 18:07:04,808 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-20 18:07:06,114 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-20 18:07:06,236 - [Metaorder stats] Fitting power law for Metaorder duration...
+2026-02-20 18:07:06,626 - [Metaorder stats] Power-law fit for Metaorder duration: alpha=4.4748, xmin=170.736, KS=0.0312, n_tail=3717
+2026-02-20 18:07:09,461 - [Metaorder stats] Fitting power law for Inter-arrival times...
+2026-02-20 18:07:13,923 - [Metaorder stats] Power-law fit for Inter-arrival times: alpha=2.4962, xmin=6.74273, KS=0.0607, n_tail=424096
+2026-02-20 18:07:16,051 - [Metaorder stats] Fitting power law for Metaorder volumes...
+2026-02-20 18:07:16,591 - [Metaorder stats] Power-law fit for Metaorder volumes: alpha=1.9757, xmin=26476, KS=0.0127, n_tail=103733
+2026-02-20 18:07:18,668 - [Metaorder stats] Fitting power law for Q/V ...
+2026-02-20 18:07:19,198 - [Metaorder stats] Power-law fit for Q/V : alpha=4.2075, xmin=0.0372061, KS=0.0147, n_tail=1680
+2026-02-20 18:07:21,313 - [Metaorder stats] Fitting power law for $\eta$...
+2026-02-20 18:07:21,853 - [Metaorder stats] Power-law fit for $\eta$: alpha=5.3007, xmin=0.476056, KS=0.0612, n_tail=18121
+2026-02-20 18:08:14,659 - [Intro] Metaorder statistics run started...
+2026-02-20 18:08:14,659 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, PROPRIETARY=True, PROPRIETARY_TAG=proprietary, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DICT_STATS=True, METAORDER_POWERLAW_FIT_ENABLED=True, METAORDER_POWERLAW_MIN_TAIL=50, METAORDER_POWERLAW_NUM_CANDIDATES=1000, METAORDER_POWERLAW_REFINE_WINDOW=50
+2026-02-20 18:08:14,659 - [Intro] Paths — 
+  PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+  METAORDER_STATS_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-02-20 18:08:15,334 - [Metaorder stats] Building aggregated statistics and density plots...
+2026-02-20 18:11:09,942 - [Metaorder stats] Total metaorders (all ISINs): 588543
+2026-02-20 18:11:11,356 - [Metaorder stats] Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/metaorders_per_member_all.html
+2026-02-20 18:11:11,356 - [Metaorder stats] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/metaorders_per_member_all.png
+2026-02-20 18:11:11,356 - [Metaorder stats][Nationality] proprietary_tag=proprietary, member_nationality_tag=all, it=2093, foreign=586450, known=588543, unknown=0, mixed=0
+2026-02-20 18:11:11,356 - [Metaorder stats][Nationality] Percentages (known only) -> it=0.36%, foreign=99.64%
+2026-02-20 18:11:12,792 - [Metaorder stats][Nationality] Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/nationality_share_proprietary.png
+2026-02-20 18:11:12,920 - [Metaorder stats] Fitting power law for Metaorder duration...
+2026-02-20 18:11:13,355 - [Metaorder stats] Power-law fit for Metaorder duration: alpha=4.4748, xmin=170.736, KS=0.0312, n_tail=3717
+2026-02-20 18:11:16,340 - [Metaorder stats] Fitting power law for Inter-arrival times...
+2026-02-20 18:11:21,554 - [Metaorder stats] Power-law fit for Inter-arrival times: alpha=2.4962, xmin=6.74273, KS=0.0607, n_tail=424096
+2026-02-20 18:11:23,802 - [Metaorder stats] Fitting power law for Metaorder volumes...
+2026-02-20 18:11:24,382 - [Metaorder stats] Power-law fit for Metaorder volumes: alpha=1.9757, xmin=26476, KS=0.0127, n_tail=103733
+2026-02-20 18:11:26,620 - [Metaorder stats] Fitting power law for Q/V ...
+2026-02-20 18:11:27,226 - [Metaorder stats] Power-law fit for Q/V : alpha=4.2075, xmin=0.0372061, KS=0.0147, n_tail=1680
+2026-02-20 18:11:29,456 - [Metaorder stats] Fitting power law for $\eta$...
+2026-02-20 18:11:30,053 - [Metaorder stats] Power-law fit for $\eta$: alpha=5.3007, xmin=0.476056, KS=0.0612, n_tail=18121

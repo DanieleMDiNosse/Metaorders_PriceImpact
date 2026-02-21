@@ -56,7 +56,7 @@ cover/
 *.pot
 
 # Django stuff:
-*.log
+# *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -210,7 +210,7 @@ __marimo__/
 images/
 
 # Outputs generated from notebooks
-out_files/
+# out_files/
 
 # Metaorder scripts 
 metaorder_scripts/
@@ -234,4 +234,4 @@ data/
 *:Zone.Identifier
 
 # paper folder
-paper/*
+# paper/*

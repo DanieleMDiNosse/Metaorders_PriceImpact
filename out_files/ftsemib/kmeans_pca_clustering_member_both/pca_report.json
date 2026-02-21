@@ -1,0 +1,262 @@
+{
+  "dataset_name": "ftsemib",
+  "level": "member",
+  "group": "both",
+  "rows_loaded": 843869,
+  "rows_after_preprocessing": 843869,
+  "feature_columns": [
+    "Q",
+    "Q/V",
+    "Participation Rate",
+    "Vt/V",
+    "N Child",
+    "Daily Vol",
+    "DurationSeconds",
+    "AbsImpact",
+    "AbsImpact_1m",
+    "AbsImpact_3m",
+    "AbsImpact_10m",
+    "AbsImpact_30m",
+    "AbsImpact_60m"
+  ],
+  "clustering_feature_columns": [
+    "Participation Rate",
+    "Q/V",
+    "Vt/V",
+    "Q",
+    "Daily Vol",
+    "DurationSeconds",
+    "AbsImpact_1m",
+    "AbsImpact",
+    "AbsImpact_60m",
+    "AbsImpact_3m",
+    "N Child"
+  ],
+  "clustering_feature_indices": [
+    2,
+    1,
+    3,
+    0,
+    5,
+    6,
+    8,
+    7,
+    12,
+    9,
+    4
+  ],
+  "clustering_space": "selected_original_features_scaled",
+  "clustering_projection_space": "pca_of_selected_original_features_scaled",
+  "pc_feature_contrib_threshold": 0.5,
+  "transform_meta": {
+    "Q": {
+      "method": "log",
+      "eps": 2.5
+    },
+    "Q/V": {
+      "method": "log",
+      "eps": 5.000727082458594e-06
+    },
+    "Participation Rate": {
+      "method": "log",
+      "eps": 8.188108137614804e-06
+    },
+    "Vt/V": {
+      "method": "log",
+      "eps": 1.9440754680157048e-05
+    },
+    "N Child": {
+      "method": "log",
+      "eps": 2.5
+    },
+    "Daily Vol": {
+      "method": "log",
+      "eps": 0.0260601260581651
+    },
+    "DurationSeconds": {
+      "method": "log",
+      "eps": 60.0000092025
+    },
+    "AbsImpact": {
+      "method": "log",
+      "eps": 0.00014974813012478001
+    },
+    "AbsImpact_1m": {
+      "method": "log",
+      "eps": 0.000142793834533661
+    },
+    "AbsImpact_3m": {
+      "method": "log",
+      "eps": 0.00022195302354800214
+    },
+    "AbsImpact_10m": {
+      "method": "log",
+      "eps": 0.0002519138448350699
+    },
+    "AbsImpact_30m": {
+      "method": "log",
+      "eps": 0.00017305270086548404
+    },
+    "AbsImpact_60m": {
+      "method": "log",
+      "eps": 0.00024573777148781736
+    }
+  },
+  "scaler": "standard",
+  "clip_quantiles": null,
+  "pca_variance_threshold": 0.75,
+  "pca_n_components": 6,
+  "pca_explained_variance_ratio": [
+    0.301281391764856,
+    0.15946271738842874,
+    0.12540159204341073,
+    0.08474892305465874,
+    0.0786934455830009,
+    0.05377449604274441
+  ],
+  "pca_cumulative_explained_variance": [
+    0.301281391764856,
+    0.4607441091532848,
+    0.5861457011966955,
+    0.6708946242513543,
+    0.7495880698343551,
+    0.8033625658770995
+  ],
+  "pca_components": [
+    [
+      0.10770670753037673,
+      0.20431051793973318,
+      -0.17709035701028997,
+      0.3734028647389977,
+      0.20837752751891386,
+      0.013578609922211216,
+      0.3255574269324575,
+      0.3704238197619587,
+      0.37839541644702723,
+      0.3696817138096083,
+      0.3200524516999425,
+      0.2509631162417674,
+      0.2092726644938441
+    ],
+    [
+      0.3334180901476772,
+      0.5159141112052252,
+      0.2446329179866392,
+      0.2784123478540759,
+      0.29589902393454826,
+      -0.3173072749720831,
+      0.25481956368573094,
+      -0.11717300332163004,
+      -0.14389132648747177,
+      -0.16776432950821907,
+      -0.2090651513714517,
+      -0.2516767723091595,
+      -0.2500092514882303
+    ],
+    [
+      0.31341881332488153,
+      0.255254632739764,
+      0.6159483766880973,
+      -0.3374929678864475,
+      0.12221788569078913,
+      0.13256881926276032,
+      -0.3967189337845134,
+      0.06422196440452385,
+      0.08449778945482893,
+      0.10399746938565267,
+      0.15972972180738482,
+      0.2272837840364748,
+      0.23274639560449437
+    ],
+    [
+      0.1847199105883444,
+      -0.07177776731724753,
+      -0.2005525196494551,
+      0.12113648284633566,
+      0.36123674007842554,
+      0.3288231204801706,
+      0.1341996768121733,
+      -0.357706148003223,
+      -0.3790783004352893,
+      -0.288629425507538,
+      -0.0033592257203599422,
+      0.34672013403018354,
+      0.41715445430606646
+    ],
+    [
+      0.287854713169104,
+      -0.18610190148234942,
+      -0.11598392311530585,
+      -0.07381815753752599,
+      0.3833595198879898,
+      0.6198861932095244,
+      -0.06609980554557754,
+      0.1662610980056623,
+      0.1531455194064576,
+      0.08259995859335971,
+      -0.11984006219200888,
+      -0.35488346302749596,
+      -0.3602621107378711
+    ],
+    [
+      0.712735705754092,
+      -0.3769729802656053,
+      -0.2922750217742135,
+      -0.09389358388074362,
+      -0.06145483728880191,
+      -0.46691344448249233,
+      -0.1637041754825945,
+      0.015938907615219895,
+      0.026821209147913763,
+      0.02837520610303844,
+      0.05568614652290793,
+      0.04684739507791464,
+      -0.0006082869331948575
+    ]
+  ],
+  "k_values": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "k_selected": 2,
+  "silhouette_sample_size": 20000,
+  "n_init": 50,
+  "seed": 0,
+  "n_feature_triplets": 4,
+  "feature_triplet_sample_size": 50000,
+  "run_tsne": true,
+  "tsne_top_features": 10,
+  "tsne_sample_size": 30000,
+  "tsne_perplexity": 30.0,
+  "tsne_max_iter": 1000,
+  "input_paths": {
+    "proprietary": "out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet",
+    "client": "out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet"
+  },
+  "output_paths": {
+    "clustered": "out_files/ftsemib/kmeans_pca_clustering_member_both/clustered_metaorders.parquet",
+    "silhouette": "out_files/ftsemib/kmeans_pca_clustering_member_both/silhouette_scores.csv",
+    "summary": "out_files/ftsemib/kmeans_pca_clustering_member_both/cluster_summary.csv",
+    "pca_scores": "out_files/ftsemib/kmeans_pca_clustering_member_both/pca_scores.parquet",
+    "selection_summary": "out_files/ftsemib/kmeans_pca_clustering_member_both/pca_feature_selection_summary.csv",
+    "selection_per_pc": "out_files/ftsemib/kmeans_pca_clustering_member_both/pca_feature_selection_per_pc.csv"
+  },
+  "image_dir": "images/ftsemib/kmeans_pca_clustering_member_both"
+}

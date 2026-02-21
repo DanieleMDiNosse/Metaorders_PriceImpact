@@ -1,0 +1,420 @@
+2026-02-19 10:00:43,230 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-19 10:00:43,231 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=True, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-19 10:00:43,231 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-19 10:00:57,004 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-19 10:00:57,004 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-19 10:01:11,459 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 17695 -> after min trades (5): 2289 -> after duration (120s): 2093
+2026-02-19 10:01:11,459 - [SQL Fits] Building metaorders info dataframe...
+2026-02-19 10:01:43,258 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-19 10:01:43,266 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-19 10:01:43,269 - [SQL Fits] Metaorders before Q/V filter: 2093 | after Q/V filter: 2092
+2026-02-19 10:01:43,277 - [WLS] Running weighted least-squares impact fits...
+2026-02-19 10:01:43,283 - [WLS] After participation-rate filter (PR < 1.0): 2092 -> 2067 metaorders
+2026-02-19 10:01:43,982 - --- Overall (All) ---
+2026-02-19 10:01:43,982 - Power law: Y = 0.0106327 +/- 0.00585
+2026-02-19 10:01:43,982 - Power law: gamma = -0.084811 +/- 0.0946
+2026-02-19 10:01:43,982 - Power law: R^2_log = 0.1031 | R^2_lin = -5.1956
+2026-02-19 10:01:43,982 - Logarithmic: a = 724.704 +/- 6.82e+07 | b = 0.000214826 +/- 20.2 | R^2_lin = -0.0689
+2026-02-19 10:01:43,982 - Bins used: 9 (min_count >= 20)
+2026-02-19 10:01:44,346 - --- Conditioned on η (power-law only) ---
+2026-02-19 10:01:44,346 - [η Q1] Y = 7.88441e-08 +/- 2.02e-07 | gamma = -1.765140 +/- 0.356 |
+2026-02-19 10:01:44,346 - [η Q1] R^2_log = 0.8910 | R^2_lin = -0.1904
+2026-02-19 10:01:44,346 - [η Q1] Beta controls: None
+2026-02-19 10:01:44,346 - [η Q1] Beta controls SE: None
+2026-02-19 10:01:44,346 - [η Q2] Y = 0.0242911 +/- 0.00678 | gamma = 0.360814 +/- 0.0717 |
+2026-02-19 10:01:44,346 - [η Q2] R^2_log = 0.6969 | R^2_lin = 0.5742
+2026-02-19 10:01:44,346 - [η Q2] Beta controls: None
+2026-02-19 10:01:44,346 - [η Q2] Beta controls SE: None
+2026-02-19 10:01:44,903 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.png and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary_member_nationality_it.png (min_count per 2D bin = 10)
+2026-02-19 10:01:44,933 - [Surface] Saved interactive 3D HTML surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.html
+2026-02-19 10:01:44,960 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-19 10:01:44,960 - [Bivariate Fits]   C = 0.025964 +/- 0.033 (95% CI) | delta = -0.096865 +/- 0.15 | gamma = 0.429490 +/- 0.379
+2026-02-19 10:01:44,960 - [Bivariate Fits]   R^2_log = 0.4185 | R^2_lin = -0.4296
+2026-02-19 10:01:44,960 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-19 10:01:44,960 - [Bivariate Fits]   a = 0.00086196 +/- 0.00292 (95% CI) | b = 1.71147e+16 +/- 3.17e-14 | c = 24.973 +/- 143
+2026-02-19 10:01:44,960 - [Bivariate Fits]   R^2_lin = 0.1461
+2026-02-19 10:01:44,990 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_bivariate_fits_member_proprietary_member_nationality_it.html
+2026-02-19 10:45:47,063 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-19 10:45:47,063 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=False, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-19 10:45:47,063 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-19 10:45:48,093 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-19 10:45:48,093 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-19 10:46:17,724 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 204728 -> after min trades (5): 26305 -> after duration (120s): 24111
+2026-02-19 10:46:17,724 - [SQL Fits] Building metaorders info dataframe...
+2026-02-19 10:47:01,094 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-19 10:47:01,149 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-19 10:47:01,159 - [SQL Fits] Metaorders before Q/V filter: 24111 | after Q/V filter: 24094
+2026-02-19 10:47:01,197 - [WLS] Running weighted least-squares impact fits...
+2026-02-19 10:47:01,228 - [WLS] After participation-rate filter (PR < 1.0): 24094 -> 23862 metaorders
+2026-02-19 10:47:02,688 - --- Overall (All) ---
+2026-02-19 10:47:02,689 - Power law: Y = 0.013985 +/- 0.00344
+2026-02-19 10:47:02,689 - Power law: gamma = 0.143632 +/- 0.0876
+2026-02-19 10:47:02,689 - Power law: R^2_log = 0.2777 | R^2_lin = -0.6771
+2026-02-19 10:47:02,689 - Logarithmic: a = 0.691829 +/- 12.9 | b = 0.164867 +/- 3.12 | R^2_lin = 0.7339
+2026-02-19 10:47:02,689 - Bins used: 9 (min_count >= 20)
+2026-02-19 10:47:03,047 - --- Conditioned on η (power-law only) ---
+2026-02-19 10:47:03,047 - [η Q2] Y = 0.016098 +/- 0.00456 | gamma = 0.286073 +/- 0.0888 |
+2026-02-19 10:47:03,047 - [η Q2] R^2_log = 0.4856 | R^2_lin = -1.0003
+2026-02-19 10:47:03,047 - [η Q2] Beta controls: None
+2026-02-19 10:47:03,047 - [η Q2] Beta controls SE: None
+2026-02-19 10:47:03,047 - [η Q1] Y = 6.12179e-05 +/- 0.000289 | gamma = -0.371523 +/- 0.5 |
+2026-02-19 10:47:03,047 - [η Q1] R^2_log = 0.3554 | R^2_lin = 0.3508
+2026-02-19 10:47:03,047 - [η Q1] Beta controls: None
+2026-02-19 10:47:03,047 - [η Q1] Beta controls SE: None
+2026-02-19 10:47:03,817 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.png and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary_member_nationality_it.png (min_count per 2D bin = 10)
+2026-02-19 10:47:03,845 - [Surface] Saved interactive 3D HTML surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.html
+2026-02-19 10:47:03,858 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-19 10:47:03,859 - [Bivariate Fits]   C = 0.0260121 +/- 0.00507 (95% CI) | delta = 0.126475 +/- 0.0975 | gamma = 0.414931 +/- 0.0569
+2026-02-19 10:47:03,859 - [Bivariate Fits]   R^2_log = 0.6666 | R^2_lin = 0.0330
+2026-02-19 10:47:03,859 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-19 10:47:03,859 - [Bivariate Fits]   a = 0.130375 +/- 1.16 (95% CI) | b = 0.159882 +/- 1.51 | c = 207.504 +/- 197
+2026-02-19 10:47:03,859 - [Bivariate Fits]   R^2_lin = 0.5721
+2026-02-19 10:47:03,886 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.html
+2026-02-20 09:21:39,700 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-20 09:21:39,700 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=True, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-20 09:21:39,700 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-20 09:21:40,769 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-20 09:21:40,769 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-20 09:21:55,789 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 17695 -> after min trades (5): 2289 -> after duration (120s): 2093
+2026-02-20 09:21:55,789 - [SQL Fits] Building metaorders info dataframe...
+2026-02-20 09:22:31,715 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-20 09:22:31,722 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-20 09:22:31,725 - [SQL Fits] Metaorders before Q/V filter: 2093 | after Q/V filter: 2092
+2026-02-20 09:22:31,733 - [WLS] Running weighted least-squares impact fits...
+2026-02-20 09:22:31,740 - [WLS] After participation-rate filter (PR < 1.0): 2092 -> 2067 metaorders
+2026-02-20 09:22:34,959 - --- Overall (All) ---
+2026-02-20 09:22:34,959 - Power law: Y = 0.0106327 +/- 0.00585
+2026-02-20 09:22:34,959 - Power law: gamma = -0.084811 +/- 0.0946
+2026-02-20 09:22:34,959 - Power law: R^2_log = 0.1031 | R^2_lin = -5.1956
+2026-02-20 09:22:34,959 - Logarithmic: a = 724.704 +/- 6.82e+07 | b = 0.000214826 +/- 20.2 | R^2_lin = -0.0689
+2026-02-20 09:22:34,959 - Bins used: 9 (min_count >= 20)
+2026-02-20 09:22:36,646 - --- Conditioned on η (power-law only) ---
+2026-02-20 09:22:36,646 - [η Q1] Y = 7.88441e-08 +/- 2.02e-07 | gamma = -1.765140 +/- 0.356 |
+2026-02-20 09:22:36,646 - [η Q1] R^2_log = 0.8910 | R^2_lin = -0.1904
+2026-02-20 09:22:36,646 - [η Q1] Beta controls: None
+2026-02-20 09:22:36,646 - [η Q1] Beta controls SE: None
+2026-02-20 09:22:36,647 - [η Q2] Y = 0.0242911 +/- 0.00678 | gamma = 0.360814 +/- 0.0717 |
+2026-02-20 09:22:36,647 - [η Q2] R^2_log = 0.6969 | R^2_lin = 0.5742
+2026-02-20 09:22:36,647 - [η Q2] Beta controls: None
+2026-02-20 09:22:36,647 - [η Q2] Beta controls SE: None
+2026-02-20 09:22:40,687 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_heatmap_member_proprietary_member_nationality_it.html); min_count per 2D bin = 10
+2026-02-20 09:22:40,713 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-20 09:22:40,713 - [Bivariate Fits]   C = 0.025964 +/- 0.033 (95% CI) | delta = -0.096865 +/- 0.15 | gamma = 0.429490 +/- 0.379
+2026-02-20 09:22:40,713 - [Bivariate Fits]   R^2_log = 0.4185 | R^2_lin = -0.4296
+2026-02-20 09:22:40,713 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-20 09:22:40,713 - [Bivariate Fits]   a = 0.00086196 +/- 0.00292 (95% CI) | b = 1.71147e+16 +/- 3.17e-14 | c = 24.973 +/- 143
+2026-02-20 09:22:40,713 - [Bivariate Fits]   R^2_lin = 0.1461
+2026-02-20 09:22:43,426 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_bivariate_fits_member_proprietary_member_nationality_it.html
+2026-02-20 09:22:43,426 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_3d_surface_bivariate_fits_member_proprietary_member_nationality_it.png
+2026-02-20 09:22:44,448 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-20 09:22:44,448 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=False, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-20 09:22:44,448 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-20 09:22:45,529 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-20 09:22:45,529 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-20 09:23:14,079 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 204728 -> after min trades (5): 26305 -> after duration (120s): 24111
+2026-02-20 09:23:14,079 - [SQL Fits] Building metaorders info dataframe...
+2026-02-20 09:23:53,934 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-20 09:23:53,980 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-20 09:23:53,990 - [SQL Fits] Metaorders before Q/V filter: 24111 | after Q/V filter: 24094
+2026-02-20 09:23:54,025 - [WLS] Running weighted least-squares impact fits...
+2026-02-20 09:23:54,058 - [WLS] After participation-rate filter (PR < 1.0): 24094 -> 23862 metaorders
+2026-02-20 09:23:58,014 - --- Overall (All) ---
+2026-02-20 09:23:58,014 - Power law: Y = 0.013985 +/- 0.00344
+2026-02-20 09:23:58,014 - Power law: gamma = 0.143632 +/- 0.0876
+2026-02-20 09:23:58,014 - Power law: R^2_log = 0.2777 | R^2_lin = -0.6771
+2026-02-20 09:23:58,014 - Logarithmic: a = 0.691829 +/- 12.9 | b = 0.164867 +/- 3.12 | R^2_lin = 0.7339
+2026-02-20 09:23:58,014 - Bins used: 9 (min_count >= 20)
+2026-02-20 09:23:59,670 - --- Conditioned on η (power-law only) ---
+2026-02-20 09:23:59,670 - [η Q2] Y = 0.016098 +/- 0.00456 | gamma = 0.286073 +/- 0.0888 |
+2026-02-20 09:23:59,670 - [η Q2] R^2_log = 0.4856 | R^2_lin = -1.0003
+2026-02-20 09:23:59,670 - [η Q2] Beta controls: None
+2026-02-20 09:23:59,670 - [η Q2] Beta controls SE: None
+2026-02-20 09:23:59,670 - [η Q1] Y = 6.12179e-05 +/- 0.000289 | gamma = -0.371523 +/- 0.5 |
+2026-02-20 09:23:59,670 - [η Q1] R^2_log = 0.3554 | R^2_lin = 0.3508
+2026-02-20 09:23:59,670 - [η Q1] Beta controls: None
+2026-02-20 09:23:59,670 - [η Q1] Beta controls SE: None
+2026-02-20 09:24:03,749 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_heatmap_member_non_proprietary_member_nationality_it.html); min_count per 2D bin = 10
+2026-02-20 09:24:03,761 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-20 09:24:03,761 - [Bivariate Fits]   C = 0.0260121 +/- 0.00507 (95% CI) | delta = 0.126475 +/- 0.0975 | gamma = 0.414931 +/- 0.0569
+2026-02-20 09:24:03,761 - [Bivariate Fits]   R^2_log = 0.6666 | R^2_lin = 0.0330
+2026-02-20 09:24:03,761 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-20 09:24:03,761 - [Bivariate Fits]   a = 0.130375 +/- 1.16 (95% CI) | b = 0.159882 +/- 1.51 | c = 207.504 +/- 197
+2026-02-20 09:24:03,761 - [Bivariate Fits]   R^2_lin = 0.5721
+2026-02-20 09:24:06,779 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.html
+2026-02-20 09:24:06,779 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.png
+2026-02-20 11:04:59,553 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-20 11:04:59,553 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=True, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-20 11:04:59,553 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-20 11:05:00,505 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-20 11:05:00,505 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-20 11:05:13,596 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 17695 -> after min trades (5): 2289 -> after duration (120s): 2093
+2026-02-20 11:05:13,596 - [SQL Fits] Building metaorders info dataframe...
+2026-02-20 11:05:44,961 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-20 11:05:44,969 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-20 11:05:44,972 - [SQL Fits] Metaorders before Q/V filter: 2093 | after Q/V filter: 2092
+2026-02-20 11:05:44,979 - [WLS] Running weighted least-squares impact fits...
+2026-02-20 11:05:44,985 - [WLS] After participation-rate filter (PR < 1.0): 2092 -> 2067 metaorders
+2026-02-20 11:05:48,014 - --- Overall (All) ---
+2026-02-20 11:05:48,014 - Power law: Y = 0.0106327 +/- 0.00585
+2026-02-20 11:05:48,015 - Power law: gamma = -0.084811 +/- 0.0946
+2026-02-20 11:05:48,015 - Power law: R^2_log = 0.1031 | R^2_lin = -5.1956
+2026-02-20 11:05:48,015 - Logarithmic: a = 724.704 +/- 6.82e+07 | b = 0.000214826 +/- 20.2 | R^2_lin = -0.0689
+2026-02-20 11:05:48,015 - Bins used: 9 (min_count >= 20)
+2026-02-20 11:05:49,596 - --- Conditioned on η (power-law only) ---
+2026-02-20 11:05:49,596 - [η Q1] Y = 7.88441e-08 +/- 2.02e-07 | gamma = -1.765140 +/- 0.356 |
+2026-02-20 11:05:49,596 - [η Q1] R^2_log = 0.8910 | R^2_lin = -0.1904
+2026-02-20 11:05:49,596 - [η Q1] Beta controls: None
+2026-02-20 11:05:49,596 - [η Q1] Beta controls SE: None
+2026-02-20 11:05:49,596 - [η Q2] Y = 0.0242911 +/- 0.00678 | gamma = 0.360814 +/- 0.0717 |
+2026-02-20 11:05:49,596 - [η Q2] R^2_log = 0.6969 | R^2_lin = 0.5742
+2026-02-20 11:05:49,596 - [η Q2] Beta controls: None
+2026-02-20 11:05:49,596 - [η Q2] Beta controls SE: None
+2026-02-20 11:05:53,418 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_heatmap_member_proprietary_member_nationality_it.html); min_count per 2D bin = 10
+2026-02-20 11:05:53,442 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-20 11:05:53,442 - [Bivariate Fits]   C = 0.025964 +/- 0.033 (95% CI) | delta = -0.096865 +/- 0.15 | gamma = 0.429490 +/- 0.379
+2026-02-20 11:05:53,442 - [Bivariate Fits]   R^2_log = 0.4185 | R^2_lin = -0.4296
+2026-02-20 11:05:53,442 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-20 11:05:53,442 - [Bivariate Fits]   a = 0.00086196 +/- 0.00292 (95% CI) | b = 1.71147e+16 +/- 3.17e-14 | c = 24.973 +/- 143
+2026-02-20 11:05:53,442 - [Bivariate Fits]   R^2_lin = 0.1461
+2026-02-20 11:05:55,921 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_bivariate_fits_member_proprietary_member_nationality_it.html
+2026-02-20 11:05:55,921 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_3d_surface_bivariate_fits_member_proprietary_member_nationality_it.png
+2026-02-20 11:05:56,811 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-20 11:05:56,811 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=False, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-20 11:05:56,811 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-20 11:05:57,770 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-20 11:05:57,770 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-20 11:06:22,768 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 204728 -> after min trades (5): 26305 -> after duration (120s): 24111
+2026-02-20 11:06:22,768 - [SQL Fits] Building metaorders info dataframe...
+2026-02-20 11:06:58,587 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-20 11:06:58,633 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-20 11:06:58,642 - [SQL Fits] Metaorders before Q/V filter: 24111 | after Q/V filter: 24094
+2026-02-20 11:06:58,679 - [WLS] Running weighted least-squares impact fits...
+2026-02-20 11:06:58,703 - [WLS] After participation-rate filter (PR < 1.0): 24094 -> 23862 metaorders
+2026-02-20 11:07:02,287 - --- Overall (All) ---
+2026-02-20 11:07:02,287 - Power law: Y = 0.013985 +/- 0.00344
+2026-02-20 11:07:02,288 - Power law: gamma = 0.143632 +/- 0.0876
+2026-02-20 11:07:02,288 - Power law: R^2_log = 0.2777 | R^2_lin = -0.6771
+2026-02-20 11:07:02,288 - Logarithmic: a = 0.691829 +/- 12.9 | b = 0.164867 +/- 3.12 | R^2_lin = 0.7339
+2026-02-20 11:07:02,288 - Bins used: 9 (min_count >= 20)
+2026-02-20 11:07:03,839 - --- Conditioned on η (power-law only) ---
+2026-02-20 11:07:03,839 - [η Q2] Y = 0.016098 +/- 0.00456 | gamma = 0.286073 +/- 0.0888 |
+2026-02-20 11:07:03,839 - [η Q2] R^2_log = 0.4856 | R^2_lin = -1.0003
+2026-02-20 11:07:03,839 - [η Q2] Beta controls: None
+2026-02-20 11:07:03,839 - [η Q2] Beta controls SE: None
+2026-02-20 11:07:03,839 - [η Q1] Y = 6.12179e-05 +/- 0.000289 | gamma = -0.371523 +/- 0.5 |
+2026-02-20 11:07:03,839 - [η Q1] R^2_log = 0.3554 | R^2_lin = 0.3508
+2026-02-20 11:07:03,839 - [η Q1] Beta controls: None
+2026-02-20 11:07:03,839 - [η Q1] Beta controls SE: None
+2026-02-20 11:07:07,651 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_heatmap_member_non_proprietary_member_nationality_it.html); min_count per 2D bin = 10
+2026-02-20 11:07:07,663 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-20 11:07:07,663 - [Bivariate Fits]   C = 0.0260121 +/- 0.00507 (95% CI) | delta = 0.126475 +/- 0.0975 | gamma = 0.414931 +/- 0.0569
+2026-02-20 11:07:07,663 - [Bivariate Fits]   R^2_log = 0.6666 | R^2_lin = 0.0330
+2026-02-20 11:07:07,663 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-20 11:07:07,663 - [Bivariate Fits]   a = 0.130375 +/- 1.16 (95% CI) | b = 0.159882 +/- 1.51 | c = 207.504 +/- 197
+2026-02-20 11:07:07,663 - [Bivariate Fits]   R^2_lin = 0.5721
+2026-02-20 11:07:10,480 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.html
+2026-02-20 11:07:10,480 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.png
+2026-02-20 15:38:57,496 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-20 15:38:57,496 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=True, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-20 15:38:57,496 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-20 15:38:58,595 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-20 15:38:58,595 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-20 15:39:13,262 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 17695 -> after min trades (5): 2289 -> after duration (120s): 2093
+2026-02-20 15:39:13,262 - [SQL Fits] Building metaorders info dataframe...
+2026-02-20 15:39:47,537 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-20 15:39:47,546 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-20 15:39:47,549 - [SQL Fits] Metaorders before Q/V filter: 2093 | after Q/V filter: 2092
+2026-02-20 15:39:47,557 - [WLS] Running weighted least-squares impact fits...
+2026-02-20 15:39:47,563 - [WLS] After participation-rate filter (PR < 1.0): 2092 -> 2067 metaorders
+2026-02-20 15:39:50,880 - --- Overall (All) ---
+2026-02-20 15:39:50,880 - Power law: Y = 0.0106327 +/- 0.00585
+2026-02-20 15:39:50,880 - Power law: gamma = -0.084811 +/- 0.0946
+2026-02-20 15:39:50,880 - Power law: R^2_log = 0.1031 | R^2_lin = -5.1956
+2026-02-20 15:39:50,880 - Logarithmic: a = 724.704 +/- 6.82e+07 | b = 0.000214826 +/- 20.2 | R^2_lin = -0.0689
+2026-02-20 15:39:50,880 - Bins used: 9 (min_count >= 20)
+2026-02-20 15:39:53,129 - --- Conditioned on η (power-law only) ---
+2026-02-20 15:39:53,129 - [η $\eta < \eta_{median}$ ] Y = 7.88441e-08 +/- 2.02e-07 | gamma = -1.765140 +/- 0.356 |
+2026-02-20 15:39:53,129 - [η $\eta < \eta_{median}$ ] R^2_log = 0.8910 | R^2_lin = -0.1904
+2026-02-20 15:39:53,129 - [η $\eta < \eta_{median}$ ] Beta controls: None
+2026-02-20 15:39:53,129 - [η $\eta < \eta_{median}$ ] Beta controls SE: None
+2026-02-20 15:39:53,129 - [η $\eta$ $\geq \eta_{median}$] Y = 0.0242911 +/- 0.00678 | gamma = 0.360814 +/- 0.0717 |
+2026-02-20 15:39:53,129 - [η $\eta$ $\geq \eta_{median}$] R^2_log = 0.6969 | R^2_lin = 0.5742
+2026-02-20 15:39:53,129 - [η $\eta$ $\geq \eta_{median}$] Beta controls: None
+2026-02-20 15:39:53,129 - [η $\eta$ $\geq \eta_{median}$] Beta controls SE: None
+2026-02-20 15:39:57,902 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_heatmap_member_proprietary_member_nationality_it.html); min_count per 2D bin = 10
+2026-02-20 15:39:57,978 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-20 15:39:57,978 - [Bivariate Fits]   C = 0.025964 +/- 0.033 (95% CI) | delta = -0.096865 +/- 0.15 | gamma = 0.429490 +/- 0.379
+2026-02-20 15:39:57,978 - [Bivariate Fits]   R^2_log = 0.4185 | R^2_lin = -0.4296
+2026-02-20 15:39:57,979 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-20 15:39:57,979 - [Bivariate Fits]   a = 0.00086196 +/- 0.00292 (95% CI) | b = 1.71147e+16 +/- 3.17e-14 | c = 24.973 +/- 143
+2026-02-20 15:39:57,979 - [Bivariate Fits]   R^2_lin = 0.1461
+2026-02-20 15:40:00,805 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_proprietary_member_nationality_it.html
+2026-02-20 15:40:00,806 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_duration_3d_surface_bivariate_fits_member_proprietary_member_nationality_it.png
+2026-02-20 15:40:01,768 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-20 15:40:01,768 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=False, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-20 15:40:01,768 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-20 15:40:02,939 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-20 15:40:02,939 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-20 15:40:29,826 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 204728 -> after min trades (5): 26305 -> after duration (120s): 24111
+2026-02-20 15:40:29,827 - [SQL Fits] Building metaorders info dataframe...
+2026-02-20 15:41:07,176 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-20 15:41:07,227 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-20 15:41:07,240 - [SQL Fits] Metaorders before Q/V filter: 24111 | after Q/V filter: 24094
+2026-02-20 15:41:07,280 - [WLS] Running weighted least-squares impact fits...
+2026-02-20 15:41:07,311 - [WLS] After participation-rate filter (PR < 1.0): 24094 -> 23862 metaorders
+2026-02-20 15:41:11,724 - --- Overall (All) ---
+2026-02-20 15:41:11,724 - Power law: Y = 0.013985 +/- 0.00344
+2026-02-20 15:41:11,724 - Power law: gamma = 0.143632 +/- 0.0876
+2026-02-20 15:41:11,724 - Power law: R^2_log = 0.2777 | R^2_lin = -0.6771
+2026-02-20 15:41:11,724 - Logarithmic: a = 0.691829 +/- 12.9 | b = 0.164867 +/- 3.12 | R^2_lin = 0.7339
+2026-02-20 15:41:11,724 - Bins used: 9 (min_count >= 20)
+2026-02-20 15:41:13,834 - --- Conditioned on η (power-law only) ---
+2026-02-20 15:41:13,834 - [η $\eta$ $\geq \eta_{median}$] Y = 0.016098 +/- 0.00456 | gamma = 0.286073 +/- 0.0888 |
+2026-02-20 15:41:13,834 - [η $\eta$ $\geq \eta_{median}$] R^2_log = 0.4856 | R^2_lin = -1.0003
+2026-02-20 15:41:13,834 - [η $\eta$ $\geq \eta_{median}$] Beta controls: None
+2026-02-20 15:41:13,834 - [η $\eta$ $\geq \eta_{median}$] Beta controls SE: None
+2026-02-20 15:41:13,834 - [η $\eta < \eta_{median}$ ] Y = 6.12179e-05 +/- 0.000289 | gamma = -0.371523 +/- 0.5 |
+2026-02-20 15:41:13,834 - [η $\eta < \eta_{median}$ ] R^2_log = 0.3554 | R^2_lin = 0.3508
+2026-02-20 15:41:13,834 - [η $\eta < \eta_{median}$ ] Beta controls: None
+2026-02-20 15:41:13,834 - [η $\eta < \eta_{median}$ ] Beta controls SE: None
+2026-02-20 15:41:19,112 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_heatmap_member_non_proprietary_member_nationality_it.html); min_count per 2D bin = 10
+2026-02-20 15:41:19,154 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-20 15:41:19,154 - [Bivariate Fits]   C = 0.0260121 +/- 0.00507 (95% CI) | delta = 0.126475 +/- 0.0975 | gamma = 0.414931 +/- 0.0569
+2026-02-20 15:41:19,154 - [Bivariate Fits]   R^2_log = 0.6666 | R^2_lin = 0.0330
+2026-02-20 15:41:19,154 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-20 15:41:19,154 - [Bivariate Fits]   a = 0.130375 +/- 1.16 (95% CI) | b = 0.159882 +/- 1.51 | c = 207.504 +/- 197
+2026-02-20 15:41:19,154 - [Bivariate Fits]   R^2_lin = 0.5721
+2026-02-20 15:41:22,932 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.html
+2026-02-20 15:41:22,933 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_duration_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.png
+2026-02-20 16:54:26,251 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-20 16:54:26,251 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=True, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-20 16:54:26,251 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-20 16:54:27,318 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-20 16:54:27,318 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-20 16:54:41,250 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 17695 -> after min trades (5): 2289 -> after duration (120s): 2093
+2026-02-20 16:54:41,250 - [SQL Fits] Building metaorders info dataframe...
+2026-02-20 16:55:14,532 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-20 16:55:14,541 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-20 16:55:14,544 - [SQL Fits] Metaorders before Q/V filter: 2093 | after Q/V filter: 2092
+2026-02-20 16:55:14,553 - [WLS] Running weighted least-squares impact fits...
+2026-02-20 16:55:14,560 - [WLS] After participation-rate filter (PR < 1.0): 2092 -> 2067 metaorders
+2026-02-20 16:55:18,208 - --- Overall (All) ---
+2026-02-20 16:55:18,208 - Power law: Y = 0.0106327 +/- 0.00585
+2026-02-20 16:55:18,208 - Power law: gamma = -0.084811 +/- 0.0946
+2026-02-20 16:55:18,208 - Power law: R^2_log = 0.1031 | R^2_lin = -5.1956
+2026-02-20 16:55:18,208 - Logarithmic: a = 724.704 +/- 6.82e+07 | b = 0.000214826 +/- 20.2 | R^2_lin = -0.0689
+2026-02-20 16:55:18,209 - Bins used: 9 (min_count >= 20)
+2026-02-20 16:55:20,557 - --- Conditioned on η (power-law only) ---
+2026-02-20 16:55:20,557 - [η $\eta < \eta_{median}$] Y = 7.88441e-08 +/- 2.02e-07 | gamma = -1.765140 +/- 0.356 |
+2026-02-20 16:55:20,558 - [η $\eta < \eta_{median}$] R^2_log = 0.8910 | R^2_lin = -0.1904
+2026-02-20 16:55:20,558 - [η $\eta < \eta_{median}$] Beta controls: None
+2026-02-20 16:55:20,558 - [η $\eta < \eta_{median}$] Beta controls SE: None
+2026-02-20 16:55:20,558 - [η $\eta ≥ \eta_{median}$] Y = 0.0242911 +/- 0.00678 | gamma = 0.360814 +/- 0.0717 |
+2026-02-20 16:55:20,558 - [η $\eta ≥ \eta_{median}$] R^2_log = 0.6969 | R^2_lin = 0.5742
+2026-02-20 16:55:20,558 - [η $\eta ≥ \eta_{median}$] Beta controls: None
+2026-02-20 16:55:20,558 - [η $\eta ≥ \eta_{median}$] Beta controls SE: None
+2026-02-20 16:55:25,580 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_member_proprietary_member_nationality_it.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_participation_heatmap_member_proprietary_member_nationality_it.html); min_count per 2D bin = 10
+2026-02-20 16:55:25,646 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-20 16:55:25,646 - [Bivariate Fits]   C = 0.025964 +/- 0.033 (95% CI) | delta = -0.096865 +/- 0.15 | gamma = 0.429490 +/- 0.379
+2026-02-20 16:55:25,646 - [Bivariate Fits]   R^2_log = 0.4185 | R^2_lin = -0.4296
+2026-02-20 16:55:25,646 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-20 16:55:25,646 - [Bivariate Fits]   a = 0.00086196 +/- 0.00292 (95% CI) | b = 1.71147e+16 +/- 3.17e-14 | c = 24.973 +/- 143
+2026-02-20 16:55:25,646 - [Bivariate Fits]   R^2_lin = 0.1461
+2026-02-20 16:55:28,904 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_proprietary_member_nationality_it.html
+2026-02-20 16:55:28,904 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_proprietary/png/impact_surface_qv_duration_3d_surface_bivariate_fits_member_proprietary_member_nationality_it.png
+2026-02-20 16:55:29,892 - [Intro] Ensuring parquet transforms are up to date...
+2026-02-20 16:55:29,892 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=False, DATASET=ftsemib,   MEMBER_NATIONALITY=it,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-02-20 16:55:29,892 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-02-20 16:55:30,938 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-02-20 16:55:30,938 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-02-20 16:55:56,045 - [Metaorders][ALL] raw (gap<0 days 01:00:00): 204728 -> after min trades (5): 26305 -> after duration (120s): 24111
+2026-02-20 16:55:56,045 - [SQL Fits] Building metaorders info dataframe...
+2026-02-20 16:56:32,185 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-02-20 16:56:32,235 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-02-20 16:56:32,247 - [SQL Fits] Metaorders before Q/V filter: 24111 | after Q/V filter: 24094
+2026-02-20 16:56:32,284 - [WLS] Running weighted least-squares impact fits...
+2026-02-20 16:56:32,311 - [WLS] After participation-rate filter (PR < 1.0): 24094 -> 23862 metaorders
+2026-02-20 16:56:36,736 - --- Overall (All) ---
+2026-02-20 16:56:36,736 - Power law: Y = 0.013985 +/- 0.00344
+2026-02-20 16:56:36,736 - Power law: gamma = 0.143632 +/- 0.0876
+2026-02-20 16:56:36,736 - Power law: R^2_log = 0.2777 | R^2_lin = -0.6771
+2026-02-20 16:56:36,736 - Logarithmic: a = 0.691829 +/- 12.9 | b = 0.164867 +/- 3.12 | R^2_lin = 0.7339
+2026-02-20 16:56:36,736 - Bins used: 9 (min_count >= 20)
+2026-02-20 16:56:38,982 - --- Conditioned on η (power-law only) ---
+2026-02-20 16:56:38,982 - [η $\eta ≥ \eta_{median}$] Y = 0.016098 +/- 0.00456 | gamma = 0.286073 +/- 0.0888 |
+2026-02-20 16:56:38,982 - [η $\eta ≥ \eta_{median}$] R^2_log = 0.4856 | R^2_lin = -1.0003
+2026-02-20 16:56:38,982 - [η $\eta ≥ \eta_{median}$] Beta controls: None
+2026-02-20 16:56:38,982 - [η $\eta ≥ \eta_{median}$] Beta controls SE: None
+2026-02-20 16:56:38,982 - [η $\eta < \eta_{median}$] Y = 6.12179e-05 +/- 0.000289 | gamma = -0.371523 +/- 0.5 |
+2026-02-20 16:56:38,982 - [η $\eta < \eta_{median}$] R^2_log = 0.3554 | R^2_lin = 0.3508
+2026-02-20 16:56:38,982 - [η $\eta < \eta_{median}$] Beta controls: None
+2026-02-20 16:56:38,982 - [η $\eta < \eta_{median}$] Beta controls SE: None
+2026-02-20 16:56:44,095 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_member_non_proprietary_member_nationality_it.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary_member_nationality_it.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_heatmap_member_non_proprietary_member_nationality_it.html); min_count per 2D bin = 10
+2026-02-20 16:56:44,112 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-02-20 16:56:44,112 - [Bivariate Fits]   C = 0.0260121 +/- 0.00507 (95% CI) | delta = 0.126475 +/- 0.0975 | gamma = 0.414931 +/- 0.0569
+2026-02-20 16:56:44,112 - [Bivariate Fits]   R^2_log = 0.6666 | R^2_lin = 0.0330
+2026-02-20 16:56:44,112 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-02-20 16:56:44,112 - [Bivariate Fits]   a = 0.130375 +/- 1.16 (95% CI) | b = 0.159882 +/- 1.51 | c = 207.504 +/- 197
+2026-02-20 16:56:44,112 - [Bivariate Fits]   R^2_lin = 0.5721
+2026-02-20 16:56:47,454 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.html
+2026-02-20 16:56:47,455 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/png/impact_surface_qv_duration_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.png

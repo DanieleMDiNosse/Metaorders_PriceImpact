@@ -1,22 +1,39 @@
 # Metaorders_PriceImpact
 
-Toolkit for detecting metaorders in CONSOB trade data, measuring their price impact, and studying crowding between proprietary and client flow.
+Toolkit for detecting metaorders in CONSOB trade data, measuring price impact, and studying crowding between proprietary and client flow.
 
 ## Main scripts
-- `metaorder_computation.py` - converts raw CSVs to parquet, detects metaorders (same-sign runs per member/client within a day with gap/duration filters), builds metaorder dictionaries, and writes per-metaorder summaries to `out_files/{DATASET_NAME}/`. Config flags cover `LEVEL`, `PROPRIETARY`, a dataset subfolder selector (`DATASET_NAME`, e.g., `ftsemib` or `mot`, steering `data/`, `out_files/`, and `images/` roots), `Q_V_DENOMINATOR_MODE` and `DAILY_VOL_MODE` (same_day/prev_day/avg_5d), optional impact trajectories (`COMPUTE_IMPACT_PATHS`), and optional signature plots and impact fits (power-law plus logarithmic overlay).
-- `metaorder_statistics.py` - consumes the filtered metaorder parquet files for proprietary vs non-proprietary flow, attaches imbalance columns (within-group, cross-group, all-others), optional daily returns, and generates crowding plots and diagnostics; it can also recompute raw metaorder distribution plots from `metaorders_dict_all_*.pkl` when `RUN_METAORDER_DICT_STATS` is true.
-- `plot_prop_nonprop_fits.py` - reloads the filtered parquet outputs, reruns the same log-binned WLS fits, and overlays proprietary vs non-proprietary power-law curves on a single figure.
-- `member_statistics.py` - summarises members per ISIN, proprietary vs client trade counts, ISIN coverage, and member activity heatmaps (HTML + PNG).
-- `metaorders_pipeline.sh` - convenience wrapper that activates the `defi` conda environment and runs `metaorder_computation.py` followed by `metaorder_statistics.py`.
+- `scripts/metaorder_computation.py`:
+  - builds metaorders and per-metaorder tables in `out_files/{DATASET_NAME}/`
+  - writes impact/fits/surfaces/paths in `images/{DATASET_NAME}/{LEVEL}_{PROPRIETARY_TAG}/png/` and `images/{DATASET_NAME}/{LEVEL}_{PROPRIETARY_TAG}/html/`
+- `scripts/metaorder_statistics.py`:
+  - computes metaorder-dictionary distribution diagnostics (durations, inter-arrivals, volumes, Q/V, participation, nationality share)
+  - writes figures in `images/{DATASET_NAME}/{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}/png/` and `.../html/`
+- `scripts/crowding_analysis.py`:
+  - runs proprietary vs client crowding analyses (within-group, cross-group, all-vs-all, member-level, diagnostics)
+  - writes figures in `images/{DATASET_NAME}/prop_vs_nonprop/png/` and `.../html/`
+- `scripts/plot_prop_nonprop_fits.py`:
+  - overlays proprietary vs client impact fits from filtered parquet outputs
+  - if `--out images/{DATASET_NAME}/prop_vs_nonprop/power_law_prop_vs_nonprop.png`, output files are written to `.../prop_vs_nonprop/png/` and `.../prop_vs_nonprop/html/`
+- `scripts/member_statistics.py`:
+  - computes member/ISIN descriptive plots in `images/ftsemib/member_statistics/png/` and `.../html/`
+- `run_all_pipelines.sh`:
+  - activates conda env `main`, runs computation/statistics for both groups, then crowding and member stats
 
 ## Data and outputs
-- Input CSV/parquet files are expected under `data/{DATASET_NAME}/` by default; outputs are written to `out_files/{DATASET_NAME}/`, `images/{DATASET_NAME}/{LEVEL}_{PROPRIETARY_TAG}/` (impact/fits/distributions), and `images/{DATASET_NAME}/prop_vs_nonprop/` (crowding plots).
-- Each script logs to a sibling `.log` file (e.g., `metaorder_computation.log`, `metaorder_statistics.log`, `member_statistics.log`).
+- Inputs are config-driven. Current defaults are:
+  - raw CSV: `data/csv/*.csv`
+  - trade tapes: `data/parquet/*.parquet`
+- Tables/serialized outputs: `out_files/{DATASET_NAME}/...`
+- Figures: `images/{DATASET_NAME}/...` with canonical `png/` and `html/` subfolders.
+- Logs are written under `out_files/{DATASET_NAME}/logs/` for pipeline scripts, plus script-level logs where applicable.
 
 ## Running
-Typical usage from the repo root:
-- `python metaorder_computation.py` to rebuild metaorders and impact fits using the in-file flags.
-- `python metaorder_statistics.py` to attach imbalance metrics and crowding plots from the saved parquet outputs.
-- `python member_statistics.py` for member/ISIN activity summaries.
-- `python plot_prop_nonprop_fits.py` to overlay proprietary vs non-proprietary power-law fits.
-- `bash metaorders_pipeline.sh` to run computation and statistics back to back.
+Typical usage from repo root:
+- `conda activate main`
+- `python scripts/metaorder_computation.py` (run once with `PROPRIETARY=true`, once with `PROPRIETARY=false`)
+- `python scripts/metaorder_statistics.py` (run once with `METAORDER_STATS_PROPRIETARY=true`, once with `METAORDER_STATS_PROPRIETARY=false`)
+- `python scripts/crowding_analysis.py`
+- `python scripts/member_statistics.py`
+- optional: `python scripts/plot_prop_nonprop_fits.py --out images/{DATASET_NAME}/prop_vs_nonprop/power_law_prop_vs_nonprop.png`
+- one-shot: `bash run_all_pipelines.sh`

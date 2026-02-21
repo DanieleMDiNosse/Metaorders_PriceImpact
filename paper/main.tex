@@ -11,14 +11,46 @@
 
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\Var}{\mathrm{Var}}
+\usepackage{authblk}
 
 \title{Metaorders, Price Impact, and Crowding:\\
 Evidence from Proprietary and Client Flow}
-\author{}
+\author[1]{Daniele Maria Di Nosse\textsuperscript{\dag}}
+\author[1]{Fabrizio Lillo}
+\author[2]{Francesco Gigante}
+\author[2]{Antonio Russo}
+
+\affil[1]{Scuola Normale Superiore, Pisa, Italy}
+\affil[2]{Consob, Rome, Italy}
 \date{\today}
 
 \begin{document}
+
 \maketitle
+\begin{center}
+  \footnotesize
+  \dag Corresponding author. Email: \texttt{daniele.dinosse@sns.it}
+\end{center}
+
+
+\maketitle
+
+\begin{abstract}
+Understanding how large orders move prices is central to execution-cost prediction and to models
+of price formation. While the average impact of metaorders is known to be concave in size, less
+is known about how impact and crowding differ across trading capacities. Using a
+trade-by-trade dataset for FTSEMIB constituents (June 2024--May 2025) in which aggressive trades
+are attributed to members and labelled as proprietary or client, we reconstruct member-level
+metaorders as same-sign, same-client sequences within a day. We normalise size by daily volume and
+impact by a realised-kernel volatility proxy, estimate log-binned impact laws, and measure
+crowding through volume-weighted order-flow imbalances with day-cluster bootstrap uncertainty. Our
+results confirm a robust concave impact relation in both groups, with client flow broadly
+consistent with the square-root benchmark and proprietary flow displaying a more concave scaling.
+The time-resolved impact profiles further indicate that proprietary impact decays more slowly
+after execution, suggesting a larger persistent component. Crowding is economically meaningful in
+both segments and strengthens with execution aggressiveness, while cross-group patterns are
+consistent with partial intermediation between client demand and proprietary activity.
+\end{abstract}
 
 \section{Introduction}
 
@@ -67,6 +99,8 @@ members and separated into proprietary and client flows. We:
 
 \section{Data and Metaorder Reconstruction}
 \label{sec:data_metaorders}
+
+This section describes the underlying trade-level dataset and the procedure used to reconstruct member-level metaorders. We also define the per-metaorder quantities used throughout the descriptive analysis, impact estimation, and crowding results.
 
 \subsection{Trade-level data}
 
@@ -280,19 +314,25 @@ For each metaorder $i$ we compute:
 
 \section{Descriptive Properties of Metaorders}
 
+We now document basic stylised facts about the reconstructed metaorders, focusing on how execution patterns differ 
+between proprietary and client (non-proprietary) flow. Unless stated otherwise, the results are computed at the member 
+level and aggregated across ISINs and days.
+
 \subsection{Metaorders per member, durations, and inter-arrival times}
 
-Across all the studied period there are 132 active members. Figure \ref{fig:trades_per_member} shows the distribution of the ratio of the ISINs traded over the total number of them for each member. We found that 57 out of the 132 active members traded all ISINs except IT0000062072, which corresponds to Assicurazioni Generali. Interestingly, there are 59 members that traded only this asset.
+Across all the studied period there are 73 active members. Figure \ref{fig:trades_per_member} shows the distribution 
+of the ratio of the ISINs traded over the total number of them for each member. As we can see, almost all the members 
+traded the majority of the assets, with a very small fraction focused on a smaller subset of the ISINs.
 
 \begin{figure}
     \centering
     \includegraphics[width=1\linewidth]{images/member_statistics/png/member_isin_coverage_per_member.png}
-    \caption{Distribution of the ratio of the ISINs traded by a single member over the total number of ISINs. As we can see, there are members specialized in a single asset (Assicurazioni Generali) and members that traded almost all the assets expect one (again, Assicurazioni Generali).}
+    \caption{Distribution of the ratio of the ISINs traded by a single member over the total number of ISINs, with 
+    color coding for the nationality of the member.}
     \label{fig:trades_per_member}
 \end{figure}
 
-Then, for each member $m$ we define the metaorder count
-$N_m = \#\{i: \text{metaorder } i \text{ is initiated by } m\}$. The
+Then, for each member $m$ we define the metaorder count $N_m = \#\{i: \text{metaorder } i \text{ is initiated by } m\}$. The
 distribution of $N_m$ across members is broad, with some highly active
 members executing a very large number of metaorders, and a long tail of
 members with fewer metaorders, see Figure \ref{fig:metaorders_per_member}.
@@ -357,6 +397,28 @@ mixture of rapid sequences of child orders and periods of inactivity, see Figure
   \caption{Distribution of inter-arrival times between child trades within metaorders.}
   \label{fig:interarrival}
 \end{figure}
+
+\subsection{Nationality composition of executing members}
+\label{subsec:metaorder_nationality}
+
+At the member level, we can assign each metaorder to an Italian (IT) or foreign executing broker using the member nationality mapping.
+We find that the metaorder sample is overwhelmingly dominated by foreign brokers, especially for proprietary executions: only $0.36\%$ of proprietary metaorders are executed by Italian members (vs.\ $99.64\%$ by foreign members), while Italian members account for $9.40\%$ of client (non-proprietary) metaorders (vs.\ $90.60\%$ by foreign members).
+This suggests that Italian brokers rarely engage in metaorder-like proprietary execution, and that aggregate distributions, impact estimates, and crowding results reported in this paper are almost entirely driven by foreign-member execution for both proprietary and client flow.\footnote{Nationality refers to the executing member (broker), not necessarily to the final investor.}
+
+% Source: out_files/ftsemib/logs/metaorder_statistics.log (metaorder_statistics.py, run on 2026-02-19).
+\begin{table}[t]
+  \centering
+  \begin{tabular}{lcc}
+    \toprule
+    Flow & IT share & Foreign share \\
+    \midrule
+    Proprietary & $0.36\%$ & $99.64\%$ \\
+    Client (non-proprietary) & $9.40\%$ & $90.60\%$ \\
+    \bottomrule
+  \end{tabular}
+  \caption{Share of metaorders executed by Italian vs foreign members (member-level, FTSEMIB sample). Percentages are computed on metaorders with known member nationality.}
+  \label{tab:metaorder_nationality_share}
+\end{table}
 
 \subsection{Volumes, relative sizes, and participation rates}
 
@@ -459,6 +521,8 @@ volatility proxy in the impact analysis below. The value has been chosen looking
 
 \section{Normalisation and Impact Model}
 \label{sec:impact_model}
+
+To compare metaorders across instruments and dates, we normalise sizes by daily volume and impacts by a daily volatility proxy. Building on these normalised quantities, we estimate an average impact law as a function of relative size and study how it varies between proprietary and client flow.
 
 \subsection{Daily volatility and size normalisation}
 \label{subsec:daily_vol}

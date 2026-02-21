@@ -1,0 +1,71 @@
+\begin{thebibliography}{10}
+
+\bibitem{BouchaudFarmerLillo2008}
+Jean-Philippe Bouchaud, J.~Doyne Farmer, and Fabrizio Lillo.
+\newblock How markets slowly digest changes in supply and demand.
+\newblock In Thorsten Hens and Klaus~R. Schenk-Hopp\'e, editors, {\em Handbook of Financial Markets: Dynamics and Evolution}. Academic Press, 2008.
+
+\bibitem{SatoKanazawa2024}
+Y.~Sato and K.~Kanazawa.
+\newblock Does the square-root price impact law belong to the strict universal scalings? quantitative support by a complete survey of the {Tokyo Stock Exchange} market.
+\newblock Preprint, 2024.
+
+\bibitem{zarinelli}
+E.~Zarinelli, M.~Treccani, J.~D. Farmer, and F.~Lillo.
+\newblock Beyond the square root: Evidence for logarithmic dependence of market impact on size and participation rate.
+\newblock {\em Market Microstructure and Liquidity}, 1(2):1550004, 2015.
+
+\bibitem{BucciEtAl2018}
+F.~Bucci, M.~Benzaquen, F.~Lillo, and Jean-Philippe Bouchaud.
+\newblock Slow decay of impact in equity markets: insights from the {ANcerno} database.
+\newblock {\em Market Microstructure and Liquidity}, 4(3--4):1950006, 2018.
+
+\bibitem{MoroEtAl2009}
+E.~Moro, J.~Vicente, L.~G. Moyano, A.~Gerig, J.~D. Farmer, G.~Vaglica, F.~Lillo, and R.~N. Mantegna.
+\newblock Market impact and trading profile of hidden orders in stock markets.
+\newblock {\em Physical Review E}, 80(6):066102, 2009.
+
+\bibitem{VaglicaEtAl2010}
+G.~Vaglica, F.~Lillo, and R.~N. Mantegna.
+\newblock Statistical identification with hidden {Markov} models of large order splitting strategies in an equity market.
+\newblock {\em New Journal of Physics}, 12(7):075031, 2010.
+
+\bibitem{NaviglioEtAl2025}
+M.~Naviglio, G.~Bormetti, F.~Campigli, G.~Rodikov, and F.~Lillo.
+\newblock Why is the estimation of metaorder impact with public market data so challenging?
+\newblock arXiv preprint, 2025.
+\newblock arXiv:2501.17096.
+
+\bibitem{GomesWaelbroeck2015}
+C.~Gomes and H.~Waelbroeck.
+\newblock Is market impact a measure of the information value of trades? market response to liquidity vs.\ informed metaorders.
+\newblock {\em Quantitative Finance}, 15(5):773--793, 2015.
+
+\bibitem{BucciEtAl2020}
+F.~Bucci, I.~Mastromatteo, Z.~Eisler, F.~Lillo, Jean-Philippe Bouchaud, and C.-A. Lehalle.
+\newblock Co-impact: crowding effects in institutional trading activity.
+\newblock {\em Quantitative Finance}, 20(2):193--205, 2020.
+
+\bibitem{BriereEtAl2019}
+M.~Briere, C.-A. Lehalle, T.~Nefedova, and A.~Raboun.
+\newblock Modelling transaction costs when trades may be crowded: a bayesian network using partially observable orders imbalance.
+\newblock Book chapter, 2019.
+
+\bibitem{repo}
+D.~M. Di~Nosse.
+\newblock {Metaorders\_PriceImpact}: Study of metaorder price impact using proprietary {CONSOB} data.
+\newblock GitHub repository, 2025.
+\newblock Available at \url{https://github.com/DanieleMDiNosse/Metaorders_PriceImpact}.
+
+\bibitem{BucciEtAl2020Invariants}
+F.~Bucci, F.~Lillo, Jean-Philippe Bouchaud, and M.~Benzaquen.
+\newblock Are trading invariants really invariant? trading costs matter.
+\newblock {\em Quantitative Finance}, 20(7):1059--1068, 2020.
+
+\bibitem{MaitrierEtAl2025}
+G.~Maitrier, G.~Loeper, and Jean-Philippe Bouchaud.
+\newblock Generating realistic metaorders from public data.
+\newblock arXiv preprint, 2025.
+\newblock arXiv:2503.18199.
+
+\end{thebibliography}

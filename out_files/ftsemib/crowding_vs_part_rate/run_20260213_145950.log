@@ -1,0 +1,31 @@
+2026-02-13 14:59:50,342 - [log] Writing stdout prints to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/crowding_vs_part_rate/run_20260213_145950.log
+2026-02-13 14:59:50,342 - [run] run_id=20260213_145950 dataset=ftsemib out_dir=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/crowding_vs_part_rate
+2026-02-13 14:59:52,135 - [bin-stats] local (prop): counts + within-bin std
+2026-02-13 14:59:52,137 -  bin      n  eta_std  std_align  std_abs_imb
+   0     15 0.000028   0.223239     0.116305
+   1    808 0.000325   0.257358     0.153180
+   2  21541 0.003015   0.270240     0.160125
+   3 307652 0.027239   0.285164     0.168601
+   4 258318 0.136373   0.295433     0.175818
+2026-02-13 14:59:52,137 - [bin-stats] local (client): counts + within-bin std
+2026-02-13 14:59:52,137 -  bin      n  eta_std  std_align  std_abs_imb
+   0    256 0.000032   0.441289     0.234873
+   1   4157 0.000348   0.457681     0.246925
+   2  39899 0.003076   0.456313     0.245035
+   3 142338 0.027658   0.459252     0.253662
+   4  68719 0.109679   0.440606     0.261002
+2026-02-13 14:59:57,595 - [bin-stats] cross (prop): counts + within-bin std
+2026-02-13 14:59:57,596 -  bin      n  eta_std  std_align  std_abs_imb
+   0     15 0.000028   0.341809     0.184464
+   1    808 0.000325   0.453796     0.244109
+   2  21537 0.003015   0.452498     0.243455
+   3 307464 0.027238   0.471894     0.255319
+   4 257919 0.136230   0.492298     0.266805
+2026-02-13 14:59:57,596 - [bin-stats] cross (client): counts + within-bin std
+2026-02-13 14:59:57,597 -  bin      n  eta_std  std_align  std_abs_imb
+   0    257 0.000032   0.270339     0.157975
+   1   4157 0.000348   0.271311     0.159943
+   2  39906 0.003076   0.275355     0.162289
+   3 142423 0.027660   0.287813     0.169925
+   4  68792 0.109669   0.295735     0.175976
+2026-02-13 15:00:02,122 - Done.

@@ -1,0 +1,15 @@
+2026-02-16 16:32:54,003 | INFO | Starting metaorder clustering run.
+2026-02-16 16:32:54,003 | INFO | Arguments: {'config_path': 'config_ymls/metaorder_computation.yml', 'dataset_name': 'ftsemib', 'level': None, 'group': 'both', 'out_root': None, 'img_root': None, 'prop_path': None, 'client_path': None, 'out_dir': None, 'img_dir': None, 'features': None, 'pca_variance_threshold': 0.75, 'pc_feature_contrib_threshold': 0.5, 'k_min': 2, 'k_max': 20, 'silhouette_sample_size': 20000, 'n_init': 50, 'seed': 0, 'scaler': 'standard', 'clip_quantiles': None, 'plots': 'plotly', 'dry_run': True, 'load': True, 'log_file': None}
+2026-02-16 16:32:54,003 | INFO | Resolved paths: {'dataset_name': 'ftsemib', 'level': 'member', 'out_root': 'out_files', 'img_root': 'images', 'prop_path': 'out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet', 'client_path': 'out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet', 'out_dir': 'out_files/ftsemib/kmeans_pca_clustering_member_both', 'img_dir': 'images/ftsemib/kmeans_pca_clustering_member_both'}
+2026-02-16 16:32:54,003 | INFO | Effective output directory: out_files/ftsemib/kmeans_pca_clustering_member_both
+2026-02-16 16:32:54,003 | INFO | Effective image directory: images/ftsemib/kmeans_pca_clustering_member_both
+2026-02-16 16:32:54,003 | INFO | Dry run (--load) summary:
+2026-02-16 16:32:54,003 | INFO | Discovered output directory: out_files/ftsemib/kmeans_pca_clustering_member_both
+2026-02-16 16:32:54,003 | INFO | Image output directory: images/ftsemib/kmeans_pca_clustering_member_both
+2026-02-16 16:32:54,003 | INFO | clustered: out_files/ftsemib/kmeans_pca_clustering_member_both/clustered_metaorders.parquet (exists=True)
+2026-02-16 16:32:54,003 | INFO | silhouette: out_files/ftsemib/kmeans_pca_clustering_member_both/silhouette_scores.csv (exists=True)
+2026-02-16 16:32:54,003 | INFO | summary: out_files/ftsemib/kmeans_pca_clustering_member_both/cluster_summary.csv (exists=True)
+2026-02-16 16:32:54,003 | INFO | report: out_files/ftsemib/kmeans_pca_clustering_member_both/pca_report.json (exists=True)
+2026-02-16 16:32:54,003 | INFO | pca_scores: out_files/ftsemib/kmeans_pca_clustering_member_both/pca_scores.parquet (exists=True)
+2026-02-16 16:32:54,003 | INFO | selection_summary: out_files/ftsemib/kmeans_pca_clustering_member_both/pca_feature_selection_summary.csv (exists=True)
+2026-02-16 16:32:54,003 | INFO | selection_per_pc: out_files/ftsemib/kmeans_pca_clustering_member_both/pca_feature_selection_per_pc.csv (exists=True)

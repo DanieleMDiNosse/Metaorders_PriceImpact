@@ -1,0 +1,153 @@
+Using parquet directory: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+Adding 'Date' column from 'Period' for file: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+Adding 'Date' column from 'Period' for file: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+Computing daily returns per ISIN:   0%|          | 0/41 [00:00<?, ?it/s]Computing daily returns per ISIN:   2%|▏         | 1/41 [00:00<00:09,  4.17it/s]Computing daily returns per ISIN:   5%|▍         | 2/41 [00:00<00:08,  4.71it/s]Computing daily returns per ISIN:   7%|▋         | 3/41 [00:00<00:11,  3.39it/s]Computing daily returns per ISIN:  10%|▉         | 4/41 [00:01<00:09,  3.97it/s]Computing daily returns per ISIN:  12%|█▏        | 5/41 [00:01<00:17,  2.03it/s]Computing daily returns per ISIN:  15%|█▍        | 6/41 [00:02<00:12,  2.71it/s]Computing daily returns per ISIN:  20%|█▉        | 8/41 [00:02<00:07,  4.41it/s]Computing daily returns per ISIN:  22%|██▏       | 9/41 [00:02<00:06,  4.95it/s]Computing daily returns per ISIN:  27%|██▋       | 11/41 [00:02<00:04,  6.35it/s]Computing daily returns per ISIN:  29%|██▉       | 12/41 [00:03<00:07,  3.78it/s]Computing daily returns per ISIN:  32%|███▏      | 13/41 [00:03<00:09,  2.96it/s]Computing daily returns per ISIN:  34%|███▍      | 14/41 [00:03<00:07,  3.38it/s]Computing daily returns per ISIN:  37%|███▋      | 15/41 [00:04<00:06,  3.85it/s]Computing daily returns per ISIN:  39%|███▉      | 16/41 [00:04<00:05,  4.55it/s]Computing daily returns per ISIN:  41%|████▏     | 17/41 [00:04<00:04,  5.28it/s]Computing daily returns per ISIN:  44%|████▍     | 18/41 [00:04<00:05,  4.29it/s]Computing daily returns per ISIN:  46%|████▋     | 19/41 [00:04<00:04,  4.87it/s]Computing daily returns per ISIN:  51%|█████     | 21/41 [00:05<00:04,  4.21it/s]Computing daily returns per ISIN:  54%|█████▎    | 22/41 [00:05<00:04,  4.56it/s]Computing daily returns per ISIN:  56%|█████▌    | 23/41 [00:05<00:04,  4.21it/s]Computing daily returns per ISIN:  59%|█████▊    | 24/41 [00:05<00:03,  4.93it/s]Computing daily returns per ISIN:  63%|██████▎   | 26/41 [00:06<00:02,  6.39it/s]Computing daily returns per ISIN:  66%|██████▌   | 27/41 [00:06<00:02,  5.62it/s]Computing daily returns per ISIN:  71%|███████   | 29/41 [00:06<00:01,  7.28it/s]Computing daily returns per ISIN:  73%|███████▎  | 30/41 [00:06<00:02,  5.34it/s]Computing daily returns per ISIN:  76%|███████▌  | 31/41 [00:07<00:04,  2.47it/s]Computing daily returns per ISIN:  78%|███████▊  | 32/41 [00:08<00:02,  3.04it/s]Computing daily returns per ISIN:  80%|████████  | 33/41 [00:08<00:02,  3.36it/s]Computing daily returns per ISIN:  83%|████████▎ | 34/41 [00:08<00:02,  3.24it/s]Computing daily returns per ISIN:  85%|████████▌ | 35/41 [00:09<00:02,  2.85it/s]Computing daily returns per ISIN:  88%|████████▊ | 36/41 [00:09<00:01,  3.12it/s]Computing daily returns per ISIN:  90%|█████████ | 37/41 [00:09<00:01,  2.58it/s]Computing daily returns per ISIN:  93%|█████████▎| 38/41 [00:10<00:01,  2.54it/s]Computing daily returns per ISIN:  95%|█████████▌| 39/41 [00:11<00:01,  1.77it/s]Computing daily returns per ISIN:  98%|█████████▊| 40/41 [00:11<00:00,  2.06it/s]Computing daily returns per ISIN: 100%|██████████| 41/41 [00:11<00:00,  2.35it/s]Computing daily returns per ISIN: 100%|██████████| 41/41 [00:11<00:00,  3.47it/s]
+
+[Prop vs Non-Prop] Saved proprietary metaorders with imbalance columns to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+
+[Prop vs Non-Prop] Saved non-proprietary metaorders with imbalance columns to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+
+[Imbalance vs returns] Saved scatter plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/imbalance_vs_daily_returns.png
+
+================================================================================
+Crowding conditioned on participation rate (eta)
+================================================================================
+Done.
+
+[Imbalance distribution] Saved combined density plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/imbalance_distribution.png
+Per-ISIN ACF:   0%|          | 0/41 [00:00<?, ?it/s]Per-ISIN ACF:   2%|▏         | 1/41 [00:01<01:10,  1.76s/it]Per-ISIN ACF:   5%|▍         | 2/41 [00:03<01:02,  1.60s/it]Per-ISIN ACF:   7%|▋         | 3/41 [00:05<01:07,  1.77s/it]Per-ISIN ACF:  10%|▉         | 4/41 [00:07<01:10,  1.90s/it]Per-ISIN ACF:  12%|█▏        | 5/41 [00:09<01:09,  1.93s/it]Per-ISIN ACF:  15%|█▍        | 6/41 [00:10<01:02,  1.78s/it]Per-ISIN ACF:  17%|█▋        | 7/41 [00:12<01:02,  1.82s/it]Per-ISIN ACF:  20%|█▉        | 8/41 [00:14<00:59,  1.80s/it]Per-ISIN ACF:  22%|██▏       | 9/41 [00:15<00:53,  1.68s/it]Per-ISIN ACF:  24%|██▍       | 10/41 [00:17<00:50,  1.62s/it]Per-ISIN ACF:  27%|██▋       | 11/41 [00:19<00:50,  1.67s/it]Per-ISIN ACF:  29%|██▉       | 12/41 [00:20<00:48,  1.69s/it]Per-ISIN ACF:  32%|███▏      | 13/41 [00:22<00:50,  1.80s/it]Per-ISIN ACF:  34%|███▍      | 14/41 [00:24<00:49,  1.83s/it]Per-ISIN ACF:  37%|███▋      | 15/41 [00:26<00:44,  1.72s/it]Per-ISIN ACF:  39%|███▉      | 16/41 [00:27<00:40,  1.60s/it]Per-ISIN ACF:  41%|████▏     | 17/41 [00:29<00:36,  1.54s/it]Per-ISIN ACF:  44%|████▍     | 18/41 [00:30<00:34,  1.51s/it]Per-ISIN ACF:  46%|████▋     | 19/41 [00:31<00:33,  1.50s/it]Per-ISIN ACF:  49%|████▉     | 20/41 [00:33<00:33,  1.61s/it]Per-ISIN ACF:  51%|█████     | 21/41 [00:35<00:32,  1.63s/it]Per-ISIN ACF:  54%|█████▎    | 22/41 [00:37<00:32,  1.69s/it]Per-ISIN ACF:  56%|█████▌    | 23/41 [00:39<00:32,  1.79s/it]Per-ISIN ACF:  59%|█████▊    | 24/41 [00:41<00:30,  1.79s/it]Per-ISIN ACF:  61%|██████    | 25/41 [00:42<00:29,  1.82s/it]Per-ISIN ACF:  63%|██████▎   | 26/41 [00:44<00:27,  1.82s/it]Per-ISIN ACF:  66%|██████▌   | 27/41 [00:46<00:25,  1.82s/it]Per-ISIN ACF:  68%|██████▊   | 28/41 [00:48<00:21,  1.69s/it]Per-ISIN ACF:  71%|███████   | 29/41 [00:49<00:19,  1.58s/it]Per-ISIN ACF:  73%|███████▎  | 30/41 [00:50<00:17,  1.56s/it]Per-ISIN ACF:  76%|███████▌  | 31/41 [00:53<00:17,  1.73s/it]Per-ISIN ACF:  78%|███████▊  | 32/41 [00:54<00:15,  1.71s/it]Per-ISIN ACF:  80%|████████  | 33/41 [00:56<00:13,  1.74s/it]Per-ISIN ACF:  83%|████████▎ | 34/41 [00:57<00:11,  1.67s/it]Per-ISIN ACF:  85%|████████▌ | 35/41 [00:59<00:09,  1.63s/it]Per-ISIN ACF:  88%|████████▊ | 36/41 [01:00<00:07,  1.58s/it]Per-ISIN ACF:  90%|█████████ | 37/41 [01:02<00:06,  1.66s/it]Per-ISIN ACF:  93%|█████████▎| 38/41 [01:04<00:05,  1.73s/it]Per-ISIN ACF:  95%|█████████▌| 39/41 [01:06<00:03,  1.75s/it]Per-ISIN ACF:  98%|█████████▊| 40/41 [01:08<00:01,  1.67s/it]Per-ISIN ACF: 100%|██████████| 41/41 [01:09<00:00,  1.61s/it]Per-ISIN ACF: 100%|██████████| 41/41 [01:09<00:00,  1.69s/it]
+/home/danielemdn/miniconda3/envs/main/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py:3065: RuntimeWarning:
+
+invalid value encountered in divide
+
+/home/danielemdn/miniconda3/envs/main/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py:3066: RuntimeWarning:
+
+invalid value encountered in divide
+
+
+================================================================================
+Analysis for: Proprietary metaorders
+================================================================================
+Total metaorders        : 588,334
+Unique ISINs            : 41
+Unique trading dates    : 251
+Q/V range               : 1.00e-05 – 2.72e-01
+Participation rate mean±std : 0.136 ± 0.131
+
+Share of NaN imbalance_local: 0.00%
+
+Corr(Direction, imbalance_local) = 0.108 (95% Date-cluster bootstrap CI [0.102, 0.114], n=588334, days=251)
+Mean imbalance_local | buys : -0.022
+Mean imbalance_local | sells: -0.084
+
+Intuition (local): For Proprietary metaorders, trades tend to go WITH the *daily* metaorder imbalance (crowded / herding).
+
+Sanity check: Corr(Direction, *global* imbalance) = -0.211 (95% CI [-0.218, -0.203], n=588334)
+  -> This correlation is expected to be mechanically NEGATIVE even for
+     random signs, because each metaorder is subtracted from the total
+     when computing its own 'others' imbalance.
+
+================================================================================
+Analysis for: Non-proprietary (client) metaorders
+================================================================================
+Total metaorders        : 255,535
+Unique ISINs            : 41
+Unique trading dates    : 251
+Q/V range               : 1.00e-05 – 3.53e-01
+Participation rate mean±std : 0.085 ± 0.099
+
+Share of NaN imbalance_local: 0.06%
+  -> NaNs come from (ISIN,Date) with a single metaorder (no 'others').
+
+Corr(Direction, imbalance_local) = 0.187 (95% Date-cluster bootstrap CI [0.180, 0.195], n=255369, days=251)
+Mean imbalance_local | buys : +0.089
+Mean imbalance_local | sells: -0.087
+
+Intuition (local): For Non-proprietary (client) metaorders, trades tend to go WITH the *daily* metaorder imbalance (crowded / herding).
+
+Sanity check: Corr(Direction, *global* imbalance) = -0.172 (95% CI [-0.189, -0.160], n=255535)
+  -> This correlation is expected to be mechanically NEGATIVE even for
+     random signs, because each metaorder is subtracted from the total
+     when computing its own 'others' imbalance.
+
+================================================================================
+Daily crowding analysis (per trading day)
+================================================================================
+
+Proprietary days with n >= 100: 251 (out of 251)
+Client days with n >= 100: 251 (out of 251)
+
+Prop mean daily correlation (unfiltered): 0.081
+Prop mean daily correlation (n >= 100): 0.081 (95% Date-cluster bootstrap CI [0.076, 0.086], days=251)
+
+Client mean daily correlation (unfiltered): 0.169
+Client mean daily correlation (n >= 100): 0.169 (95% Date-cluster bootstrap CI [0.162, 0.177], days=251)
+
+[Daily plots] Saved daily correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/daily_crowding_daily_corr.png
+[Daily plots] Saved rolling correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/daily_crowding_rolling_3d.png
+
+================================================================================
+Cross-group crowding (prop vs client)
+================================================================================
+
+Global Corr(Direction_prop, client imbalance) = -0.023 (95% Date-cluster bootstrap CI [-0.029, -0.018], n=587743, days=251)
+Global Corr(Direction_client, prop imbalance) = -0.016 (95% Date-cluster bootstrap CI [-0.024, -0.007], n=255535, days=251)
+
+Prop vs client days with n >= 100: 251 (out of 251)
+Client vs prop days with n >= 100: 251 (out of 251)
+
+Prop vs client mean daily correlation (unfiltered): -0.018
+Prop vs client mean daily correlation (n >= 100): -0.018 (95% Date-cluster bootstrap CI [-0.023, -0.014], days=251)
+
+Client vs prop mean daily correlation (unfiltered): -0.003
+Client vs prop mean daily correlation (n >= 100): -0.003 (95% Date-cluster bootstrap CI [-0.010, 0.005], days=251)
+
+[Daily plots] Saved daily correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/cross_crowding_daily_corr.png
+[Daily plots] Saved rolling correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/cross_crowding_rolling_3d.png
+
+================================================================================
+Crowding versus all others (prop + client)
+================================================================================
+
+Prop vs all days with n >= 100: 251 (out of 251)
+Client vs all days with n >= 100: 251 (out of 251)
+
+Prop vs all mean daily correlation (unfiltered): 0.041
+Prop vs all mean daily correlation (n >= 100): 0.041
+
+Client vs all mean daily correlation (unfiltered): 0.113
+Client vs all mean daily correlation (n >= 100): 0.113
+
+[Daily plots] Saved daily correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/all_vs_all_crowding_daily_corr.png
+[Daily plots] Saved rolling correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/all_vs_all_crowding_rolling_3d.png
+
+================================================================================
+Member-level crowding (prop vs own clients)
+================================================================================
+
+Global Corr(Direction_prop, imbalance_client_member_env) = 0.011 (p (bootstrap) = 0.028, 95% CI [0.002, 0.022], n=37278)
+
+[Member crowding] Members with n_prop >= 30 and n_client >= 30: 10 (out of 45)
+[Member crowding] Mean per-member correlation (n >= 30): 0.003
+[Member crowding] Saved per-member statistics to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/member_prop_client_crowding_per_member.parquet
+[Member crowding] Saved per-member correlation bar chart to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/member_prop_client_crowding_hist.png
+[Member crowding] Saved member–window heatmap to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.png
+
+================================================================================
+Daily count imbalance
+================================================================================
+
+First few rows of daily counts and imbalance:
+            Proprietary  Client  imbalance_counts
+Date                                             
+2024-06-03         2135    1061          0.336045
+2024-06-04         2646    1063          0.426800
+2024-06-05         2058     930          0.377510
+2024-06-06         2228    1083          0.345817
+2024-06-07         2194     783          0.473967
+
+Mean imbalance: +0.403
+Std imbalance : 0.060
+
+[Daily count plots] Saved imbalance time-series to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/daily_counts_imbalance_timeseries.png
+[Daily count plots] Saved imbalance density plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/daily_counts_imbalance_histogram.png

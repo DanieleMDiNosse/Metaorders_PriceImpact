@@ -8,17 +8,19 @@ This repository is a toolkit for reconstructing **metaorders** (large orders exe
 
 The core logic is in a small set of scripts:
 
-- [`metaorder_computation.py`](../metaorder_computation.py): preprocessing, metaorder detection, per-metaorder features, impact estimation (log-binned WLS), optional impact paths/signature plots/surfaces; controlled by [`config_ymls/metaorder_computation.yml`](../config_ymls/metaorder_computation.yml).
-- [`metaorder_statistics.py`](../metaorder_statistics.py): crowding/imbalance metrics, correlations with bootstrap CIs and permutation p-values, daily/rolling plots, member-level analyses; controlled by [`config_ymls/metaorder_statistics.yml`](../config_ymls/metaorder_statistics.yml).
-- [`plot_prop_nonprop_fits.py`](../plot_prop_nonprop_fits.py): reloads filtered outputs and overlays proprietary vs client impact fits in a single figure.
-- [`member_statistics.py`](../member_statistics.py): descriptive member/ISIN statistics and Plotly figures (requires trade-level per-ISIN Parquets).
+- [`scripts/metaorder_computation.py`](../scripts/metaorder_computation.py): preprocessing, metaorder detection, per-metaorder features, impact estimation (log-binned WLS), optional impact paths/signature plots/surfaces; controlled by [`config_ymls/metaorder_computation.yml`](../config_ymls/metaorder_computation.yml).
+- [`scripts/metaorder_statistics.py`](../scripts/metaorder_statistics.py): metaorder-dictionary distribution diagnostics (duration, inter-arrival, volume, Q/V, participation, nationality); controlled by [`config_ymls/metaorder_statistics.yml`](../config_ymls/metaorder_statistics.yml).
+- [`scripts/crowding_analysis.py`](../scripts/crowding_analysis.py): crowding/imbalance metrics, correlations with bootstrap CIs and permutation p-values, daily/rolling plots, member-level analyses; controlled by [`config_ymls/crowding_analysis.yml`](../config_ymls/crowding_analysis.yml).
+- [`scripts/plot_prop_nonprop_fits.py`](../scripts/plot_prop_nonprop_fits.py): reloads filtered outputs and overlays proprietary vs client impact fits in a single figure.
+- [`scripts/member_statistics.py`](../scripts/member_statistics.py): descriptive member/ISIN statistics and Plotly figures (requires trade-level per-ISIN Parquets).
 - [`utils.py`](../utils.py): trade-schema mapping, realized-volatility estimators, sparse activity construction, and metaorder detection helpers.
 
 Deep-dive documentation (rewritten under `docs/`):
 
-- Power-law impact fits: [`docs/POWER_LAW_IMPACT_FITS.md`](POWER_LAW_IMPACT_FITS.md)
-- Proprietary vs non-proprietary crowding: [`docs/prop_vs_nonprop.md`](prop_vs_nonprop.md)
+- Market impact (power-law fits + surfaces): [`docs/market_impact.md`](market_impact.md)
+- Imbalance and crowding (prop vs client): [`docs/imbalance_and_crowding.md`](imbalance_and_crowding.md)
 - Metaorder distributions: [`docs/metaorder_distributions.md`](metaorder_distributions.md)
+- Plot customization and exports: [`docs/PLOTTING_GUIDE.md`](PLOTTING_GUIDE.md)
 
 ---
 
@@ -79,7 +81,7 @@ Note: “client” here denotes non-proprietary aggressive flow in the dataset; 
 Metaorders are reconstructed from a time-ordered stream of aggressive trades, following the operational definition documented in:
 
 - [`docs/metaorder_distributions.md`](metaorder_distributions.md)
-- [`docs/POWER_LAW_IMPACT_FITS.md`](POWER_LAW_IMPACT_FITS.md)
+- [`docs/market_impact.md`](market_impact.md)
 
 ### Definition (high level)
 
@@ -112,7 +114,7 @@ for each ISIN:
 
 ## Per-metaorder variables and normalization
 
-For each metaorder $i$, the scripts compute a standard set of quantities (notation aligned with `docs/POWER_LAW_IMPACT_FITS.md`):
+For each metaorder $i$, the scripts compute a standard set of quantities (notation aligned with `docs/market_impact.md`):
 
 - **Metaorder volume (shares):**
   $$
@@ -146,7 +148,7 @@ Two key normalizations are configurable in `config_ymls/metaorder_computation.ym
 - `Q_V_DENOMINATOR_MODE ∈ {same_day, prev_day, avg_5d}` selects the denominator used for `Q/V`.
 - `DAILY_VOL_MODE ∈ {same_day, prev_day, avg_5d}` selects the daily volatility used for impact normalization.
 
-The daily volatility estimator is described in detail in [`docs/POWER_LAW_IMPACT_FITS.md`](POWER_LAW_IMPACT_FITS.md) (realized-kernel-based daily volatility built from resampled trade prices).
+The daily volatility estimator is described in detail in [`docs/market_impact.md`](market_impact.md) (realized-kernel-based daily volatility built from resampled trade prices).
 
 ---
 
@@ -161,7 +163,7 @@ $$
 \mathbb{E}[I \mid \phi] = Y\,\phi^{\gamma}.
 $$
 
-Estimation (implemented in `metaorder_computation.py`, described in [`docs/POWER_LAW_IMPACT_FITS.md`](POWER_LAW_IMPACT_FITS.md)):
+Estimation (implemented in `scripts/metaorder_computation.py`, described in [`docs/market_impact.md`](market_impact.md)):
 
 1. Filter to valid observations (finite `Q/V`, finite daily vol, optional participation-rate cutoff).
 2. Log-bin $\phi = Q/V$ into a fixed number of bins.
@@ -170,7 +172,7 @@ Estimation (implemented in `metaorder_computation.py`, described in [`docs/POWER
 
 ### Logarithmic overlay model (brief)
 
-For comparison, the code can also fit a logarithmic form on the same binned data (see [`docs/POWER_LAW_IMPACT_FITS.md`](POWER_LAW_IMPACT_FITS.md) for the specification and filters).
+For comparison, the code can also fit a logarithmic form on the same binned data (see [`docs/market_impact.md`](market_impact.md) for the specification and filters).
 $$
 \mathbb{E}[I_i \mid \phi_i]
   = a \,\log_{10}\!\bigl(1 + b\,\phi_i\bigr),
@@ -184,13 +186,13 @@ Beyond the one-dimensional impact curve, the code exports a bivariate “impact 
 - a 2D heatmap (PNG), and
 - an interactive 3D surface (HTML, Plotly).
 
-Read more: [`docs/POWER_LAW_IMPACT_FITS.md`](POWER_LAW_IMPACT_FITS.md).
+Read more: [`docs/market_impact.md`](market_impact.md).
 
 ---
 
 ## Crowding / imbalance framework
 
-Crowding is studied using correlations between metaorder **direction** and **signed volume imbalance** measures computed over appropriate environments (ISIN–day, member–day, within-group, cross-group). The full methodological description lives in [`docs/prop_vs_nonprop.md`](prop_vs_nonprop.md).
+Crowding is studied using correlations between metaorder **direction** and **signed volume imbalance** measures computed over appropriate environments (ISIN–day, member–day, within-group, cross-group). The full methodological description lives in [`docs/imbalance_and_crowding.md`](imbalance_and_crowding.md).
 
 ### Imbalance definitions (core idea)
 
@@ -201,11 +203,11 @@ $$
 $$
 with `NaN` if the denominator is zero.
 
-The “local” within-group imbalance is computed **excluding the metaorder itself**, which avoids a trivial self-contribution but introduces a mechanical bias that must be interpreted carefully (see the log notes in `metaorder_statistics.log` and the discussion in [`docs/prop_vs_nonprop.md`](prop_vs_nonprop.md)).
+The “local” within-group imbalance is computed **excluding the metaorder itself**, which avoids a trivial self-contribution but introduces a mechanical bias that must be interpreted carefully (see the log notes in `crowding_analysis.log` and the discussion in [`docs/imbalance_and_crowding.md`](imbalance_and_crowding.md)).
 
 ### Analyses performed
 
-`metaorder_statistics.py` runs:
+`scripts/crowding_analysis.py` runs:
 
 - **within-group crowding:** prop vs prop, client vs client,
 - **cross-group crowding:** prop direction vs client environment imbalance (and vice versa),
@@ -225,23 +227,33 @@ Note on determinism: the bootstrap/permutation draws use NumPy’s default RNG w
 
 ## Results artifacts included in this repository (ftsemib)
 
-This repo includes a set of **already-produced** artifacts under `out_files/ftsemib/`, `images/ftsemib/`, and in the logs `metaorder_computation.log` and `metaorder_statistics.log`. The report below focuses on `ftsemib` because `mot` has no shipped figures in `images/mot/`.
+This repo includes a set of **already-produced** artifacts under `out_files/ftsemib/`, `images/ftsemib/`, and in the logs `metaorder_computation.log` and `crowding_analysis.log`. The report below focuses on `ftsemib` because `mot` has no shipped figures in `images/mot/`.
 
 ### Latest snapshot (from logs)
 
-The numbers below are copied from the committed log files to avoid fabricating results:
+The numbers below are copied from the pipeline bundle logs under `out_files/ftsemib/logs/pipeline_20260220_190521/` .
+
+**Window covered:** 2024-06-03 to 2025-05-30 (251 trading days).
+
+**Member nationality split (member-level, known only):**
+
+| group | Italian brokers (IT) | Foreign brokers | Total metaorders (known) |
+|---|---:|---:|---:|
+| Proprietary | 2,093 (0.36%) | 586,450 (99.64%) | 588,543 |
+| Client (non-proprietary) | 24,111 (9.40%) | 232,260 (90.60%) | 256,371 |
 
 | Component | Group | Logged timestamp | Logged result |
 |---|---|---:|---|
-| Impact WLS (after `PR < 1.0`) | Proprietary | 2026-02-05 | $N$: 588,199 → 588,037; $\gamma = 0.366198 \pm 0.00828$ |
-| Impact WLS (after `PR < 1.0`) | Client (non-proprietary) | 2026-02-05 | $N$: 255,348 → 255,312; $\gamma = 0.507990 \pm 0.0228$ |
-| Daily crowding (mean corr, `n >= 100`) | Proprietary | 2026-02-05 | mean corr: 0.081 |
-| Daily crowding (mean corr, `n >= 100`) | Client (non-proprietary) | 2026-02-05 | mean corr: 0.169 |
-| Cross crowding (mean corr, `n >= 100`) | Prop vs client env | 2026-02-05 | mean corr: -0.018 |
-| Cross crowding (mean corr, `n >= 100`) | Client vs prop env | 2026-02-05 | mean corr: -0.003 |
-| All-vs-all crowding (mean corr, `n >= 100`) | Prop vs all | 2026-02-05 | mean corr: 0.041 |
-| All-vs-all crowding (mean corr, `n >= 100`) | Client vs all | 2026-02-05 | mean corr: 0.112 |
-| Member-level prop–client crowding | Per-member mean (threshold `n >= 30`) | 2026-02-05 | mean per-member corr: 0.003 |
+| Impact WLS (after `PR < 1.0`) | Proprietary | 2026-02-20 | $N$: 588,334 → 588,172; $Y = 0.0726443 \pm 0.00366$, $\gamma = 0.366203 \pm 0.00828$ |
+| Impact WLS (after `PR < 1.0`) | Client (non-proprietary) | 2026-02-20 | $N$: 255,535 → 255,499; $Y = 0.128059 \pm 0.0154$, $\gamma = 0.508211 \pm 0.0228$ |
+| Daily crowding (mean corr, `n >= 100`) | Proprietary | 2026-02-20 | mean corr: 0.081 (95% CI [0.077, 0.086]) |
+| Daily crowding (mean corr, `n >= 100`) | Client (non-proprietary) | 2026-02-20 | mean corr: 0.169 (95% CI [0.162, 0.177]) |
+| Cross crowding (mean corr, `n >= 100`) | Prop vs client env | 2026-02-20 | mean corr: -0.018 (95% CI [-0.023, -0.014]) |
+| Cross crowding (mean corr, `n >= 100`) | Client vs prop env | 2026-02-20 | mean corr: -0.003 (95% CI [-0.010, 0.004]) |
+| All-vs-all crowding (mean corr, `n >= 100`) | Prop vs all | 2026-02-20 | mean corr: 0.041 |
+| All-vs-all crowding (mean corr, `n >= 100`) | Client vs all | 2026-02-20 | mean corr: 0.113 |
+| Member-level prop–client crowding | Global (prop direction vs member-day client imbalance) | 2026-02-20 | corr: 0.011 (p=0.014, 95% CI [0.001, 0.022], $n$=37,278) |
+| Member-level prop–client crowding | Per-member mean (threshold `n >= 30`) | 2026-02-20 | mean per-member corr: 0.003 (10 members) |
 
 ---
 
@@ -273,25 +285,25 @@ Figures are embedded by referencing the existing repository paths (relative to t
 
 | Proprietary | Client (non-proprietary) |
 |---|---|
-| ![Prop duration distribution](../images/ftsemib/member_proprietary/metaorder_duration_all.png) | ![Client duration distribution](../images/ftsemib/member_non_proprietary/metaorder_duration_all.png) |
+| ![Prop duration distribution](../images/ftsemib/member_proprietary/png/metaorder_duration_all.png) | ![Client duration distribution](../images/ftsemib/member_non_proprietary/png/metaorder_duration_all.png) |
 
 **Relative size $Q/V$**
 
 | Proprietary | Client (non-proprietary) |
 |---|---|
-| ![Prop Q/V distribution](../images/ftsemib/member_proprietary/q_over_v_all.png) | ![Client Q/V distribution](../images/ftsemib/member_non_proprietary/q_over_v_all.png) |
+| ![Prop Q/V distribution](../images/ftsemib/member_proprietary/png/q_over_v_all.png) | ![Client Q/V distribution](../images/ftsemib/member_non_proprietary/png/q_over_v_all.png) |
 
 **Participation rate $\eta = Q/V_{\text{window}}$**
 
 | Proprietary | Client (non-proprietary) |
 |---|---|
-| ![Prop participation distribution](../images/ftsemib/member_proprietary/participation_rate_all.png) | ![Client participation distribution](../images/ftsemib/member_non_proprietary/participation_rate_all.png) |
+| ![Prop participation distribution](../images/ftsemib/member_proprietary/png/participation_rate_all.png) | ![Client participation distribution](../images/ftsemib/member_non_proprietary/png/participation_rate_all.png) |
 
 **Normalized impact path (during execution + aftermath)**
 
 | Proprietary | Client (non-proprietary) |
 |---|---|
-| ![Prop normalized impact path](../images/ftsemib/member_proprietary/normalized_impact_path_member_proprietary.png) | ![Client normalized impact path](../images/ftsemib/member_non_proprietary/normalized_impact_path_member_non_proprietary.png) |
+| ![Prop normalized impact path](../images/ftsemib/member_proprietary/png/normalized_impact_path_member_proprietary.png) | ![Client normalized impact path](../images/ftsemib/member_non_proprietary/png/normalized_impact_path_member_non_proprietary.png) |
 
 ### Impact fits
 
@@ -299,11 +311,11 @@ Figures are embedded by referencing the existing repository paths (relative to t
 
 | Proprietary | Client (non-proprietary) |
 |---|---|
-| ![Prop power-law fit overall](../images/ftsemib/member_proprietary/power_law_fit_overall_member.png) | ![Client power-law fit overall](../images/ftsemib/member_non_proprietary/power_law_fit_overall_member.png) |
+| ![Prop power-law fit overall](../images/ftsemib/member_proprietary/png/power_law_fit_overall_member.png) | ![Client power-law fit overall](../images/ftsemib/member_non_proprietary/png/power_law_fit_overall_member.png) |
 
 **Overlay: proprietary vs client**
 
-![Prop vs client impact overlay](../images/ftsemib/prop_vs_nonprop/power_law_prop_vs_nonprop.png)
+![Prop vs client impact overlay](../images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png)
 
 Note: this overlay refits the `metaorders_info_sameday_filtered_*` tables (Q/V-filtered) and does not apply the `PR < 1.0` filter used in the snapshot table above.
 
@@ -313,43 +325,50 @@ Note: this overlay refits the `metaorders_info_sameday_filtered_*` tables (Q/V-f
 
 | Proprietary | Client (non-proprietary) |
 |---|---|
-| ![Prop impact surface heatmap](../images/ftsemib/member_proprietary/impact_surface_qv_participation_heatmap_member_proprietary.png) | ![Client impact surface heatmap](../images/ftsemib/member_non_proprietary/impact_surface_qv_participation_heatmap_member_non_proprietary.png) |
+| ![Prop impact surface heatmap](../images/ftsemib/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.png) | ![Client impact surface heatmap](../images/ftsemib/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.png) |
 
 **Interactive 3D surfaces (HTML links)**
 
 These are standalone HTML files; open them locally in a browser for interactivity:
 
 - Proprietary:
-  - Surface: `images/ftsemib/member_proprietary/impact_surface_qv_participation_3d_surface_member_proprietary.html` (see `../images/ftsemib/member_proprietary/impact_surface_qv_participation_3d_surface_member_proprietary.html`)
-  - Bivariate fits: `images/ftsemib/member_proprietary/impact_surface_qv_participation_3d_surface_bivariate_fits_member_proprietary.html` (see `../images/ftsemib/member_proprietary/impact_surface_qv_participation_3d_surface_bivariate_fits_member_proprietary.html`)
+  - Surface: `images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_member_proprietary.html` (see `../images/ftsemib/member_proprietary/html/impact_surface_qv_participation_3d_surface_member_proprietary.html`)
+  - Bivariate fits: `images/ftsemib/member_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_proprietary.html` (see `../images/ftsemib/member_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_proprietary.html`)
 - Client (non-proprietary):
-  - Surface: `images/ftsemib/member_non_proprietary/impact_surface_qv_participation_3d_surface_member_non_proprietary.html` (see `../images/ftsemib/member_non_proprietary/impact_surface_qv_participation_3d_surface_member_non_proprietary.html`)
-  - Bivariate fits: `images/ftsemib/member_non_proprietary/impact_surface_qv_participation_3d_surface_bivariate_fits_member_non_proprietary.html` (see `../images/ftsemib/member_non_proprietary/impact_surface_qv_participation_3d_surface_bivariate_fits_member_non_proprietary.html`)
-  - Bivariate WLS fit: `images/ftsemib/member_non_proprietary/impact_surface_qv_participation_3d_surface_bivariate_wls_fit_member_non_proprietary.html` (see `../images/ftsemib/member_non_proprietary/impact_surface_qv_participation_3d_surface_bivariate_wls_fit_member_non_proprietary.html`)
+  - Surface: `images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_member_non_proprietary.html` (see `../images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_member_non_proprietary.html`)
+  - Bivariate fits: `images/ftsemib/member_non_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_non_proprietary.html` (see `../images/ftsemib/member_non_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_non_proprietary.html`)
 
 ### Crowding
 
-**Rolling correlations (5-day smoothing in the shipped artifact set)**
+**Rolling correlations (3-day smoothing in the current default config)**
 
 | Within-group | Cross-group |
 |---|---|
-| ![Within-group rolling correlation](../images/ftsemib/prop_vs_nonprop/daily_crowding_rolling_5d.png) | ![Cross-group rolling correlation](../images/ftsemib/prop_vs_nonprop/cross_crowding_rolling_5d.png) 
-<!-- | ![All-vs-all rolling correlation](../images/ftsemib/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png) | -->
+| ![Within-group rolling correlation](../images/ftsemib/prop_vs_nonprop/png/daily_crowding_rolling_3d.png) | ![Cross-group rolling correlation](../images/ftsemib/prop_vs_nonprop/png/cross_crowding_rolling_3d.png) 
+<!-- | ![All-vs-all rolling correlation](../images/ftsemib/prop_vs_nonprop/png/all_vs_all_crowding_rolling_3d.png) | -->
+
+**Crowding vs participation rate ($\eta$)**
+
+| Within-group (local) | Cross-group |
+|---|---|
+| ![Corr vs eta (local)](../images/ftsemib/crowding_vs_part_rate/png/curve_corr_dir_imb_vs_eta_local.png) | ![Corr vs eta (cross)](../images/ftsemib/crowding_vs_part_rate/png/curve_corr_dir_imb_vs_eta_cross.png) |
+
+See `docs/imbalance_and_crowding.md` for full tables + curves; provenance in `out_files/ftsemib/crowding_vs_part_rate/run_manifest.json`.
 
 ### Diagnostics and member-level summaries
 
 - Imbalance distributions:
-  <!-- ![Imbalance distribution](../images/ftsemib/prop_vs_nonprop/imbalance_distribution.png) -->
-  &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<img src="../images/ftsemib/prop_vs_nonprop/imbalance_distribution.png" width="520" />
+  <!-- ![Imbalance distribution](../images/ftsemib/prop_vs_nonprop/png/imbalance_distribution.png) -->
+  &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;<img src="../images/ftsemib/prop_vs_nonprop/png/imbalance_distribution.png" width="520" />
 
 - Member-level prop–client crowding:
 
 | Per-member correlations | Member × window heatmap |
 |---|---|
-| ![Member prop-client crowding per member](../images/ftsemib/prop_vs_nonprop/member_prop_client_crowding_hist.png) | ![Member prop-client crowding heatmap](../images/ftsemib/prop_vs_nonprop/member_prop_client_crowding_heatmap_3d.png) |
+| ![Member prop-client crowding per member](../images/ftsemib/prop_vs_nonprop/png/member_prop_client_crowding_hist.png) | ![Member prop-client crowding heatmap](../images/ftsemib/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.png) |
 
 Additional per-ISIN ACF diagnostics are available under:
-`images/ftsemib/prop_vs_nonprop/acf/` (see `../images/ftsemib/prop_vs_nonprop/acf/`; one PNG per ISIN).
+`images/ftsemib/prop_vs_nonprop/png/acf/` (see `../images/ftsemib/prop_vs_nonprop/png/acf/`; one PNG per ISIN).
 
 ---
 
@@ -360,31 +379,32 @@ This repository is configuration-first: parameters and toggles are defined in YA
 ### Main configuration files
 
 - Impact + metaorder reconstruction: `config_ymls/metaorder_computation.yml`
-- Crowding/imbalance analysis: `config_ymls/metaorder_statistics.yml`
+- Metaorder distribution diagnostics: `config_ymls/metaorder_statistics.yml`
+- Crowding/imbalance analysis: `config_ymls/crowding_analysis.yml`
 
 ### Typical workflow (conceptual)
 
 1. Set `DATASET_NAME` and data roots in the YAML files (and ensure the expected input data is available under the configured `DATA_ROOT`).
-2. Run `metaorder_computation.py` twice, toggling `PROPRIETARY`:
+2. Run `scripts/metaorder_computation.py` twice, toggling `PROPRIETARY`:
    - `PROPRIETARY: true` (prop)
    - `PROPRIETARY: false` (client / non-proprietary)
-3. Run `metaorder_statistics.py` to generate crowding outputs and plots.
-4. Optionally run `plot_prop_nonprop_fits.py` to regenerate the overlay figure.
+3. (Optional for distribution figures) run `scripts/metaorder_statistics.py` twice, toggling `METAORDER_STATS_PROPRIETARY`.
+4. Run `scripts/crowding_analysis.py` to generate crowding outputs and plots.
+5. Optionally run `scripts/plot_prop_nonprop_fits.py` to regenerate the overlay figure.
 
 Convenience wrapper:
 
-- `metaorders_pipeline.sh` runs computation + statistics, but assumes a conda environment named `defi` (`conda activate defi`).
+- `run_all_pipelines.sh` runs computation + distribution stats + crowding + member stats, and activates `conda` environment `main`.
 
 ### Dependencies (inferred from imports)
 
 Core scientific stack:
 
-- `numpy`, `pandas`, `scipy`, `matplotlib`, `seaborn`, `tqdm`, `pyyaml`
+- `numpy`, `pandas`, `scipy`, `tqdm`, `pyyaml`, `plotly`
 - Parquet I/O: `pyarrow` (or another pandas-compatible Parquet engine)
 
-For `member_statistics.py`:
+Static image export (all Plotly scripts):
 
-- `plotly`
 - an image export backend for `fig.write_image` (e.g., `kaleido`)
 
 ---
@@ -395,11 +415,11 @@ The scripts write outputs under `out_files/` and `images/`, typically organized 
 
 | Artifact type | Typical path pattern | Produced by |
 |---|---|---|
-| Metaorder index dictionaries | `out_files/{DATASET_NAME}/metaorders_dict_all_{LEVEL}_{PROPRIETARY_TAG}.pkl` | `metaorder_computation.py` |
-| Per-metaorder tables (unfiltered) | `out_files/{DATASET_NAME}/metaorders_info_sameday_{LEVEL}_{PROPRIETARY_TAG}.parquet` | `metaorder_computation.py` |
-| Per-metaorder tables (filtered for fits) | `out_files/{DATASET_NAME}/metaorders_info_sameday_filtered_{LEVEL}_{PROPRIETARY_TAG}.parquet` | `metaorder_computation.py` |
-| Impact/distribution plots | `images/{DATASET_NAME}/{LEVEL}_{PROPRIETARY_TAG}/...` | `metaorder_computation.py`, `metaorder_statistics.py` |
-| Crowding plots | `images/{DATASET_NAME}/prop_vs_nonprop/...` | `metaorder_statistics.py` |
+| Metaorder index dictionaries | `out_files/{DATASET_NAME}/metaorders_dict_all_{LEVEL}_{PROPRIETARY_TAG}.pkl` | `scripts/metaorder_computation.py` |
+| Per-metaorder tables (unfiltered) | `out_files/{DATASET_NAME}/metaorders_info_sameday_{LEVEL}_{PROPRIETARY_TAG}.parquet` | `scripts/metaorder_computation.py` |
+| Per-metaorder tables (filtered for fits) | `out_files/{DATASET_NAME}/metaorders_info_sameday_filtered_{LEVEL}_{PROPRIETARY_TAG}.parquet` | `scripts/metaorder_computation.py` |
+| Impact/distribution plots | `images/{DATASET_NAME}/{LEVEL}_{PROPRIETARY_TAG}/png/...` and `.../html/...` | `scripts/metaorder_computation.py`, `scripts/metaorder_statistics.py` |
+| Crowding plots | `images/{DATASET_NAME}/prop_vs_nonprop/png/...` and `.../html/...` | `scripts/crowding_analysis.py` |
 
 
 

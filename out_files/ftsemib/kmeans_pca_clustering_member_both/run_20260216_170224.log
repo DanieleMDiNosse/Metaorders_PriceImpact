@@ -1,0 +1,13 @@
+2026-02-16 17:02:24,679 | INFO | Starting metaorder clustering run.
+2026-02-16 17:02:24,679 | INFO | Arguments: {'config_path': 'config_ymls/metaorder_computation.yml', 'dataset_name': 'ftsemib', 'level': None, 'group': 'both', 'out_root': None, 'img_root': None, 'prop_path': None, 'client_path': None, 'out_dir': None, 'img_dir': None, 'features': None, 'pca_variance_threshold': 0.75, 'pc_feature_contrib_threshold': 0.5, 'k_min': 2, 'k_max': 20, 'silhouette_sample_size': 20000, 'n_init': 50, 'seed': 0, 'scaler': 'standard', 'clip_quantiles': None, 'plots': 'plotly', 'n_feature_triplets': 4, 'feature_triplet_sample_size': 50000, 'dry_run': False, 'load': True, 'log_file': None}
+2026-02-16 17:02:24,679 | INFO | Resolved paths: {'dataset_name': 'ftsemib', 'level': 'member', 'out_root': 'out_files', 'img_root': 'images', 'prop_path': 'out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet', 'client_path': 'out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet', 'out_dir': 'out_files/ftsemib/kmeans_pca_clustering_member_both', 'img_dir': 'images/ftsemib/kmeans_pca_clustering_member_both'}
+2026-02-16 17:02:24,679 | INFO | Effective output directory: out_files/ftsemib/kmeans_pca_clustering_member_both
+2026-02-16 17:02:24,679 | INFO | Effective image directory: images/ftsemib/kmeans_pca_clustering_member_both
+2026-02-16 17:02:25,657 | INFO | Loaded existing outputs.
+2026-02-16 17:02:25,657 | INFO | Rows in clustered parquet: 843869
+2026-02-16 17:02:25,657 | INFO | Silhouette curve rows: 11
+2026-02-16 17:02:52,471 | INFO | Plots regenerated from saved artifacts.
+2026-02-16 17:02:52,473 | INFO | Load mode completed (no recomputation).
+2026-02-16 17:02:52,473 | INFO | Selected k from silhouette CSV: 2
+2026-02-16 17:02:52,473 | INFO | Summary rows: 2
+2026-02-16 17:02:52,473 | INFO | Run log written to: out_files/ftsemib/kmeans_pca_clustering_member_both/run_20260216_170224.log
