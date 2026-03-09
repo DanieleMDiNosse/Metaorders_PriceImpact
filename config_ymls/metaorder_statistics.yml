@@ -1,11 +1,11 @@
 # metaorder_statistics.py configuration (metaorder dictionary statistics)
 
 # Plotting
-TICK_FONT_SIZE: 12
-LABEL_FONT_SIZE: 14
-TITLE_FONT_SIZE: 15
-LEGEND_FONT_SIZE: 12
-DEFAULT_FIGSIZE: [9, 5.5]
+TICK_FONT_SIZE: 14
+LABEL_FONT_SIZE: 16
+TITLE_FONT_SIZE: 17
+LEGEND_FONT_SIZE: 14
+DEFAULT_FIGSIZE: [11, 7.5]
 
 # Dataset label
 DATASET_NAME: ftsemib  # e.g., "ftsemib" or "mot"

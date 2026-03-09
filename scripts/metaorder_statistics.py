@@ -68,6 +68,7 @@ from moimpact.plot_style import (
     apply_plotly_style,
 )
 from moimpact.plotting import (
+    COLOR_CLIENT,
     COLOR_PROPRIETARY,
     PlotOutputDirs,
     ensure_plot_dirs,
@@ -215,6 +216,7 @@ else:
     )
 
 PLOT_DIR = IMG_BASE_DIR / f"{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}"
+COMPARISON_PLOT_DIR = IMG_BASE_DIR / "prop_vs_nonprop"
 PNG_DIR = Path(PLOT_DIR) / "png"
 HTML_DIR = Path(PLOT_DIR) / "html"
 MEMBERS_NATIONALITY_PATH = _resolve_repo_path("data/members_nationality.parquet")
@@ -593,6 +595,62 @@ def load_trades_filtered_for_stats(
     >>> trades = load_trades_filtered_for_stats(Path(\"data/parquet/ENEL.parquet\"), proprietary=True)
     """
     trades = pd.read_parquet(path)
+    return _filter_trades_for_stats(
+        trades,
+        proprietary=proprietary,
+        trading_hours=trading_hours,
+        member_nationality=member_nationality,
+        isin=path.stem,
+    )
+
+
+def _filter_trades_for_stats(
+    trades: pd.DataFrame,
+    proprietary: Optional[bool],
+    trading_hours: Optional[Tuple[str, str]] = ("09:30:00", "17:30:00"),
+    member_nationality: Optional[str] = None,
+    isin: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Summary
+    -------
+    Apply the canonical trade filters used by metaorder-statistics routines.
+
+    Parameters
+    ----------
+    trades : pd.DataFrame
+        Raw per-ISIN trade tape.
+    proprietary : bool | None
+        If True, keep only proprietary aggressive trades; if False, keep only
+        non-proprietary aggressive trades; if None, keep all trades.
+    trading_hours : tuple[str, str] | None, default=(\"09:30:00\", \"17:30:00\")
+        Inclusive trading-hours filter applied on `Trade Time`. Pass None to keep
+        all timestamps.
+    member_nationality : str | None, default=None
+        If provided, keep only trades whose `Aggressive Member Nationality`
+        matches this value (`"it"` or `"foreign"`).
+    isin : str | None, default=None
+        Optional ISIN label attached to the output frame.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered trade tape with stable ordering and helper columns required by
+        downstream metaorder-statistics code.
+
+    Notes
+    -----
+    - The function adds a `__row_id__` column so mergesort preserves a stable
+      order when multiple trades share the same timestamp.
+    - The member-nationality filter is applied only to the numerator-side slices;
+      denominator volumes can call this helper with `member_nationality=None`.
+
+    Examples
+    --------
+    >>> frame = pd.DataFrame({"Trade Time": pd.to_datetime(["2024-01-02 10:00:00"])})
+    >>> _filter_trades_for_stats(frame, proprietary=None, trading_hours=None).shape[0]
+    1
+    """
     trades = _ensure_aggressive_member_nationality(trades)
     if proprietary is True:
         trades = trades[trades["Trade Type Aggressive"] == "Dealing_on_own_account"].copy()
@@ -602,8 +660,8 @@ def load_trades_filtered_for_stats(
     if member_nationality is not None:
         nat = trades[AGGRESSIVE_MEMBER_NATIONALITY_COL].astype("string").str.strip().str.lower()
         trades = trades.loc[nat.eq(member_nationality).fillna(False)].copy()
-    start, end = trading_hours
-    if trading_hours != None:
+    if trading_hours is not None:
+        start, end = trading_hours
         trades = trades[
             (trades["Trade Time"].dt.time >= pd.to_datetime(start).time())
             & (trades["Trade Time"].dt.time <= pd.to_datetime(end).time())
@@ -612,8 +670,510 @@ def load_trades_filtered_for_stats(
     trades["__row_id__"] = np.arange(len(trades), dtype=np.int64)
     trades.sort_values(["Trade Time", "__row_id__"], kind="mergesort", inplace=True)
     trades.reset_index(drop=True, inplace=True)
-    trades["ISIN"] = path.stem
+    if isin is not None:
+        trades["ISIN"] = str(isin)
     return trades
+
+
+def _daily_total_market_volume(trades: pd.DataFrame) -> pd.Series:
+    """
+    Summary
+    -------
+    Aggregate total traded volume by trading day for one ISIN.
+
+    Parameters
+    ----------
+    trades : pd.DataFrame
+        Trade tape for one ISIN after the desired denominator-side filters.
+
+    Returns
+    -------
+    pd.Series
+        Series indexed by `datetime.date` with total market volume per day.
+
+    Notes
+    -----
+    - The volume measure is `Total Quantity Buy + Total Quantity Sell`.
+    - Missing or non-numeric quantities are treated as zero.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     "Trade Time": pd.to_datetime(["2024-01-02 10:00:00"]),
+    ...     "Total Quantity Buy": [10],
+    ...     "Total Quantity Sell": [0],
+    ... })
+    >>> float(_daily_total_market_volume(df).iloc[0])
+    10.0
+    """
+    if trades.empty:
+        return pd.Series(dtype=float)
+    volume = pd.to_numeric(trades["Total Quantity Buy"], errors="coerce").fillna(0.0)
+    volume = volume + pd.to_numeric(trades["Total Quantity Sell"], errors="coerce").fillna(0.0)
+    trade_dates = pd.to_datetime(trades["Trade Time"]).dt.date
+    return volume.groupby(trade_dates).sum().astype(float)
+
+
+def _daily_metaorder_volume(
+    metaorders_dict: Mapping[object, Sequence[Sequence[int]]],
+    trades: pd.DataFrame,
+) -> pd.Series:
+    """
+    Summary
+    -------
+    Aggregate metaorder volume by day for one ISIN and one flow group.
+
+    Parameters
+    ----------
+    metaorders_dict : Mapping[object, Sequence[Sequence[int]]]
+        Metaorder dictionary for one ISIN. Each value is a list of metaorders,
+        where each metaorder is represented by trade indices in the filtered
+        trade tape.
+    trades : pd.DataFrame
+        Filtered trade tape whose row order matches the indices stored in
+        `metaorders_dict`.
+
+    Returns
+    -------
+    pd.Series
+        Series indexed by `datetime.date` with total metaorder volume per day.
+
+    Notes
+    -----
+    - Each metaorder is assigned to the date of its first child trade. This is
+      consistent with the repository's same-day metaorder definition.
+    - The function raises `IndexError` when the dictionary indices do not match
+      the supplied filtered trade tape, which usually signals a filter mismatch.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     "Trade Time": pd.to_datetime(["2024-01-02 10:00:00", "2024-01-02 10:05:00"]),
+    ...     "Total Quantity Buy": [10, 0],
+    ...     "Total Quantity Sell": [0, 5],
+    ... })
+    >>> out = _daily_metaorder_volume({1: [[0, 1]]}, df)
+    >>> float(out.iloc[0])
+    15.0
+    """
+    if trades.empty or not metaorders_dict:
+        return pd.Series(dtype=float)
+
+    times = pd.to_datetime(trades["Trade Time"]).to_numpy()
+    buy_qty = pd.to_numeric(trades["Total Quantity Buy"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+    sell_qty = pd.to_numeric(trades["Total Quantity Sell"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+
+    volumes_by_day: Dict[dt.date, float] = {}
+    n_trades = len(trades)
+    for metas in metaorders_dict.values():
+        for meta in metas:
+            if not meta:
+                continue
+            meta_indices = np.asarray(meta, dtype=np.int64)
+            if np.any((meta_indices < 0) | (meta_indices >= n_trades)):
+                raise IndexError(
+                    "Metaorder indices are out of bounds for the filtered trades slice. "
+                    "Check that the dictionary and trade filters match."
+                )
+            volume = float(buy_qty[meta_indices].sum() + sell_qty[meta_indices].sum())
+            trade_date = pd.Timestamp(times[int(meta_indices[0])]).date()
+            volumes_by_day[trade_date] = volumes_by_day.get(trade_date, 0.0) + volume
+
+    return pd.Series(volumes_by_day, dtype=float)
+
+
+def build_daily_metaorder_share_table(
+    total_market_volume_by_day: pd.Series,
+    proprietary_metaorder_volume_by_day: pd.Series,
+    client_metaorder_volume_by_day: pd.Series,
+) -> pd.DataFrame:
+    """
+    Summary
+    -------
+    Build the day-level table used for the mean metaorder-volume share plot.
+
+    Parameters
+    ----------
+    total_market_volume_by_day : pd.Series
+        Total market volume across all ISINs for each day.
+    proprietary_metaorder_volume_by_day : pd.Series
+        Total proprietary metaorder volume across all ISINs for each day.
+    client_metaorder_volume_by_day : pd.Series
+        Total client metaorder volume across all ISINs for each day.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per day with total market volume, proprietary/client metaorder
+        volumes, and the corresponding daily ratios.
+
+    Notes
+    -----
+    - Missing proprietary/client days are filled with zero before ratios are
+      computed so the daily averages use a common trading-day support.
+    - Days with zero denominator volume are dropped.
+
+    Examples
+    --------
+    >>> total = pd.Series({dt.date(2024, 1, 2): 100.0})
+    >>> prop = pd.Series({dt.date(2024, 1, 2): 20.0})
+    >>> client = pd.Series({dt.date(2024, 1, 2): 10.0})
+    >>> out = build_daily_metaorder_share_table(total, prop, client)
+    >>> float(out.loc[0, "total_ratio"])
+    0.3
+    """
+    total = pd.Series(total_market_volume_by_day, dtype=float)
+    total.index = pd.Index(pd.to_datetime(total.index).date, name="Date")
+    total = total.groupby(level=0).sum().sort_index()
+
+    if total.empty:
+        return pd.DataFrame(
+            columns=[
+                "Date",
+                "total_market_volume",
+                "proprietary_metaorder_volume",
+                "client_metaorder_volume",
+                "proprietary_ratio",
+                "client_ratio",
+                "total_ratio",
+            ]
+        )
+
+    prop = pd.Series(proprietary_metaorder_volume_by_day, dtype=float)
+    prop.index = pd.Index(pd.to_datetime(prop.index).date, name="Date")
+    prop = prop.groupby(level=0).sum()
+
+    client = pd.Series(client_metaorder_volume_by_day, dtype=float)
+    client.index = pd.Index(pd.to_datetime(client.index).date, name="Date")
+    client = client.groupby(level=0).sum()
+
+    daily = pd.DataFrame({"total_market_volume": total})
+    daily["proprietary_metaorder_volume"] = prop.reindex(daily.index, fill_value=0.0).astype(float)
+    daily["client_metaorder_volume"] = client.reindex(daily.index, fill_value=0.0).astype(float)
+    daily = daily.loc[daily["total_market_volume"] > 0.0].copy()
+    if daily.empty:
+        return daily.reset_index()
+
+    denominator = daily["total_market_volume"].astype(float)
+    daily["proprietary_ratio"] = daily["proprietary_metaorder_volume"] / denominator
+    daily["client_ratio"] = daily["client_metaorder_volume"] / denominator
+    daily["total_ratio"] = daily["proprietary_ratio"] + daily["client_ratio"]
+    return daily.reset_index()
+
+
+def compute_daily_metaorder_share_table(
+    parquet_dir: Path,
+    proprietary_dict_path: Path,
+    client_dict_path: Path,
+    trading_hours: Tuple[str, str] = ("09:30:00", "17:30:00"),
+    member_nationality: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Summary
+    -------
+    Compute day-level proprietary/client metaorder shares for each ISIN.
+
+    Parameters
+    ----------
+    parquet_dir : Path
+        Directory containing per-ISIN parquet trade tapes.
+    proprietary_dict_path : Path
+        Path to the proprietary `metaorders_dict_all_*` pickle.
+    client_dict_path : Path
+        Path to the client/non-proprietary `metaorders_dict_all_*` pickle.
+    trading_hours : tuple[str, str], default=(\"09:30:00\", \"17:30:00\")
+        Inclusive trading-hours filter applied to all numerator/denominator
+        volumes.
+    member_nationality : str | None, default=None
+        Optional aggressive-member nationality filter applied only to the
+        metaorder numerators so the denominator remains the full market volume.
+
+    Returns
+    -------
+    pd.DataFrame
+        Day-level table with one row per `(ISIN, Date)` and columns for the
+        market-volume denominator plus proprietary/client metaorder-volume
+        numerators and ratios.
+
+    Notes
+    -----
+    - The function reads each parquet file once and derives full, proprietary,
+      and client slices in memory to keep the comparison pass tractable.
+    - Missing per-ISIN dictionaries are treated as empty for that ISIN.
+    - The averaging over days is intentionally deferred to the plotting helper
+      so the figure can preserve one stacked bar per ISIN.
+
+    Examples
+    --------
+    >>> # Requires repository data files; see main() for the standard entrypoint.
+    """
+    try:
+        metaorders_prop_all = pickle.load(proprietary_dict_path.open("rb"))
+        metaorders_client_all = pickle.load(client_dict_path.open("rb"))
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to load comparison dictionaries: {proprietary_dict_path} / {client_dict_path}"
+        ) from exc
+
+    parquet_paths = list_metaorder_parquet_paths(parquet_dir)
+    if not parquet_paths:
+        return pd.DataFrame()
+
+    daily_tables: List[pd.DataFrame] = []
+
+    for path in tqdm(parquet_paths, desc="ISINs (share plot)"):
+        raw_trades = pd.read_parquet(path)
+        trades_full = _filter_trades_for_stats(
+            raw_trades,
+            proprietary=None,
+            trading_hours=trading_hours,
+            member_nationality=None,
+            isin=path.stem,
+        )
+        trades_prop = _filter_trades_for_stats(
+            raw_trades,
+            proprietary=True,
+            trading_hours=trading_hours,
+            member_nationality=member_nationality,
+            isin=path.stem,
+        )
+        trades_client = _filter_trades_for_stats(
+            raw_trades,
+            proprietary=False,
+            trading_hours=trading_hours,
+            member_nationality=member_nationality,
+            isin=path.stem,
+        )
+
+        daily_table = build_daily_metaorder_share_table(
+            _daily_total_market_volume(trades_full),
+            _daily_metaorder_volume(metaorders_prop_all.get(path.stem, {}), trades_prop),
+            _daily_metaorder_volume(metaorders_client_all.get(path.stem, {}), trades_client),
+        )
+        if daily_table.empty:
+            continue
+        daily_table.insert(0, "ISIN", path.stem)
+        daily_tables.append(daily_table)
+
+    if not daily_tables:
+        return pd.DataFrame(
+            columns=[
+                "ISIN",
+                "Date",
+                "total_market_volume",
+                "proprietary_metaorder_volume",
+                "client_metaorder_volume",
+                "proprietary_ratio",
+                "client_ratio",
+                "total_ratio",
+            ]
+        )
+
+    return pd.concat(daily_tables, ignore_index=True)
+
+
+def build_mean_daily_metaorder_share_figure(daily_share_table: pd.DataFrame) -> go.Figure:
+    """
+    Summary
+    -------
+    Build the stacked bar plot comparing proprietary and client mean daily shares by ISIN.
+
+    Parameters
+    ----------
+    daily_share_table : pd.DataFrame
+        Output of `compute_daily_metaorder_share_table` or
+        `build_daily_metaorder_share_table`.
+
+    Returns
+    -------
+    go.Figure
+        Plotly stacked-bar figure with one bar per ISIN and proprietary/client
+        contributions stacked within each bar.
+
+    Notes
+    -----
+    - The plotted values are percentages, while the input ratios are decimals.
+    - The figure averages only across days within each ISIN; it does not pool
+      ISINs before taking the mean.
+
+    Examples
+    --------
+    >>> table = pd.DataFrame({"ISIN": ["AAA"], "proprietary_ratio": [0.2], "client_ratio": [0.1]})
+    >>> fig = build_mean_daily_metaorder_share_figure(table)
+    >>> len(fig.data)
+    2
+    """
+    required_cols = {"ISIN", "proprietary_ratio", "client_ratio"}
+    missing = required_cols.difference(daily_share_table.columns)
+    if missing:
+        raise KeyError(f"Missing required columns for share figure: {sorted(missing)}")
+    if daily_share_table.empty:
+        raise ValueError("The daily share table is empty; cannot build the comparison figure.")
+
+    grouped = (
+        daily_share_table.assign(
+            ISIN=daily_share_table["ISIN"].astype(str),
+            proprietary_ratio=pd.to_numeric(daily_share_table["proprietary_ratio"], errors="coerce"),
+            client_ratio=pd.to_numeric(daily_share_table["client_ratio"], errors="coerce"),
+        )
+        .groupby("ISIN", as_index=False)
+        .agg(
+            proprietary_ratio=("proprietary_ratio", "mean"),
+            client_ratio=("client_ratio", "mean"),
+            n_days=("Date", "nunique") if "Date" in daily_share_table.columns else ("ISIN", "size"),
+        )
+        .sort_values("ISIN")
+        .reset_index(drop=True)
+    )
+    grouped["total_ratio"] = grouped["proprietary_ratio"] + grouped["client_ratio"]
+
+    fig = go.Figure()
+    for label, column, color in (
+        ("Proprietary", "proprietary_ratio", COLOR_PROPRIETARY),
+        ("Client", "client_ratio", COLOR_CLIENT),
+    ):
+        percentage = 100.0 * grouped[column].to_numpy(dtype=float)
+        fig.add_trace(
+            go.Bar(
+                x=grouped["ISIN"].tolist(),
+                y=percentage.tolist(),
+                name=label,
+                marker_color=color,
+                customdata=np.column_stack(
+                    [
+                        100.0 * grouped["total_ratio"].to_numpy(dtype=float),
+                        grouped["n_days"].to_numpy(dtype=int),
+                    ]
+                ),
+                hovertemplate=(
+                    "ISIN %{x}"
+                    f"<br>{label} mean daily share: %{{y:.2f}}%"
+                    "<br>Total mean daily share: %{customdata[0]:.2f}%"
+                    "<br>Trading days: %{customdata[1]:.0f}<extra></extra>"
+                ),
+            )
+        )
+
+    fig.update_layout(
+        template=PLOTLY_TEMPLATE_NAME,
+        title="Mean daily metaorder volume share by ISIN",
+        xaxis_title="ISIN",
+        yaxis_title="Percentage of daily market volume (%)",
+        barmode="stack",
+        showlegend=False,
+        xaxis_tickangle=90,
+        bargap=0.2,
+        margin=dict(l=60, r=20, t=60, b=60),
+    )
+    fig.update_yaxes(rangemode="tozero")
+    return fig
+
+
+def _canonical_metaorder_stats_dict_path(output_dir: Path, level: str, proprietary: bool) -> Path:
+    """Return the default stats-dictionary path for one flow group."""
+    proprietary_tag = "proprietary" if proprietary else "non_proprietary"
+    return output_dir / _with_member_nationality_tag(f"metaorders_dict_all_{level}_{proprietary_tag}.pkl")
+
+
+def maybe_generate_mean_daily_metaorder_share_plot(
+    parquet_dir: Path,
+    output_dir: Path,
+    img_dir: Path,
+    level: str,
+    trading_hours: Tuple[str, str] = ("09:30:00", "17:30:00"),
+    member_nationality: Optional[str] = None,
+) -> None:
+    """
+    Summary
+    -------
+    Generate the shared proprietary-vs-client mean daily metaorder-share plot.
+
+    Parameters
+    ----------
+    parquet_dir : Path
+        Directory containing per-ISIN parquet trade tapes.
+    output_dir : Path
+        Base output directory where canonical `metaorders_dict_all_*` files live.
+    img_dir : Path
+        Shared comparison output directory.
+    level : str
+        Metaorder aggregation level used in the canonical dictionary filenames.
+    trading_hours : tuple[str, str], default=(\"09:30:00\", \"17:30:00\")
+        Inclusive trading-hours filter applied to both numerator and denominator
+        series.
+    member_nationality : str | None, default=None
+        Optional aggressive-member nationality filter applied to the
+        proprietary/client metaorder numerators.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    - This helper is intended to run only once per pipeline slice to avoid
+      concurrent writes to the shared comparison folder.
+    - If either canonical dictionary is missing, the comparison plot is skipped
+      with an informational log message.
+
+    Examples
+    --------
+    >>> # Requires repository data files; see main() for the standard entrypoint.
+    """
+    proprietary_dict_path = _canonical_metaorder_stats_dict_path(output_dir, level, proprietary=True)
+    client_dict_path = _canonical_metaorder_stats_dict_path(output_dir, level, proprietary=False)
+    missing_paths = [path for path in (proprietary_dict_path, client_dict_path) if not path.exists()]
+    if missing_paths:
+        missing_str = ", ".join(str(path) for path in missing_paths)
+        print(
+            "[Metaorder stats] Skipping mean daily metaorder-share comparison: "
+            f"missing canonical dictionary file(s): {missing_str}"
+        )
+        return
+
+    daily_share_table = compute_daily_metaorder_share_table(
+        parquet_dir=parquet_dir,
+        proprietary_dict_path=proprietary_dict_path,
+        client_dict_path=client_dict_path,
+        trading_hours=trading_hours,
+        member_nationality=member_nationality,
+    )
+    if daily_share_table.empty:
+        print(
+            "[Metaorder stats] Skipping mean daily metaorder-share comparison: "
+            "no valid trading days with positive denominator volume."
+        )
+        return
+
+    mean_prop_ratio = float(daily_share_table["proprietary_ratio"].mean())
+    mean_client_ratio = float(daily_share_table["client_ratio"].mean())
+    mean_total_ratio = float(daily_share_table["total_ratio"].mean())
+    n_isins = int(daily_share_table["ISIN"].nunique()) if "ISIN" in daily_share_table.columns else 0
+    print(
+        "[Metaorder stats] Mean daily metaorder-volume share by ISIN: "
+        f"proprietary={100.0 * mean_prop_ratio:.4f}%, "
+        f"client={100.0 * mean_client_ratio:.4f}%, "
+        f"total={100.0 * mean_total_ratio:.4f}% "
+        f"(n_isins={n_isins}, n_isin_days={len(daily_share_table)})"
+    )
+
+    plot_dirs = make_plot_output_dirs(img_dir, use_subdirs=True)
+    ensure_plot_dirs(plot_dirs)
+    fig = build_mean_daily_metaorder_share_figure(daily_share_table)
+    html_path, png_path = save_plotly_figure(
+        fig,
+        stem=_with_member_nationality_tag("mean_daily_metaorder_volume_share"),
+        dirs=plot_dirs,
+        write_html=True,
+        write_png=True,
+        strict_png=False,
+    )
+    if html_path is not None:
+        print(f"[Metaorder stats] Saved mean daily share HTML to {html_path}")
+    if png_path is not None:
+        print(f"[Metaorder stats] Saved mean daily share PNG to {png_path}")
+    else:
+        print("[Metaorder stats][warn] Could not export Plotly PNG for mean daily metaorder-share plot.")
 
 
 def run_metaorder_dict_statistics(
@@ -1158,6 +1718,17 @@ def main() -> None:
             trading_hours=TRADING_HOURS,
             member_nationality=MEMBER_NATIONALITY,
         )
+        # The pipeline runs proprietary and client slices in parallel, so only
+        # one slice should write the shared prop-vs-client comparison artifact.
+        if METAORDER_STATS_PROPRIETARY:
+            maybe_generate_mean_daily_metaorder_share_plot(
+                parquet_dir=PARQUET_DIR,
+                output_dir=OUTPUT_DIR,
+                img_dir=COMPARISON_PLOT_DIR,
+                level=METAORDER_STATS_LEVEL,
+                trading_hours=TRADING_HOURS,
+                member_nationality=MEMBER_NATIONALITY,
+            )
 
 
 if __name__ == "__main__":

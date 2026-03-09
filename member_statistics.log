@@ -1,0 +1,19 @@
+2026-02-22 10:34:52,987 - Total unique members across all ISINs: 73
+2026-02-22 10:34:54,425 - Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_statistics/png/members_per_isin.png
+2026-02-22 10:34:54,425 - Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_statistics/html/members_per_isin.html
+2026-02-22 10:34:55,701 - Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_statistics/png/proprietary_vs_client_trades_per_isin.png
+2026-02-22 10:34:55,701 - Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_statistics/html/proprietary_vs_client_trades_per_isin.html
+2026-02-22 10:34:56,989 - Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_statistics/png/member_isin_coverage_per_member.png
+2026-02-22 10:34:56,989 - Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_statistics/html/member_isin_coverage_per_member.html
+2026-02-22 10:34:58,287 - Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_statistics/png/member_activity_heatmap.png
+2026-02-22 10:34:58,499 - Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_statistics/html/member_activity_heatmap.html
+2026-03-09 14:00:09,333 - Total unique members across all ISINs: 73
+2026-03-09 14:00:11,035 - Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/png/members_per_isin.png
+2026-03-09 14:00:11,035 - Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/html/members_per_isin.html
+2026-03-09 14:00:11,037 - Client/proprietary trade ratio across ISINs [min, max]: [0.61095, 1.28902]
+2026-03-09 14:00:12,373 - Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/png/proprietary_vs_client_trades_per_isin.png
+2026-03-09 14:00:12,373 - Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/html/proprietary_vs_client_trades_per_isin.html
+2026-03-09 14:00:13,800 - Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/png/member_isin_coverage_per_member.png
+2026-03-09 14:00:13,801 - Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/html/member_isin_coverage_per_member.html
+2026-03-09 14:00:15,216 - Saved PNG to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/png/member_activity_heatmap.png
+2026-03-09 14:00:15,539 - Saved HTML to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/html/member_activity_heatmap.html

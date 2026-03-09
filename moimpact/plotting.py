@@ -5,6 +5,7 @@ Unified Plotly-first plotting helpers shared across repository scripts.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -21,6 +22,39 @@ COLOR_BAND_CLIENT = "rgba(238,102,102,0.20)"
 PLOTLY_EXPORT_WIDTH = 1200
 PLOTLY_EXPORT_HEIGHT = 700
 PLOTLY_EXPORT_SCALE = 2
+
+
+def _env_flag(name: str, *, default: bool = False) -> bool:
+    """
+    Parse a boolean environment variable.
+
+    Parameters
+    ----------
+    name : str
+        Environment variable name.
+    default : bool, default=False
+        Value returned when the variable is unset.
+
+    Returns
+    -------
+    bool
+        Parsed boolean value.
+
+    Notes
+    -----
+    Accepted true values: ``1``, ``true``, ``yes``, ``on``.
+    Accepted false values: ``0``, ``false``, ``no``, ``off``.
+    Any other non-empty value falls back to ``default``.
+    """
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
 
 
 @dataclass(frozen=True)
@@ -186,6 +220,10 @@ def save_plotly_figure(
     ensure_plot_dirs(dirs)
     html_path: Optional[Path] = None
     png_path: Optional[Path] = None
+
+    # Pipeline-level control: hide all figure legends when requested.
+    if _env_flag("DISABLE_PLOT_LEGENDS", default=False):
+        fig.update_layout(showlegend=False)
 
     if write_html:
         html_path = dirs.html_dir / f"{stem}.html"

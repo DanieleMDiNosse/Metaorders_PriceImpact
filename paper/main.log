@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.2.4)  19 FEB 2026 18:30
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.2.26)  28 FEB 2026 19:05
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -327,15 +327,19 @@ Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
 \Gm@layouthoffset=\dimen190
 \Gm@layoutvoffset=\dimen191
 \Gm@dimlist=\toks26
+) (/usr/share/texlive/texmf-dist/tex/latex/changepage/changepage.sty
+Package: changepage 2009/10/20 v1.0c check page and change page layout
+\c@cp@cntr=\count310
+\cp@tempcnt=\count311
 ) (/usr/share/texlive/texmf-dist/tex/latex/preprint/authblk.sty
 Package: authblk 2001/02/27 1.3 (PWD)
 \affilsep=\skip56
 \@affilsep=\skip57
-\c@Maxaffil=\count310
-\c@authors=\count311
-\c@affil=\count312
+\c@Maxaffil=\count312
+\c@authors=\count313
+\c@affil=\count314
 )
-Package translations Info: No language package found. I am going to use `english' as default language. on input line 27.
+Package translations Info: No language package found. I am going to use `english' as default language. on input line 28.
  (/usr/share/texlive/texmf-dist/tex/latex/graphics/color.sty
 Package: color 2022/01/06 v1.3d Standard LaTeX Color (DPC)
  (/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/color.cfg
@@ -344,41 +348,41 @@ File: color.cfg 2016/01/02 v1.6 sample color configuration
 Package color Info: Driver file: pdftex.def on input line 149.
  (/usr/share/texlive/texmf-dist/tex/latex/graphics/mathcolor.ltx)) (/usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2024-01-04 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count313
+\l__color_backend_stack_int=\count315
 \l__pdf_internal_box=\box63
 ) (./main.aux)
 \openout1 = `main.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 27.
-LaTeX Font Info:    ... okay on input line 27.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
  (/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count314
+\scratchcounter=\count316
 \scratchdimen=\dimen192
 \scratchbox=\box64
-\nofMPsegments=\count315
-\nofMParguments=\count316
+\nofMPsegments=\count317
+\nofMParguments=\count318
 \everyMPshowfont=\toks27
-\MPscratchCnt=\count317
+\MPscratchCnt=\count319
 \MPscratchDim=\dimen193
-\MPnumerator=\count318
-\makeMPintoPDFobject=\count319
+\MPnumerator=\count320
+\makeMPintoPDFobject=\count321
 \everyMPtoPDFconversion=\toks28
 ) (/usr/share/texlive/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
@@ -388,13 +392,16 @@ File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 )) (/usr/share/texlive/texmf-dist/tex/latex/translations/translations-basic-dictionary-english.trsl
 File: translations-basic-dictionary-english.trsl (english translation file `translations-basic-dictionary')
 )
-Package translations Info: loading dictionary `translations-basic-dictionary' for `english'. on input line 27.
-Package hyperref Info: Link coloring OFF on input line 27.
+Package translations Info: loading dictionary `translations-basic-dictionary' for `english'. on input line 28.
+Package hyperref Info: Link coloring OFF on input line 28.
  (./main.out) (./main.out)
 \@outlinefile=\write3
 \openout3 = `main.out'.
 
 Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: changepage package is loaded.
+\caption@adjustwidth@hsize=\dimen194
+\caption@adjustwidth@linewidth=\dimen195
 Package caption Info: End \AtBeginDocument code.
 
 *geometry* driver: auto-detecting
@@ -431,277 +438,312 @@ Package caption Info: End \AtBeginDocument code.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-LaTeX Font Info:    Trying to load font information for U+msa on input line 29.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 30.
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 29.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 30.
  (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
-<images/member_statistics/png/members_per_isin.png, id=115, 1405.25pt x 1003.75pt>
+<images/member_statistics/png/members_per_isin.png, id=122, 2409.0pt x 1405.25pt>
 File: images/member_statistics/png/members_per_isin.png Graphic file (type png)
 <use images/member_statistics/png/members_per_isin.png>
 Package pdftex.def Info: images/member_statistics/png/members_per_isin.png  used on input line 130.
-(pdftex.def)             Requested size: 377.62642pt x 269.72958pt.
-<images/member_statistics/png/proprietary_vs_client_trades_per_isin.png, id=118, 1405.25pt x 1003.75pt>
+(pdftex.def)             Requested size: 377.62642pt x 220.27737pt.
+<images/member_statistics/png/proprietary_vs_client_trades_per_isin.png, id=125, 2409.0pt x 1405.25pt>
 File: images/member_statistics/png/proprietary_vs_client_trades_per_isin.png Graphic file (type png)
 <use images/member_statistics/png/proprietary_vs_client_trades_per_isin.png>
-Package pdftex.def Info: images/member_statistics/png/proprietary_vs_client_trades_per_isin.png  used on input line 139.
-(pdftex.def)             Requested size: 377.62642pt x 269.72958pt.
+Package pdftex.def Info: images/member_statistics/png/proprietary_vs_client_trades_per_isin.png  used on input line 140.
+(pdftex.def)             Requested size: 377.62642pt x 220.27737pt.
  [2] [3 <./images/member_statistics/png/members_per_isin.png> <./images/member_statistics/png/proprietary_vs_client_trades_per_isin.png>]
-<images/member_statistics/png/member_activity_heatmap.png, id=138, 1405.25pt x 1003.75pt>
+<images/member_statistics/png/member_activity_heatmap.png, id=147, 2409.0pt x 1405.25pt>
 File: images/member_statistics/png/member_activity_heatmap.png Graphic file (type png)
 <use images/member_statistics/png/member_activity_heatmap.png>
-Package pdftex.def Info: images/member_statistics/png/member_activity_heatmap.png  used on input line 148.
-(pdftex.def)             Requested size: 377.62642pt x 269.72958pt.
+Package pdftex.def Info: images/member_statistics/png/member_activity_heatmap.png  used on input line 153.
+(pdftex.def)             Requested size: 377.62642pt x 220.27737pt.
  [4 <./images/member_statistics/png/member_activity_heatmap.png>]
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 [5] [6]
-<images/member_statistics/png/member_isin_coverage_per_member.png, id=191, 1405.25pt x 1003.75pt>
+<images/member_statistics/png/member_isin_coverage_per_member.png, id=200, 2409.0pt x 1405.25pt>
 File: images/member_statistics/png/member_isin_coverage_per_member.png Graphic file (type png)
 <use images/member_statistics/png/member_isin_coverage_per_member.png>
-Package pdftex.def Info: images/member_statistics/png/member_isin_coverage_per_member.png  used on input line 329.
-(pdftex.def)             Requested size: 472.03123pt x 337.1658pt.
-<images/member_non_proprietary/metaorders_per_member_all.png, id=193, 702.625pt x 501.875pt>
-File: images/member_non_proprietary/metaorders_per_member_all.png Graphic file (type png)
-<use images/member_non_proprietary/metaorders_per_member_all.png>
-Package pdftex.def Info: images/member_non_proprietary/metaorders_per_member_all.png  used on input line 343.
-(pdftex.def)             Requested size: 330.42041pt x 236.01912pt.
-<images/member_proprietary/metaorders_per_member_all.png, id=194, 702.625pt x 501.875pt>
-File: images/member_proprietary/metaorders_per_member_all.png Graphic file (type png)
-<use images/member_proprietary/metaorders_per_member_all.png>
-Package pdftex.def Info: images/member_proprietary/metaorders_per_member_all.png  used on input line 349.
-(pdftex.def)             Requested size: 330.42041pt x 236.01912pt.
+Package pdftex.def Info: images/member_statistics/png/member_isin_coverage_per_member.png  used on input line 341.
+(pdftex.def)             Requested size: 472.03123pt x 275.34135pt.
+<images/member_non_proprietary/png/metaorders_per_member_all.png, id=202, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/metaorders_per_member_all.png Graphic file (type png)
+<use images/member_non_proprietary/png/metaorders_per_member_all.png>
+Package pdftex.def Info: images/member_non_proprietary/png/metaorders_per_member_all.png  used on input line 354.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_proprietary/png/metaorders_per_member_all.png, id=203, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/metaorders_per_member_all.png Graphic file (type png)
+<use images/member_proprietary/png/metaorders_per_member_all.png>
+Package pdftex.def Info: images/member_proprietary/png/metaorders_per_member_all.png  used on input line 360.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_non_proprietary/png/metaorder_duration_all.png, id=205, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/metaorder_duration_all.png Graphic file (type png)
+<use images/member_non_proprietary/png/metaorder_duration_all.png>
+Package pdftex.def Info: images/member_non_proprietary/png/metaorder_duration_all.png  used on input line 373.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_proprietary/png/metaorder_duration_all.png, id=206, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/metaorder_duration_all.png Graphic file (type png)
+<use images/member_proprietary/png/metaorder_duration_all.png>
+Package pdftex.def Info: images/member_proprietary/png/metaorder_duration_all.png  used on input line 379.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
 
-Overfull \hbox (17.31227pt too wide) in paragraph at lines 335--355
+Overfull \hbox (17.31227pt too wide) in paragraph at lines 346--391
 []\OT1/cmr/m/n/10.95 Then, for each mem-ber $\OML/cmm/m/it/10.95 m$ \OT1/cmr/m/n/10.95 we de-fine the metaorder count $\OML/cmm/m/it/10.95 N[] \OT1/cmr/m/n/10.95 = #\OMS/cmsy/m/n/10.95 f\OML/cmm/m/it/10.95 i \OT1/cmr/m/n/10.95 : []\OML/cmm/m/it/10.95 i[]m\OMS/cmsy/m/n/10.95 g$\OT1/cmr/m/n/10.95 .
  []
 
-<images/member_non_proprietary/metaorder_duration_all.png, id=196, 722.7pt x 397.485pt>
-File: images/member_non_proprietary/metaorder_duration_all.png Graphic file (type png)
-<use images/member_non_proprietary/metaorder_duration_all.png>
-Package pdftex.def Info: images/member_non_proprietary/metaorder_duration_all.png  used on input line 364.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-<images/member_proprietary/metaorder_duration_all.png, id=197, 722.7pt x 397.485pt>
-File: images/member_proprietary/metaorder_duration_all.png Graphic file (type png)
-<use images/member_proprietary/metaorder_duration_all.png>
-Package pdftex.def Info: images/member_proprietary/metaorder_duration_all.png  used on input line 370.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-<images/member_non_proprietary/interarrival_all.png, id=199, 722.7pt x 397.485pt>
-File: images/member_non_proprietary/interarrival_all.png Graphic file (type png)
-<use images/member_non_proprietary/interarrival_all.png>
-Package pdftex.def Info: images/member_non_proprietary/interarrival_all.png  used on input line 388.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-<images/member_proprietary/interarrival_all.png, id=200, 722.7pt x 397.485pt>
-File: images/member_proprietary/interarrival_all.png Graphic file (type png)
-<use images/member_proprietary/interarrival_all.png>
-Package pdftex.def Info: images/member_proprietary/interarrival_all.png  used on input line 394.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-<images/member_non_proprietary/q_over_v_all.png, id=202, 722.7pt x 397.485pt>
-File: images/member_non_proprietary/q_over_v_all.png Graphic file (type png)
-<use images/member_non_proprietary/q_over_v_all.png>
-Package pdftex.def Info: images/member_non_proprietary/q_over_v_all.png  used on input line 434.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-<images/member_proprietary/q_over_v_all.png, id=203, 722.7pt x 397.485pt>
-File: images/member_proprietary/q_over_v_all.png Graphic file (type png)
-<use images/member_proprietary/q_over_v_all.png>
-Package pdftex.def Info: images/member_proprietary/q_over_v_all.png  used on input line 440.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-<images/member_non_proprietary/volumes_all.png, id=205, 722.7pt x 397.485pt>
-File: images/member_non_proprietary/volumes_all.png Graphic file (type png)
-<use images/member_non_proprietary/volumes_all.png>
-Package pdftex.def Info: images/member_non_proprietary/volumes_all.png  used on input line 455.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-<images/member_proprietary/volumes_all.png, id=206, 722.7pt x 397.485pt>
-File: images/member_proprietary/volumes_all.png Graphic file (type png)
-<use images/member_proprietary/volumes_all.png>
-Package pdftex.def Info: images/member_proprietary/volumes_all.png  used on input line 461.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-[7] [8 <./images/member_statistics/png/member_isin_coverage_per_member.png>]
-<images/member_non_proprietary/participation_rate_all.png, id=225, 722.7pt x 397.485pt>
-File: images/member_non_proprietary/participation_rate_all.png Graphic file (type png)
-<use images/member_non_proprietary/participation_rate_all.png>
-Package pdftex.def Info: images/member_non_proprietary/participation_rate_all.png  used on input line 482.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-<images/member_proprietary/participation_rate_all.png, id=226, 722.7pt x 397.485pt>
-File: images/member_proprietary/participation_rate_all.png Graphic file (type png)
-<use images/member_proprietary/participation_rate_all.png>
-Package pdftex.def Info: images/member_proprietary/participation_rate_all.png  used on input line 488.
-(pdftex.def)             Requested size: 330.42041pt x 181.72932pt.
-<images/member_non_proprietary/signature_plots/signature_plot_IT0000062072.png, id=228, 1084.05pt x 361.35pt>
-File: images/member_non_proprietary/signature_plots/signature_plot_IT0000062072.png Graphic file (type png)
-<use images/member_non_proprietary/signature_plots/signature_plot_IT0000062072.png>
-Package pdftex.def Info: images/member_non_proprietary/signature_plots/signature_plot_IT0000062072.png  used on input line 511.
+[7 <./images/member_statistics/png/member_isin_coverage_per_member.png>]
+<images/member_non_proprietary/png/interarrival_all.png, id=219, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/interarrival_all.png Graphic file (type png)
+<use images/member_non_proprietary/png/interarrival_all.png>
+Package pdftex.def Info: images/member_non_proprietary/png/interarrival_all.png  used on input line 396.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_proprietary/png/interarrival_all.png, id=220, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/interarrival_all.png Graphic file (type png)
+<use images/member_proprietary/png/interarrival_all.png>
+Package pdftex.def Info: images/member_proprietary/png/interarrival_all.png  used on input line 402.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_non_proprietary/png/q_over_v_all.png, id=223, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/q_over_v_all.png Graphic file (type png)
+<use images/member_non_proprietary/png/q_over_v_all.png>
+Package pdftex.def Info: images/member_non_proprietary/png/q_over_v_all.png  used on input line 468.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_proprietary/png/q_over_v_all.png, id=224, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/q_over_v_all.png Graphic file (type png)
+<use images/member_proprietary/png/q_over_v_all.png>
+Package pdftex.def Info: images/member_proprietary/png/q_over_v_all.png  used on input line 474.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_non_proprietary/png/volumes_all.png, id=226, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/volumes_all.png Graphic file (type png)
+<use images/member_non_proprietary/png/volumes_all.png>
+Package pdftex.def Info: images/member_non_proprietary/png/volumes_all.png  used on input line 489.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_proprietary/png/volumes_all.png, id=227, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/volumes_all.png Graphic file (type png)
+<use images/member_proprietary/png/volumes_all.png>
+Package pdftex.def Info: images/member_proprietary/png/volumes_all.png  used on input line 495.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_non_proprietary/png/participation_rate_all.png, id=229, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/participation_rate_all.png Graphic file (type png)
+<use images/member_non_proprietary/png/participation_rate_all.png>
+Package pdftex.def Info: images/member_non_proprietary/png/participation_rate_all.png  used on input line 516.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/member_proprietary/png/participation_rate_all.png, id=230, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/participation_rate_all.png Graphic file (type png)
+<use images/member_proprietary/png/participation_rate_all.png>
+Package pdftex.def Info: images/member_proprietary/png/participation_rate_all.png  used on input line 522.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+ [8]
+<images/member_non_proprietary/png/signature_plots/signature_plot_IT0000062072.png, id=243, 1084.05pt x 361.35pt>
+File: images/member_non_proprietary/png/signature_plots/signature_plot_IT0000062072.png Graphic file (type png)
+<use images/member_non_proprietary/png/signature_plots/signature_plot_IT0000062072.png>
+Package pdftex.def Info: images/member_non_proprietary/png/signature_plots/signature_plot_IT0000062072.png  used on input line 545.
 (pdftex.def)             Requested size: 424.82523pt x 141.60963pt.
  [9]
-<images/prop_vs_nonprop/acf/IT0000062072_acf.png, id=243, 1000.2168pt x 530.4618pt>
-File: images/prop_vs_nonprop/acf/IT0000062072_acf.png Graphic file (type png)
-<use images/prop_vs_nonprop/acf/IT0000062072_acf.png>
-Package pdftex.def Info: images/prop_vs_nonprop/acf/IT0000062072_acf.png  used on input line 588.
-(pdftex.def)             Requested size: 377.62642pt x 200.27441pt.
-
-Overfull \hbox (2.46133pt too wide) in paragraph at lines 614--615
+Overfull \hbox (2.46133pt too wide) in paragraph at lines 657--659
 []\OT1/cmr/m/n/10.95 Because in-di-vid-ual $\OML/cmm/m/it/10.95 I[]$ \OT1/cmr/m/n/10.95 are noisy and of-ten neg-a-tive, we do not regress di-rectly on sin-gle metaorders.
  []
 
 [10]
-Overfull \hbox (10.42389pt too wide) in paragraph at lines 650--651
+Overfull \hbox (10.42389pt too wide) in paragraph at lines 702--705
  []\OT1/cmr/bx/n/10.95 Empirical im-pact curves.[] \OT1/cmr/m/n/10.95 Ap-ply-ing this pro-ce-dure sep-a-rately to pro-pri-etary and client metaorders
  []
 
-<images/member_non_proprietary/power_law_fit_overall_member.png, id=264, 867.24pt x 578.16pt>
-File: images/member_non_proprietary/power_law_fit_overall_member.png Graphic file (type png)
-<use images/member_non_proprietary/power_law_fit_overall_member.png>
-Package pdftex.def Info: images/member_non_proprietary/power_law_fit_overall_member.png  used on input line 665.
-(pdftex.def)             Requested size: 330.42041pt x 220.2765pt.
-<images/member_proprietary/power_law_fit_overall_member.png, id=265, 867.24pt x 578.16pt>
-File: images/member_proprietary/power_law_fit_overall_member.png Graphic file (type png)
-<use images/member_proprietary/power_law_fit_overall_member.png>
-Package pdftex.def Info: images/member_proprietary/power_law_fit_overall_member.png  used on input line 671.
-(pdftex.def)             Requested size: 330.42041pt x 220.2765pt.
-<images/prop_vs_nonprop/power_law_prop_vs_nonprop.png, id=266, 650.43pt x 433.62pt>
-File: images/prop_vs_nonprop/power_law_prop_vs_nonprop.png Graphic file (type png)
-<use images/prop_vs_nonprop/power_law_prop_vs_nonprop.png>
-Package pdftex.def Info: images/prop_vs_nonprop/power_law_prop_vs_nonprop.png  used on input line 676.
-(pdftex.def)             Requested size: 330.42041pt x 220.28313pt.
+[11]
+<images/member_proprietary/png/power_law_fit_overall_member.png, id=290, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/power_law_fit_overall_member.png Graphic file (type png)
+<use images/member_proprietary/png/power_law_fit_overall_member.png>
+Package pdftex.def Info: images/member_proprietary/png/power_law_fit_overall_member.png  used on input line 755.
+(pdftex.def)             Requested size: 301.00792pt x 175.57005pt.
+<images/member_proprietary/png/power_law_fit_overall_member_by_side.png, id=291, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/power_law_fit_overall_member_by_side.png Graphic file (type png)
+<use images/member_proprietary/png/power_law_fit_overall_member_by_side.png>
+Package pdftex.def Info: images/member_proprietary/png/power_law_fit_overall_member_by_side.png  used on input line 761.
+(pdftex.def)             Requested size: 301.00792pt x 175.57005pt.
+<images/member_non_proprietary/png/power_law_fit_overall_member.png, id=292, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/power_law_fit_overall_member.png Graphic file (type png)
+<use images/member_non_proprietary/png/power_law_fit_overall_member.png>
+Package pdftex.def Info: images/member_non_proprietary/png/power_law_fit_overall_member.png  used on input line 769.
+(pdftex.def)             Requested size: 301.00792pt x 175.57005pt.
+<images/member_non_proprietary/png/power_law_fit_overall_member_by_side.png, id=293, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/power_law_fit_overall_member_by_side.png Graphic file (type png)
+<use images/member_non_proprietary/png/power_law_fit_overall_member_by_side.png>
+Package pdftex.def Info: images/member_non_proprietary/png/power_law_fit_overall_member_by_side.png  used on input line 775.
+(pdftex.def)             Requested size: 301.00792pt x 175.57005pt.
+<images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png, id=294, 2409.0pt x 1405.25pt>
+File: images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png  used on input line 789.
+(pdftex.def)             Requested size: 401.22942pt x 234.04337pt.
+<images/member_non_proprietary/png/power_law_fits_by_participation_rate.png, id=295, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/power_law_fits_by_participation_rate.png Graphic file (type png)
+<use images/member_non_proprietary/png/power_law_fits_by_participation_rate.png>
+Package pdftex.def Info: images/member_non_proprietary/png/power_law_fits_by_participation_rate.png  used on input line 803.
+(pdftex.def)             Requested size: 304.07301pt x 177.3712pt.
+<images/member_proprietary/png/power_law_fits_by_participation_rate.png, id=296, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/power_law_fits_by_participation_rate.png Graphic file (type png)
+<use images/member_proprietary/png/power_law_fits_by_participation_rate.png>
+Package pdftex.def Info: images/member_proprietary/png/power_law_fits_by_participation_rate.png  used on input line 809.
+(pdftex.def)             Requested size: 304.07301pt x 177.3712pt.
+<images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.png, id=297, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.png Graphic file (type png)
+<use images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.png>
+Package pdftex.def Info: images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.png  used on input line 825.
+(pdftex.def)             Requested size: 316.36154pt x 184.53296pt.
+<images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.png, id=298, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.png Graphic file (type png)
+<use images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.png>
+Package pdftex.def Info: images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.png  used on input line 831.
+(pdftex.def)             Requested size: 294.85896pt x 171.98917pt.
+ [12]
+<images/member_proprietary/png/normalized_impact_path_member_proprietary.png, id=313, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/normalized_impact_path_member_proprietary.png Graphic file (type png)
+<use images/member_proprietary/png/normalized_impact_path_member_proprietary.png>
+Package pdftex.def Info: images/member_proprietary/png/normalized_impact_path_member_proprietary.png  used on input line 919.
+(pdftex.def)             Requested size: 286.80711pt x 167.29329pt.
+<images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side.png, id=314, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side.png Graphic file (type png)
+<use images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side.png>
+Package pdftex.def Info: images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side.png  used on input line 925.
+(pdftex.def)             Requested size: 286.80711pt x 167.29329pt.
+<images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary.png, id=315, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary.png Graphic file (type png)
+<use images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary.png>
+Package pdftex.def Info: images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary.png  used on input line 933.
+(pdftex.def)             Requested size: 286.80711pt x 167.29329pt.
+<images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side.png, id=316, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side.png Graphic file (type png)
+<use images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side.png>
+Package pdftex.def Info: images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side.png  used on input line 939.
+(pdftex.def)             Requested size: 286.80711pt x 167.29329pt.
 
-LaTeX Warning: Float too large for page by 114.92992pt on input line 685.
-
-<images/member_non_proprietary/power_law_fits_by_participation_rate_member.png, id=267, 867.24pt x 578.16pt>
-File: images/member_non_proprietary/power_law_fits_by_participation_rate_member.png Graphic file (type png)
-<use images/member_non_proprietary/power_law_fits_by_participation_rate_member.png>
-Package pdftex.def Info: images/member_non_proprietary/power_law_fits_by_participation_rate_member.png  used on input line 693.
-(pdftex.def)             Requested size: 330.42041pt x 220.2765pt.
-<images/member_proprietary/power_law_fits_by_participation_rate_member.png, id=268, 867.24pt x 578.16pt>
-File: images/member_proprietary/power_law_fits_by_participation_rate_member.png Graphic file (type png)
-<use images/member_proprietary/power_law_fits_by_participation_rate_member.png>
-Package pdftex.def Info: images/member_proprietary/power_law_fits_by_participation_rate_member.png  used on input line 699.
-(pdftex.def)             Requested size: 330.42041pt x 220.2765pt.
-<images/member_non_proprietary/impact_surface_qv_participation_heatmap_member_non_proprietary.png, id=269, 867.24pt x 578.16pt>
-File: images/member_non_proprietary/impact_surface_qv_participation_heatmap_member_non_proprietary.png Graphic file (type png)
-<use images/member_non_proprietary/impact_surface_qv_participation_heatmap_member_non_proprietary.png>
-Package pdftex.def Info: images/member_non_proprietary/impact_surface_qv_participation_heatmap_member_non_proprietary.png  used on input line 711.
-(pdftex.def)             Requested size: 330.42041pt x 220.2765pt.
-<images/member_proprietary/impact_surface_qv_participation_heatmap_member_proprietary.png, id=270, 867.24pt x 578.16pt>
-File: images/member_proprietary/impact_surface_qv_participation_heatmap_member_proprietary.png Graphic file (type png)
-<use images/member_proprietary/impact_surface_qv_participation_heatmap_member_proprietary.png>
-Package pdftex.def Info: images/member_proprietary/impact_surface_qv_participation_heatmap_member_proprietary.png  used on input line 717.
-(pdftex.def)             Requested size: 330.42041pt x 220.2765pt.
-[11] [12]
-<images/member_non_proprietary/normalized_impact_path_member_non_proprietary.png, id=301, 867.24pt x 505.89pt>
-File: images/member_non_proprietary/normalized_impact_path_member_non_proprietary.png Graphic file (type png)
-<use images/member_non_proprietary/normalized_impact_path_member_non_proprietary.png>
-Package pdftex.def Info: images/member_non_proprietary/normalized_impact_path_member_non_proprietary.png  used on input line 787.
-(pdftex.def)             Requested size: 472.03123pt x 275.35335pt.
-<images/member_proprietary/normalized_impact_path_member_proprietary.png, id=302, 867.24pt x 505.89pt>
-File: images/member_proprietary/normalized_impact_path_member_proprietary.png Graphic file (type png)
-<use images/member_proprietary/normalized_impact_path_member_proprietary.png>
-Package pdftex.def Info: images/member_proprietary/normalized_impact_path_member_proprietary.png  used on input line 796.
-(pdftex.def)             Requested size: 472.03123pt x 275.35335pt.
-
-Overfull \hbox (10.439pt too wide) in paragraph at lines 814--816
-[]\OT1/cmr/m/n/10.95 All crowd-ing mea-sures are based on \OT1/cmr/m/it/10.95 volume-weighted im-bal-ances \OT1/cmr/m/n/10.95 con-structed from other metaorders
+Overfull \hbox (12.7776pt too wide) in paragraph at lines 960--962
+[]\OT1/cmr/m/n/10.95 All crowd-ing mea-sures are based on volume-weighted im-bal-ances con-structed from other metaorders
  []
 
-<images/prop_vs_nonprop/imbalance_distribution.png, id=305, 855.6768pt x 1000.2168pt>
-File: images/prop_vs_nonprop/imbalance_distribution.png Graphic file (type png)
-<use images/prop_vs_nonprop/imbalance_distribution.png>
-Package pdftex.def Info: images/prop_vs_nonprop/imbalance_distribution.png  used on input line 851.
-(pdftex.def)             Requested size: 236.01561pt x 275.87698pt.
 [13]
-<images/prop_vs_nonprop/daily_crowding_daily_corr.png, id=313, 855.6768pt x 458.1918pt>
-File: images/prop_vs_nonprop/daily_crowding_daily_corr.png Graphic file (type png)
-<use images/prop_vs_nonprop/daily_crowding_daily_corr.png>
-Package pdftex.def Info: images/prop_vs_nonprop/daily_crowding_daily_corr.png  used on input line 922.
-(pdftex.def)             Requested size: 330.42041pt x 176.93224pt.
-<images/prop_vs_nonprop/daily_crowding_rolling_5d.png, id=314, 855.6768pt x 458.1918pt>
-File: images/prop_vs_nonprop/daily_crowding_rolling_5d.png Graphic file (type png)
-<use images/prop_vs_nonprop/daily_crowding_rolling_5d.png>
-Package pdftex.def Info: images/prop_vs_nonprop/daily_crowding_rolling_5d.png  used on input line 928.
-(pdftex.def)             Requested size: 330.42041pt x 176.93224pt.
+<images/prop_vs_nonprop/png/imbalance_distribution.png, id=328, 867.24pt x 505.89pt>
+File: images/prop_vs_nonprop/png/imbalance_distribution.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/imbalance_distribution.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/imbalance_distribution.png  used on input line 998.
+(pdftex.def)             Requested size: 354.02342pt x 206.51308pt.
+<images/prop_vs_nonprop/png/daily_crowding_daily_corr.png, id=330, 2409.0pt x 1405.25pt>
+File: images/prop_vs_nonprop/png/daily_crowding_daily_corr.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/daily_crowding_daily_corr.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/daily_crowding_daily_corr.png  used on input line 1068.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/prop_vs_nonprop/png/daily_crowding_rolling_3d.png, id=331, 2409.0pt x 1405.25pt>
+File: images/prop_vs_nonprop/png/daily_crowding_rolling_3d.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/daily_crowding_rolling_3d.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/daily_crowding_rolling_3d.png  used on input line 1074.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
  [14]
-<images/prop_vs_nonprop/cross_crowding_daily_corr.png, id=330, 855.6768pt x 458.1918pt>
-File: images/prop_vs_nonprop/cross_crowding_daily_corr.png Graphic file (type png)
-<use images/prop_vs_nonprop/cross_crowding_daily_corr.png>
-Package pdftex.def Info: images/prop_vs_nonprop/cross_crowding_daily_corr.png  used on input line 1009.
-(pdftex.def)             Requested size: 330.42041pt x 176.93224pt.
-<images/prop_vs_nonprop/cross_crowding_rolling_5d.png, id=331, 855.6768pt x 458.1918pt>
-File: images/prop_vs_nonprop/cross_crowding_rolling_5d.png Graphic file (type png)
-<use images/prop_vs_nonprop/cross_crowding_rolling_5d.png>
-Package pdftex.def Info: images/prop_vs_nonprop/cross_crowding_rolling_5d.png  used on input line 1015.
-(pdftex.def)             Requested size: 330.42041pt x 176.93224pt.
+<images/prop_vs_nonprop/png/cross_crowding_daily_corr.png, id=343, 2409.0pt x 1405.25pt>
+File: images/prop_vs_nonprop/png/cross_crowding_daily_corr.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/cross_crowding_daily_corr.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/cross_crowding_daily_corr.png  used on input line 1158.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/prop_vs_nonprop/png/cross_crowding_rolling_3d.png, id=344, 2409.0pt x 1405.25pt>
+File: images/prop_vs_nonprop/png/cross_crowding_rolling_3d.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/cross_crowding_rolling_3d.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/cross_crowding_rolling_3d.png  used on input line 1164.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
  [15]
-<images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_local.png, id=345, 2409.0pt x 1043.9pt>
-File: images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_local.png Graphic file (type png)
-<use images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_local.png>
-Package pdftex.def Info: images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_local.png  used on input line 1090.
-(pdftex.def)             Requested size: 231.2979pt x 100.22281pt.
-<images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_local.png, id=346, 2409.0pt x 1043.9pt>
-File: images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_local.png Graphic file (type png)
-<use images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_local.png>
-Package pdftex.def Info: images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_local.png  used on input line 1096.
-(pdftex.def)             Requested size: 231.2979pt x 100.22281pt.
-<images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_cross.png, id=347, 2409.0pt x 1043.9pt>
-File: images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_cross.png Graphic file (type png)
-<use images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_cross.png>
-Package pdftex.def Info: images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_cross.png  used on input line 1110.
-(pdftex.def)             Requested size: 231.2979pt x 100.22281pt.
-<images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_cross.png, id=348, 2409.0pt x 1043.9pt>
-File: images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_cross.png Graphic file (type png)
-<use images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_cross.png>
-Package pdftex.def Info: images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_cross.png  used on input line 1116.
-(pdftex.def)             Requested size: 231.2979pt x 100.22281pt.
-<images/prop_vs_nonprop/all_vs_all_crowding_daily_corr.png, id=349, 855.6768pt x 458.1918pt>
-File: images/prop_vs_nonprop/all_vs_all_crowding_daily_corr.png Graphic file (type png)
-<use images/prop_vs_nonprop/all_vs_all_crowding_daily_corr.png>
-Package pdftex.def Info: images/prop_vs_nonprop/all_vs_all_crowding_daily_corr.png  used on input line 1159.
-(pdftex.def)             Requested size: 330.42041pt x 176.93224pt.
-<images/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png, id=350, 855.6768pt x 458.1918pt>
-File: images/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png Graphic file (type png)
-<use images/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png>
-Package pdftex.def Info: images/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png  used on input line 1165.
-(pdftex.def)             Requested size: 330.42041pt x 176.93224pt.
+<images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_local.png, id=359, 2409.0pt x 1405.25pt>
+File: images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_local.png Graphic file (type png)
+<use images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_local.png>
+Package pdftex.def Info: images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_local.png  used on input line 1241.
+(pdftex.def)             Requested size: 283.22162pt x 165.21338pt.
+<images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_local.png, id=360, 2409.0pt x 1405.25pt>
+File: images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_local.png Graphic file (type png)
+<use images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_local.png>
+Package pdftex.def Info: images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_local.png  used on input line 1247.
+(pdftex.def)             Requested size: 283.22162pt x 165.21338pt.
+<images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_cross.png, id=361, 2409.0pt x 1405.25pt>
+File: images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_cross.png Graphic file (type png)
+<use images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_cross.png>
+Package pdftex.def Info: images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_cross.png  used on input line 1264.
+(pdftex.def)             Requested size: 283.22162pt x 165.21338pt.
+<images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_cross.png, id=362, 2409.0pt x 1405.25pt>
+File: images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_cross.png Graphic file (type png)
+<use images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_cross.png>
+Package pdftex.def Info: images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_cross.png  used on input line 1270.
+(pdftex.def)             Requested size: 283.22162pt x 165.21338pt.
+<images/prop_vs_nonprop/png/all_vs_all_crowding_daily_corr.png, id=363, 2409.0pt x 1405.25pt>
+File: images/prop_vs_nonprop/png/all_vs_all_crowding_daily_corr.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/all_vs_all_crowding_daily_corr.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/all_vs_all_crowding_daily_corr.png  used on input line 1315.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
+<images/prop_vs_nonprop/png/all_vs_all_crowding_rolling_3d.png, id=364, 2409.0pt x 1405.25pt>
+File: images/prop_vs_nonprop/png/all_vs_all_crowding_rolling_3d.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/all_vs_all_crowding_rolling_3d.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/all_vs_all_crowding_rolling_3d.png  used on input line 1321.
+(pdftex.def)             Requested size: 330.42041pt x 192.74538pt.
  [16]
-<images/prop_vs_nonprop/member_prop_client_crowding_hist.png, id=362, 855.6768pt x 493.6041pt>
-File: images/prop_vs_nonprop/member_prop_client_crowding_hist.png Graphic file (type png)
-<use images/prop_vs_nonprop/member_prop_client_crowding_hist.png>
-Package pdftex.def Info: images/prop_vs_nonprop/member_prop_client_crowding_hist.png  used on input line 1205.
-(pdftex.def)             Requested size: 401.22942pt x 231.45166pt.
-<images/prop_vs_nonprop/member_prop_client_crowding_heatmap_3d.png, id=363, 972.7542pt x 1202.5728pt>
-File: images/prop_vs_nonprop/member_prop_client_crowding_heatmap_3d.png Graphic file (type png)
-<use images/prop_vs_nonprop/member_prop_client_crowding_heatmap_3d.png>
-Package pdftex.def Info: images/prop_vs_nonprop/member_prop_client_crowding_heatmap_3d.png  used on input line 1212.
-(pdftex.def)             Requested size: 472.03123pt x 583.54071pt.
+<images/prop_vs_nonprop/png/member_prop_client_crowding_hist.png, id=375, 867.24pt x 505.89pt>
+File: images/prop_vs_nonprop/png/member_prop_client_crowding_hist.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/member_prop_client_crowding_hist.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/member_prop_client_crowding_hist.png  used on input line 1365.
+(pdftex.def)             Requested size: 401.22942pt x 234.05536pt.
+<images/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.png, id=376, 2409.0pt x 1405.25pt>
+File: images/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.png Graphic file (type png)
+<use images/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.png>
+Package pdftex.def Info: images/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.png  used on input line 1373.
+(pdftex.def)             Requested size: 472.03123pt x 275.34135pt.
+ [17] (./tables/appendix_it_metaorder_stats.tex
+Overfull \hbox (25.02538pt too wide) in paragraph at lines 9--22
+ [][] 
+ []
 
-
-LaTeX Warning: Float too large for page by 22.43451pt on input line 1220.
-
-[17] [18] [19 <./images/member_non_proprietary/metaorders_per_member_all.png> <./images/member_proprietary/metaorders_per_member_all.png>] [20 <./images/member_non_proprietary/metaorder_duration_all.png> <./images/member_proprietary/metaorder_duration_all.png>] [21 <./images/member_non_proprietary/interarrival_all.png> <./images/member_proprietary/interarrival_all.png>] [22 <./images/member_non_proprietary/q_over_v_all.png> <./images/member_proprietary/q_over_v_all.png>] [23 <./images/member_non_proprietary/volumes_all.png> <./images/member_proprietary/volumes_all.png>] [24 <./images/member_non_proprietary/participation_rate_all.png> <./images/member_proprietary/participation_rate_all.png> <./images/member_non_proprietary/signature_plots/signature_plot_IT0000062072.png>] [25 <./images/prop_vs_nonprop/acf/IT0000062072_acf.png>] [26 <./images/member_non_proprietary/power_law_fit_overall_member.png> <./images/member_proprietary/power_law_fit_overall_member.png> <./images/prop_vs_nonprop/power_law_prop_vs_nonprop.png>] [27 <./images/member_non_proprietary/power_law_fits_by_participation_rate_member.png> <./images/member_proprietary/power_law_fits_by_participation_rate_member.png>] [28 <./images/member_non_proprietary/impact_surface_qv_participation_heatmap_member_non_proprietary.png> <./images/member_proprietary/impact_surface_qv_participation_heatmap_member_proprietary.png>] [29 <./images/member_non_proprietary/normalized_impact_path_member_non_proprietary.png> <./images/member_proprietary/normalized_impact_path_member_proprietary.png>] [30 <./images/prop_vs_nonprop/imbalance_distribution.png>] [31 <./images/prop_vs_nonprop/daily_crowding_daily_corr.png> <./images/prop_vs_nonprop/daily_crowding_rolling_5d.png>] [32 <./images/prop_vs_nonprop/cross_crowding_daily_corr.png> <./images/prop_vs_nonprop/cross_crowding_rolling_5d.png> <./images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_local.png> <./images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_local.png>] [33 <./images/ftsemib/crowding_vs_part_rate/curve_mean_align_vs_eta_cross.png> <./images/ftsemib/crowding_vs_part_rate/curve_mean_abs_imb_vs_eta_cross.png> <./images/prop_vs_nonprop/all_vs_all_crowding_daily_corr.png> <./images/prop_vs_nonprop/all_vs_all_crowding_rolling_5d.png>] [34 <./images/prop_vs_nonprop/member_prop_client_crowding_hist.png>] [35 <./images/prop_vs_nonprop/member_prop_client_crowding_heatmap_3d.png>] (./main.aux)
+)
+<images/member_proprietary/png/normalized_impact_path_member_proprietary_member_nationality_it.png, id=397, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/normalized_impact_path_member_proprietary_member_nationality_it.png Graphic file (type png)
+<use images/member_proprietary/png/normalized_impact_path_member_proprietary_member_nationality_it.png>
+Package pdftex.def Info: images/member_proprietary/png/normalized_impact_path_member_proprietary_member_nationality_it.png  used on input line 1486.
+(pdftex.def)             Requested size: 286.80711pt x 167.29329pt.
+<images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side_member_nationality_it.png, id=398, 2409.0pt x 1405.25pt>
+File: images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side_member_nationality_it.png Graphic file (type png)
+<use images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side_member_nationality_it.png>
+Package pdftex.def Info: images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side_member_nationality_it.png  used on input line 1492.
+(pdftex.def)             Requested size: 286.80711pt x 167.29329pt.
+<images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_member_nationality_it.png, id=399, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_member_nationality_it.png Graphic file (type png)
+<use images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_member_nationality_it.png>
+Package pdftex.def Info: images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_member_nationality_it.png  used on input line 1500.
+(pdftex.def)             Requested size: 286.80711pt x 167.29329pt.
+<images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side_member_nationality_it.png, id=400, 2409.0pt x 1405.25pt>
+File: images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side_member_nationality_it.png Graphic file (type png)
+<use images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side_member_nationality_it.png>
+Package pdftex.def Info: images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side_member_nationality_it.png  used on input line 1506.
+(pdftex.def)             Requested size: 286.80711pt x 167.29329pt.
+ [18] [19] [20 <./images/member_non_proprietary/png/metaorders_per_member_all.png> <./images/member_proprietary/png/metaorders_per_member_all.png>] [21 <./images/member_non_proprietary/png/metaorder_duration_all.png> <./images/member_proprietary/png/metaorder_duration_all.png>] [22 <./images/member_non_proprietary/png/interarrival_all.png> <./images/member_proprietary/png/interarrival_all.png>] [23 <./images/member_non_proprietary/png/q_over_v_all.png> <./images/member_proprietary/png/q_over_v_all.png>] [24 <./images/member_non_proprietary/png/volumes_all.png> <./images/member_proprietary/png/volumes_all.png>] [25 <./images/member_non_proprietary/png/participation_rate_all.png> <./images/member_proprietary/png/participation_rate_all.png>] [26 <./images/member_non_proprietary/png/signature_plots/signature_plot_IT0000062072.png>] [27 <./images/member_proprietary/png/power_law_fit_overall_member.png> <./images/member_proprietary/png/power_law_fit_overall_member_by_side.png> <./images/member_non_proprietary/png/power_law_fit_overall_member.png> <./images/member_non_proprietary/png/power_law_fit_overall_member_by_side.png>] [28 <./images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png> <./images/member_non_proprietary/png/power_law_fits_by_participation_rate.png> <./images/member_proprietary/png/power_law_fits_by_participation_rate.png>] [29 <./images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.png> <./images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.png>] [30 <./images/member_proprietary/png/normalized_impact_path_member_proprietary.png> <./images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side.png> <./images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary.png> <./images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side.png>] [31 <./images/prop_vs_nonprop/png/imbalance_distribution.png>] [32 <./images/prop_vs_nonprop/png/daily_crowding_daily_corr.png> <./images/prop_vs_nonprop/png/daily_crowding_rolling_3d.png>] [33 <./images/prop_vs_nonprop/png/cross_crowding_daily_corr.png> <./images/prop_vs_nonprop/png/cross_crowding_rolling_3d.png>] [34 <./images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_local.png> <./images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_local.png> <./images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_cross.png> <./images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_cross.png>] [35 <./images/prop_vs_nonprop/png/all_vs_all_crowding_daily_corr.png> <./images/prop_vs_nonprop/png/all_vs_all_crowding_rolling_3d.png>] [36 <./images/prop_vs_nonprop/png/member_prop_client_crowding_hist.png>] [37 <./images/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.png>] [38 <./images/member_proprietary/png/normalized_impact_path_member_proprietary_member_nationality_it.png> <./images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side_member_nationality_it.png> <./images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_member_nationality_it.png> <./images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side_member_nationality_it.png>] (./main.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: C756E426FF6E93EABF13041B55B65A27;4760.
+(rerunfilecheck)             Checksum: D8BA9372F7D1168FEE8D7657D060522E;4938.
  ) 
 Here is how much of TeX's memory you used:
- 16039 strings out of 476106
- 324088 string characters out of 5793934
- 1954975 words of memory out of 5000000
- 37732 multiletter control sequences out of 15000+600000
+ 16167 strings out of 476106
+ 331560 string characters out of 5793933
+ 1960975 words of memory out of 5000000
+ 37847 multiletter control sequences out of 15000+600000
  571029 words of font info for 86 fonts, out of 8000000 for 9000
  59 hyphenation exceptions out of 8191
- 75i,13n,80p,792b,1023s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,13n,80p,784b,1027s stack positions out of 10000i,1000n,20000p,200000b,200000s
  </home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk> </home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk> </home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0800.600pk></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt9.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on main.pdf (35 pages, 4740327 bytes).
+Output written on main.pdf (38 pages, 7023912 bytes).
 PDF statistics:
- 624 PDF objects out of 1000 (max. 8388607)
- 459 compressed objects within 5 object streams
- 156 named destinations out of 1000 (max. 500000)
- 369 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 681 PDF objects out of 1000 (max. 8388607)
+ 499 compressed objects within 5 object streams
+ 161 named destinations out of 1000 (max. 500000)
+ 420 words of extra memory for PDF output out of 10000 (max. 10000000)
 

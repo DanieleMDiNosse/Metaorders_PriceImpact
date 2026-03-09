@@ -78,6 +78,14 @@ All plots below have interactive HTML counterparts in the matching `images/ftsem
 |---|---|
 | ![Prop participation rate](../images/ftsemib/member_proprietary/png/participation_rate_all.png) | ![Client participation rate](../images/ftsemib/member_non_proprietary/png/participation_rate_all.png) |
 
+**Mean daily metaorder-volume share (shared comparison).**
+
+This stacked bar is written once per run under `images/{DATASET_NAME}/prop_vs_nonprop/png/mean_daily_metaorder_volume_share.png` (with the matching HTML in `.../html/`). It shows one bar per ISIN, where each bar is the arithmetic mean across trading days of
+$$
+\frac{\text{daily proprietary metaorder volume} + \text{daily client metaorder volume}}{\text{total daily market volume for that ISIN}},
+$$
+with proprietary and client contributions highlighted as separate colored segments.
+
 ## Member nationality (IT vs foreign)
 
 When `LEVEL="member"`, each metaorder can be assigned the nationality of the executing broker (member) using `data/members_nationality.parquet`. In the `ftsemib` runs, the nationality split is extremely skewed toward **foreign** brokers, especially for **proprietary** metaorders:
@@ -186,6 +194,35 @@ The histogram is plotted for $100 \times \eta$ (in percent), with log-scale on t
 - Distribution: density of $100 \times \eta$ across metaorders.
 
 Figure: `images/{DATASET_NAME}/{LEVEL}_{PROPRIETARY_TAG}/png/participation_rate_all.png`.
+
+## Mean daily metaorder-volume share by ISIN
+
+To summarize how much of an ISIN's daily activity is attributable to detected metaorders, the script also builds a day-level ratio for each instrument separately. For each ISIN $k$ and trading day $d$, define:
+
+- the **total market volume for that ISIN**
+  $$
+  V_{k,d} = \sum_{j \in \mathcal{J}_{k,d}}
+  \left( \text{Total Quantity Buy}_j + \text{Total Quantity Sell}_j \right),
+  $$
+- the **proprietary metaorder volume for that ISIN**
+  $$
+  Q_{k,d}^{\text{prop}} = \sum_{i \in \mathcal{M}^{\text{prop}}_{k,d}} Q_i,
+  $$
+- the **client metaorder volume for that ISIN**
+  $$
+  Q_{k,d}^{\text{client}} = \sum_{i \in \mathcal{M}^{\text{client}}_{k,d}} Q_i.
+  $$
+
+The daily shares are then
+$$
+r_{k,d}^{\text{prop}} = \frac{Q_{k,d}^{\text{prop}}}{V_{k,d}}, \qquad
+r_{k,d}^{\text{client}} = \frac{Q_{k,d}^{\text{client}}}{V_{k,d}}, \qquad
+r_{k,d}^{\text{total}} = r_{k,d}^{\text{prop}} + r_{k,d}^{\text{client}}.
+$$
+
+For each ISIN, the plotted stacked bar reports the arithmetic means of $r_{k,d}^{\text{prop}}$ and $r_{k,d}^{\text{client}}$ across trading days, so the full bar height equals the mean of $r_{k,d}^{\text{total}}$ for that ISIN.
+
+Figure: `images/{DATASET_NAME}/prop_vs_nonprop/png/mean_daily_metaorder_volume_share.png`.
 
 ## Volatility signature plots
 

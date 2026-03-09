@@ -107,6 +107,39 @@ Interactive Plotly HTML files (open locally in a browser):
   - `../images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_3d_surface_member_non_proprietary.html`
   - `../images/ftsemib/member_non_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_non_proprietary.html`
 
+**Execution + aftermath impact paths (normalized time).**
+
+Computed with `COMPUTE_IMPACT_PATHS=true`, `AFTERMATH_DURATION_MULTIPLIER=2.0` (so the plot spans $t\in[0,3]$), and `AFTERMATH_NUM_SAMPLES=30`. The vertical dashed line marks $t=1$ (end of execution).
+
+| Group | $\mathbb{E}[I/\sigma]$ at $t=1$ | Peak $\mathbb{E}[I/\sigma]$ (at $t_{\mathrm{peak}}$) | $\mathbb{E}[I/\sigma]$ at $t=3$ | Retention ($t=3$ / $t=1$) |
+|---|---:|---:|---:|---:|
+| Proprietary | 0.00784 | 0.00786 (1.003) | 0.00586 | 0.748 |
+| Client (non-proprietary) | 0.00611 | 0.00615 (0.993) | 0.00351 | 0.574 |
+
+| Proprietary | Client (non-proprietary) |
+|---|---|
+| ![Prop normalized impact path](../images/ftsemib/member_proprietary/png/normalized_impact_path_member_proprietary.png) | ![Client normalized impact path](../images/ftsemib/member_non_proprietary/png/normalized_impact_path_member_non_proprietary.png) |
+
+**Buy vs sell paths.**
+
+| Group | Buy: $\mathbb{E}[I/\sigma]$ at $t=1$ (retention) | Sell: $\mathbb{E}[I/\sigma]$ at $t=1$ (retention) |
+|---|---:|---:|
+| Proprietary | 0.00761 (0.739) | 0.00804 (0.755) |
+| Client (non-proprietary) | 0.00574 (0.467) | 0.00650 (0.672) |
+
+| Proprietary | Client (non-proprietary) |
+|---|---|
+| ![Prop normalized impact path by side](../images/ftsemib/member_proprietary/png/normalized_impact_path_member_proprietary_by_side.png) | ![Client normalized impact path by side](../images/ftsemib/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side.png) |
+
+Interactive Plotly HTML files (paths):
+
+- Proprietary:
+  - `../images/ftsemib/member_proprietary/html/normalized_impact_path_member_proprietary.html`
+  - `../images/ftsemib/member_proprietary/html/normalized_impact_path_member_proprietary_by_side.html`
+- Client (non-proprietary):
+  - `../images/ftsemib/member_non_proprietary/html/normalized_impact_path_member_non_proprietary.html`
+  - `../images/ftsemib/member_non_proprietary/html/normalized_impact_path_member_non_proprietary_by_side.html`
+
 ---
 
 ## 1. From Trades to Metaorders

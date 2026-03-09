@@ -39,6 +39,7 @@ import argparse
 import datetime as dt
 import json
 import math
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -95,6 +96,43 @@ LABEL_FONT_SIZE = 14
 TITLE_FONT_SIZE = 15
 LEGEND_FONT_SIZE = 12
 COLOR_NOISE_BAND = "rgba(107,114,128,0.22)"
+
+
+def _env_flag(name: str, *, default: bool = False) -> bool:
+    """
+    Summary
+    -------
+    Parse a boolean environment variable.
+
+    Parameters
+    ----------
+    name : str
+        Environment variable name.
+    default : bool, default=False
+        Returned when the variable is unset or malformed.
+
+    Returns
+    -------
+    bool
+        Parsed boolean value.
+
+    Notes
+    -----
+    True values: ``1``, ``true``, ``yes``, ``on``.
+    False values: ``0``, ``false``, ``no``, ``off``.
+    """
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+DISABLE_PLOT_LEGENDS = _env_flag("DISABLE_PLOT_LEGENDS", default=False)
 
 try:
     apply_plotly_style(
@@ -1886,7 +1924,8 @@ def _mpl_curve_date_ci(
         ax.axhline(0.0, color="#4b5563", linestyle=":", linewidth=1.0, alpha=0.9)
         ax.set_xlabel(x_label)
         ax.grid(True, linestyle=":", linewidth=0.5, alpha=0.7)
-        ax.legend()
+        if not DISABLE_PLOT_LEGENDS:
+            ax.legend()
 
     axes[0].set_ylabel(y_label)
 

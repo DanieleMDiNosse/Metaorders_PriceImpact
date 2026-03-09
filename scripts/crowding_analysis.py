@@ -2039,6 +2039,10 @@ def run_member_level_prop_client_crowding_analysis(
             members = plot_df["Member"].astype(str).tolist()
             r_sorted = plot_df["r"].to_numpy()
             p_sorted = plot_df["p"].to_numpy(dtype=float, copy=True)
+            p_labels = [
+                f"p={p:.3g}" if np.isfinite(p) else "p=NA"
+                for p in p_sorted
+            ]
             hover_text = [
                 f"Member {m}<br>corr={r:.3f}<br>p={p:.3g}" if np.isfinite(p) else f"Member {m}<br>corr={r:.3f}<br>p=NA"
                 for m, r, p in zip(members, r_sorted, p_sorted)
@@ -2050,6 +2054,8 @@ def run_member_level_prop_client_crowding_analysis(
                         y=r_sorted,
                         marker_color=COLOR_PROPRIETARY,
                         customdata=np.column_stack([p_sorted]),
+                        text=p_labels,
+                        textposition="outside",
                         hovertext=hover_text,
                         hoverinfo="text",
                     )
@@ -2061,6 +2067,8 @@ def run_member_level_prop_client_crowding_analysis(
                 xaxis_title="Member",
                 yaxis_title=r"$\mathrm{Corr}(\epsilon_i, \mathrm{imb}_{m, d_i})$",
                 xaxis=dict(tickangle=90),
+                uniformtext_minsize=8,
+                uniformtext_mode="show",
             )
             _, bar_path = save_plotly_figure(
                 fig,
@@ -2776,8 +2784,8 @@ def plot_imbalance_distributions(
     ]
 
     fig = make_subplots(
-        rows=2,
-        cols=1,
+        rows=1,
+        cols=2,
         shared_xaxes=False,
         vertical_spacing=0.14,
     )
@@ -2820,14 +2828,14 @@ def plot_imbalance_distributions(
         ]
 
         for values, label, color in cross_series:
-            added_cross = _add_density_trace(fig, row=2, values=values, label=label, color=color) or added_cross
+            added_cross = _add_density_trace(fig, row=1, values=values, label=label, color=color) or added_cross
         if not added_cross:
             fig.add_annotation(text="No cross-group data", x=0.5, y=0.36, xref="paper", yref="paper", showarrow=False)
 
     fig.update_xaxes(title_text="Within-group imbalance", row=1, col=1)
     fig.update_yaxes(title_text="Density", row=1, col=1)
-    fig.update_xaxes(title_text="Cross-group imbalance", row=2, col=1)
-    fig.update_yaxes(title_text="Density", row=2, col=1)
+    fig.update_xaxes(title_text="Cross-group imbalance", row=1, col=2)
+    fig.update_yaxes(title_text="Density", row=1, col=2)
     fig.update_layout(
         title="Imbalance distributions",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),

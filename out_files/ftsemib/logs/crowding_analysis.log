@@ -1165,3 +1165,146 @@ Mean imbalance: +0.403
 2026-02-20 19:22:25,702 - 
 [Daily count plots] Saved imbalance time-series to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/daily_counts_imbalance_timeseries.png
 2026-02-20 19:22:27,163 - [Daily count plots] Saved imbalance density plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/daily_counts_imbalance_histogram.png
+2026-02-22 10:29:43,022 - Using parquet directory: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+2026-02-22 10:29:43,636 - Adding 'Date' column from 'Period' for file: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-02-22 10:29:52,362 - Adding 'Date' column from 'Period' for file: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-02-22 10:30:09,380 - 
+[Prop vs Non-Prop] Saved proprietary metaorders with imbalance columns to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-02-22 10:30:09,708 - 
+[Prop vs Non-Prop] Saved non-proprietary metaorders with imbalance columns to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-02-22 10:30:48,193 - 
+[Imbalance vs returns] Saved scatter plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/imbalance_vs_daily_returns.png
+2026-02-22 10:30:48,225 - 
+================================================================================
+2026-02-22 10:30:48,225 - Crowding conditioned on participation rate (eta)
+2026-02-22 10:30:48,225 - ================================================================================
+2026-02-22 10:30:59,306 - Done.
+2026-02-22 10:31:04,087 - 
+[Imbalance distribution] Saved combined density plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/imbalance_distribution.png
+2026-02-22 10:32:06,917 - 
+================================================================================
+2026-02-22 10:32:06,918 - Analysis for: Proprietary metaorders
+2026-02-22 10:32:06,918 - ================================================================================
+2026-02-22 10:32:06,918 - Total metaorders        : 588,334
+2026-02-22 10:32:06,928 - Unique ISINs            : 41
+2026-02-22 10:32:06,930 - Unique trading dates    : 251
+2026-02-22 10:32:06,930 - Q/V range               : 1.00e-05 – 2.72e-01
+2026-02-22 10:32:06,932 - Participation rate mean±std : 0.136 ± 0.131
+2026-02-22 10:32:06,932 - 
+Share of NaN imbalance_local: 0.00%
+2026-02-22 10:32:07,653 - 
+Corr(Direction, imbalance_local) = 0.108 (95% Date-cluster bootstrap CI [0.102, 0.113], n=588334, days=251)
+2026-02-22 10:32:07,654 - Mean imbalance_local | buys : -0.022
+2026-02-22 10:32:07,656 - Mean imbalance_local | sells: -0.084
+2026-02-22 10:32:07,656 - 
+Intuition (local): For Proprietary metaorders, trades tend to go WITH the *daily* metaorder imbalance (crowded / herding).
+2026-02-22 10:32:16,591 - 
+Sanity check: Corr(Direction, *global* imbalance) = -0.211 (95% CI [-0.219, -0.202], n=588334)
+2026-02-22 10:32:16,591 -   -> This correlation is expected to be mechanically NEGATIVE even for
+     random signs, because each metaorder is subtracted from the total
+     when computing its own 'others' imbalance.
+2026-02-22 10:32:16,591 - 
+================================================================================
+2026-02-22 10:32:16,598 - Analysis for: Non-proprietary (client) metaorders
+2026-02-22 10:32:16,599 - ================================================================================
+2026-02-22 10:32:16,599 - Total metaorders        : 255,535
+2026-02-22 10:32:16,604 - Unique ISINs            : 41
+2026-02-22 10:32:16,605 - Unique trading dates    : 251
+2026-02-22 10:32:16,605 - Q/V range               : 1.00e-05 – 3.53e-01
+2026-02-22 10:32:16,606 - Participation rate mean±std : 0.085 ± 0.099
+2026-02-22 10:32:16,606 - 
+Share of NaN imbalance_local: 0.06%
+2026-02-22 10:32:16,606 -   -> NaNs come from (ISIN,Date) with a single metaorder (no 'others').
+2026-02-22 10:32:17,014 - 
+Corr(Direction, imbalance_local) = 0.187 (95% Date-cluster bootstrap CI [0.180, 0.195], n=255369, days=251)
+2026-02-22 10:32:17,016 - Mean imbalance_local | buys : +0.089
+2026-02-22 10:32:17,017 - Mean imbalance_local | sells: -0.087
+2026-02-22 10:32:17,017 - 
+Intuition (local): For Non-proprietary (client) metaorders, trades tend to go WITH the *daily* metaorder imbalance (crowded / herding).
+2026-02-22 10:32:20,126 - 
+Sanity check: Corr(Direction, *global* imbalance) = -0.172 (95% CI [-0.189, -0.160], n=255535)
+2026-02-22 10:32:20,126 -   -> This correlation is expected to be mechanically NEGATIVE even for
+     random signs, because each metaorder is subtracted from the total
+     when computing its own 'others' imbalance.
+2026-02-22 10:32:20,126 - 
+================================================================================
+2026-02-22 10:32:20,126 - Daily crowding analysis (per trading day)
+2026-02-22 10:32:20,126 - ================================================================================
+2026-02-22 10:32:55,803 - 
+Proprietary days with n >= 100: 251 (out of 251)
+2026-02-22 10:32:55,803 - Client days with n >= 100: 251 (out of 251)
+2026-02-22 10:32:55,813 - 
+Prop mean daily correlation (unfiltered): 0.081
+2026-02-22 10:32:55,813 - Prop mean daily correlation (n >= 100): 0.081 (95% Date-cluster bootstrap CI [0.077, 0.086], days=251)
+2026-02-22 10:32:55,822 - 
+Client mean daily correlation (unfiltered): 0.169
+2026-02-22 10:32:55,822 - Client mean daily correlation (n >= 100): 0.169 (95% Date-cluster bootstrap CI [0.162, 0.177], days=251)
+2026-02-22 10:32:57,082 - 
+[Daily plots] Saved daily correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/daily_crowding_daily_corr.png
+2026-02-22 10:32:58,356 - [Daily plots] Saved rolling correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/daily_crowding_rolling_3d.png
+2026-02-22 10:32:58,356 - 
+================================================================================
+2026-02-22 10:32:58,356 - Cross-group crowding (prop vs client)
+2026-02-22 10:32:58,356 - ================================================================================
+2026-02-22 10:32:59,691 - 
+Global Corr(Direction_prop, client imbalance) = -0.023 (95% Date-cluster bootstrap CI [-0.029, -0.019], n=587743, days=251)
+2026-02-22 10:32:59,691 - Global Corr(Direction_client, prop imbalance) = -0.016 (95% Date-cluster bootstrap CI [-0.025, -0.007], n=255535, days=251)
+2026-02-22 10:33:35,873 - 
+Prop vs client days with n >= 100: 251 (out of 251)
+2026-02-22 10:33:35,873 - Client vs prop days with n >= 100: 251 (out of 251)
+2026-02-22 10:33:35,883 - 
+Prop vs client mean daily correlation (unfiltered): -0.018
+2026-02-22 10:33:35,883 - Prop vs client mean daily correlation (n >= 100): -0.018 (95% Date-cluster bootstrap CI [-0.022, -0.014], days=251)
+2026-02-22 10:33:35,892 - 
+Client vs prop mean daily correlation (unfiltered): -0.003
+2026-02-22 10:33:35,892 - Client vs prop mean daily correlation (n >= 100): -0.003 (95% Date-cluster bootstrap CI [-0.010, 0.005], days=251)
+2026-02-22 10:33:37,237 - 
+[Daily plots] Saved daily correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/cross_crowding_daily_corr.png
+2026-02-22 10:33:38,537 - [Daily plots] Saved rolling correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/cross_crowding_rolling_3d.png
+2026-02-22 10:33:38,555 - 
+================================================================================
+2026-02-22 10:33:38,555 - Crowding versus all others (prop + client)
+2026-02-22 10:33:38,555 - ================================================================================
+2026-02-22 10:34:14,817 - 
+Prop vs all days with n >= 100: 251 (out of 251)
+2026-02-22 10:34:14,817 - Client vs all days with n >= 100: 251 (out of 251)
+2026-02-22 10:34:14,817 - 
+Prop vs all mean daily correlation (unfiltered): 0.041
+2026-02-22 10:34:14,818 - Prop vs all mean daily correlation (n >= 100): 0.041
+2026-02-22 10:34:14,818 - 
+Client vs all mean daily correlation (unfiltered): 0.113
+2026-02-22 10:34:14,818 - Client vs all mean daily correlation (n >= 100): 0.113
+2026-02-22 10:34:16,107 - 
+[Daily plots] Saved daily correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/all_vs_all_crowding_daily_corr.png
+2026-02-22 10:34:17,358 - [Daily plots] Saved rolling correlation plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/all_vs_all_crowding_rolling_3d.png
+2026-02-22 10:34:17,413 - 
+================================================================================
+2026-02-22 10:34:17,414 - Member-level crowding (prop vs own clients)
+2026-02-22 10:34:17,414 - ================================================================================
+2026-02-22 10:34:18,019 - 
+Global Corr(Direction_prop, imbalance_client_member_env) = 0.011 (p (bootstrap) = 0.026, 95% CI [0.001, 0.022], n=37278)
+2026-02-22 10:34:18,926 - 
+[Member crowding] Members with n_prop >= 30 and n_client >= 30: 10 (out of 45)
+2026-02-22 10:34:18,926 - [Member crowding] Mean per-member correlation (n >= 30): 0.003
+2026-02-22 10:34:18,928 - [Member crowding] Saved per-member statistics to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/member_prop_client_crowding_per_member.parquet
+2026-02-22 10:34:20,535 - [Member crowding] Saved per-member correlation bar chart to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/member_prop_client_crowding_hist.png
+2026-02-22 10:34:22,786 - [Member crowding] Saved member–window heatmap to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.png
+2026-02-22 10:34:22,800 - 
+================================================================================
+2026-02-22 10:34:22,800 - Daily count imbalance
+2026-02-22 10:34:22,800 - ================================================================================
+2026-02-22 10:34:22,806 - 
+First few rows of daily counts and imbalance:
+2026-02-22 10:34:22,808 -             Proprietary  Client  imbalance_counts
+Date                                             
+2024-06-03         2135    1061          0.336045
+2024-06-04         2646    1063          0.426800
+2024-06-05         2058     930          0.377510
+2024-06-06         2228    1083          0.345817
+2024-06-07         2194     783          0.473967
+2026-02-22 10:34:22,809 - 
+Mean imbalance: +0.403
+2026-02-22 10:34:22,809 - Std imbalance : 0.060
+2026-02-22 10:34:24,128 - 
+[Daily count plots] Saved imbalance time-series to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/daily_counts_imbalance_timeseries.png
+2026-02-22 10:34:25,347 - [Daily count plots] Saved imbalance density plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/prop_vs_nonprop/png/daily_counts_imbalance_histogram.png

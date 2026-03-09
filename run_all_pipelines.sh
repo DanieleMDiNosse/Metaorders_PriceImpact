@@ -10,11 +10,18 @@
 #   separate `python` processes (no shared state). Control concurrency via
 #   `MAX_JOBS` (default: 4).
 #
+# Runtime controls:
+# - DISABLE_PLOT_LEGENDS=true|false (default: false): force hide legends in all
+#   generated figures.
+# - IMG_OUTPUT_PATH_OVERRIDE=<path-template> (optional): override IMG_OUTPUT_PATH
+#   in temporary YAML configs. Example: images/runs/{DATASET_NAME}
+#
 # Safety:
 # - Never edits `config_ymls/*.yml` in place. Each run uses a temporary YAML copy
 #   passed via environment variables:
 #     - METAORDER_COMP_CONFIG for `scripts/metaorder_computation.py`
 #     - METAORDER_STATS_CONFIG for `scripts/metaorder_statistics.py`
+#     - CROWDING_CONFIG for `scripts/crowding_analysis.py`
 # - Runs the CSV->parquet transform step (RUN_INTRO) once, serially, before
 #   launching parallel jobs, because it writes to `data/parquet/`.
 # -----------------------------------------------------------------------------
@@ -56,15 +63,49 @@ yaml_get_scalar() {
   ' "$file_path"
 }
 
+normalize_bool() {
+  local raw
+  raw="$(echo "${1:-}" | tr '[:upper:]' '[:lower:]' | xargs)"
+  case "$raw" in
+    1|true|yes|on) echo "true" ;;
+    0|false|no|off) echo "false" ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+yaml_quote_single() {
+  local value="$1"
+  local escaped
+  escaped="$(printf '%s' "$value" | sed "s/'/''/g")"
+  printf "'%s'" "$escaped"
+}
+
 DATASET_NAME="$(yaml_get_scalar "$METAORDER_COMP_CFG" "DATASET_NAME")"
 LEVEL="$(yaml_get_scalar "$METAORDER_COMP_CFG" "LEVEL")"
 DATASET_NAME="${DATASET_NAME:-dataset}"
 LEVEL="${LEVEL:-member}"
+export DATASET_NAME
 
 RUN_TAG="${RUN_TAG:-$(date +%Y%m%d_%H%M%S)}"
 PIPELINE_LOG_DIR="out_files/${DATASET_NAME}/logs/pipeline_${RUN_TAG}"
 mkdir -p "$PIPELINE_LOG_DIR"
 echo "[info] Pipeline logs: ${PIPELINE_LOG_DIR}"
+
+DISABLE_PLOT_LEGENDS_RAW="${DISABLE_PLOT_LEGENDS:-false}"
+if ! DISABLE_PLOT_LEGENDS="$(normalize_bool "$DISABLE_PLOT_LEGENDS_RAW")"; then
+  echo "[error] DISABLE_PLOT_LEGENDS must be one of: true/false/1/0/yes/no/on/off (got: ${DISABLE_PLOT_LEGENDS_RAW})" >&2
+  exit 1
+fi
+export DISABLE_PLOT_LEGENDS
+echo "[info] Legend suppression: DISABLE_PLOT_LEGENDS=${DISABLE_PLOT_LEGENDS}"
+
+IMG_OUTPUT_PATH_OVERRIDE="${IMG_OUTPUT_PATH_OVERRIDE:-}"
+export IMG_OUTPUT_PATH_OVERRIDE
+if [[ -n "$IMG_OUTPUT_PATH_OVERRIDE" ]]; then
+  echo "[info] Forcing IMG_OUTPUT_PATH override: ${IMG_OUTPUT_PATH_OVERRIDE}"
+fi
 
 MIN_FREE_GB="${MIN_FREE_GB:-5}"
 if [[ "$MIN_FREE_GB" =~ ^[0-9]+$ ]]; then
@@ -140,6 +181,16 @@ set_yaml_scalar() {
   mv "$tmp_file" "$file_path"
 }
 
+apply_img_output_override() {
+  local file_path="$1"
+  if [[ -z "$IMG_OUTPUT_PATH_OVERRIDE" ]]; then
+    return 0
+  fi
+  local quoted_value
+  quoted_value="$(yaml_quote_single "$IMG_OUTPUT_PATH_OVERRIDE")"
+  set_yaml_scalar "$file_path" "IMG_OUTPUT_PATH" "$quoted_value"
+}
+
 MAX_JOBS="${MAX_JOBS:-4}"
 if ! [[ "$MAX_JOBS" =~ ^[0-9]+$ ]] || (( MAX_JOBS < 1 )); then
   echo "[error] MAX_JOBS must be a positive integer (got: ${MAX_JOBS})" >&2
@@ -212,6 +263,7 @@ run_intro_transforms() (
   trap 'rm -rf "$tmpdir"' EXIT
   cfg="$tmpdir/metaorder_computation.yml"
   cp "$METAORDER_COMP_CFG" "$cfg"
+  apply_img_output_override "$cfg"
 
   set_yaml_bool "$cfg" "RUN_INTRO" "true"
   set_yaml_bool "$cfg" "RUN_METAORDER_COMPUTATION" "false"
@@ -233,6 +285,7 @@ metaorder_slice_job() (
   trap 'rm -rf "$tmpdir"' EXIT
   cfg="$tmpdir/metaorder_computation.yml"
   cp "$METAORDER_COMP_CFG" "$cfg"
+  apply_img_output_override "$cfg"
 
   set_yaml_bool "$cfg" "PROPRIETARY" "$proprietary"
   set_yaml_scalar "$cfg" "MEMBER_NATIONALITY" "$member_nationality"
@@ -265,11 +318,24 @@ metaorder_stats_slice_job() (
   trap 'rm -rf "$tmpdir"' EXIT
   cfg="$tmpdir/metaorder_statistics.yml"
   cp "$METAORDER_STATS_CFG" "$cfg"
+  apply_img_output_override "$cfg"
 
   set_yaml_bool "$cfg" "METAORDER_STATS_PROPRIETARY" "$proprietary"
   set_yaml_scalar "$cfg" "MEMBER_NATIONALITY" "$member_nationality"
 
   METAORDER_STATS_CONFIG="$cfg" python scripts/metaorder_statistics.py
+)
+
+crowding_job() (
+  set -euo pipefail
+  local tmpdir cfg
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir"' EXIT
+  cfg="$tmpdir/crowding_analysis.yml"
+  cp "$CROWDING_CFG" "$cfg"
+  apply_img_output_override "$cfg"
+
+  CROWDING_CONFIG="$cfg" python scripts/crowding_analysis.py
 )
 
 echo "[phase] Intro transforms (serial)"
@@ -297,7 +363,7 @@ done
 wait_all_jobs
 
 echo "[phase] scripts/crowding_analysis.py (serial)"
-python scripts/crowding_analysis.py >"${PIPELINE_LOG_DIR}/crowding_analysis.log" 2>&1
+crowding_job >"${PIPELINE_LOG_DIR}/crowding_analysis.log" 2>&1
 echo "[info] crowding_analysis completed (log: ${PIPELINE_LOG_DIR}/crowding_analysis.log)"
 
 echo "[phase] scripts/member_statistics.py (serial)"

@@ -37,11 +37,16 @@ Processing details
 
 Outputs
 -------
-Creates `images/ftsemib/member_statistics/` (and subfolders) containing:
-- Interactive HTML plots (`images/ftsemib/member_statistics/html/*.html`)
-- Static PNG exports (`images/ftsemib/member_statistics/png/*.png`), when Plotly image
+Creates `{IMG_BASE_DIR}/member_statistics/` (and subfolders) containing:
+- Interactive HTML plots (`{IMG_BASE_DIR}/member_statistics/html/*.html`)
+- Static PNG exports (`{IMG_BASE_DIR}/member_statistics/png/*.png`), when Plotly image
   export is available (typically via `kaleido`). If PNG export fails, the script
   logs a warning and still writes the HTML files.
+
+Path controls:
+- `IMG_OUTPUT_PATH_OVERRIDE` (optional): if set, overrides the image base path
+  and supports `{DATASET_NAME}` placeholder.
+- `DATASET_NAME` (optional): used when formatting `IMG_OUTPUT_PATH_OVERRIDE`.
 
 Generated figures (file stems):
 1) `members_per_isin` (bar)
@@ -70,6 +75,7 @@ To change the data location or trading-hours filter, edit `DATA_DIR` and
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -95,6 +101,7 @@ from moimpact.plot_style import (
     THEME_GRID_COLOR,
     apply_plotly_style,
 )
+from moimpact.config import format_path_template, resolve_repo_path
 from moimpact.plotting import (
     COLOR_CLIENT,
     COLOR_PROPRIETARY,
@@ -107,9 +114,52 @@ from moimpact.plotting import (
 # ---------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------
+def _env_flag(name: str, *, default: bool = False) -> bool:
+    """
+    Summary
+    -------
+    Parse a boolean environment variable.
+
+    Parameters
+    ----------
+    name : str
+        Environment variable name.
+    default : bool, default=False
+        Returned when the variable is unset or malformed.
+
+    Returns
+    -------
+    bool
+        Parsed boolean value.
+
+    Notes
+    -----
+    True values: ``1``, ``true``, ``yes``, ``on``.
+    False values: ``0``, ``false``, ``no``, ``off``.
+    """
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
 # Per-ISIN parquet trade tapes live under `data/parquet/` in this repo.
 DATA_DIR = _REPO_ROOT / "data" / "parquet"
-PLOT_DIR = _REPO_ROOT / "images" / "ftsemib" / "member_statistics"
+DATASET_NAME = (os.environ.get("DATASET_NAME") or "ftsemib").strip() or "ftsemib"
+IMG_OUTPUT_PATH_OVERRIDE = (os.environ.get("IMG_OUTPUT_PATH_OVERRIDE") or "").strip()
+DISABLE_PLOT_LEGENDS = _env_flag("DISABLE_PLOT_LEGENDS", default=False)
+if IMG_OUTPUT_PATH_OVERRIDE:
+    _img_base_cfg = format_path_template(IMG_OUTPUT_PATH_OVERRIDE, {"DATASET_NAME": DATASET_NAME})
+    IMG_BASE_DIR = resolve_repo_path(_REPO_ROOT, _img_base_cfg)
+else:
+    IMG_BASE_DIR = _REPO_ROOT / "images" / DATASET_NAME
+
+PLOT_DIR = IMG_BASE_DIR / "member_statistics"
 PLOT_OUTPUT_DIRS: PlotOutputDirs = make_plot_output_dirs(PLOT_DIR, use_subdirs=True)
 HTML_DIR = PLOT_OUTPUT_DIRS.html_dir
 PNG_DIR = PLOT_OUTPUT_DIRS.png_dir
@@ -475,6 +525,32 @@ def main():
     # Proprietary vs client trades plot
     # ------------------------------------------------------------------
     trades_df = pd.DataFrame(trade_records).sort_values("isin")
+    # Report the per-ISIN ratio client_trades / proprietary_trades before plotting.
+    # Keep +inf when an ISIN has client trades but zero proprietary trades; treat
+    # 0 / 0 as undefined and exclude it from the reported range.
+    client_to_prop_ratio = (
+        trades_df["client_trades"].astype(float) / trades_df["proprietary_trades"].astype(float)
+    )
+    undefined_ratio_mask = trades_df["client_trades"].eq(0) & trades_df["proprietary_trades"].eq(0)
+    client_to_prop_ratio = client_to_prop_ratio.mask(undefined_ratio_mask)
+    if client_to_prop_ratio.notna().any():
+        ratio_min = client_to_prop_ratio.min()
+        ratio_max = client_to_prop_ratio.max()
+        ratio_message = (
+            "Client/proprietary trade ratio across ISINs [min, max]: "
+            f"[{ratio_min:.6g}, {ratio_max:.6g}]"
+        )
+        undefined_ratio_count = int(undefined_ratio_mask.sum())
+        if undefined_ratio_count:
+            ratio_message += (
+                f" ({undefined_ratio_count} ISINs excluded because both client and proprietary trades are zero)"
+            )
+        log_print(ratio_message)
+    else:
+        log_print(
+            "Client/proprietary trade ratio across ISINs [min, max]: undefined "
+            "(all ISINs have both client and proprietary trades equal to zero)"
+        )
     trades_long = trades_df.melt(
         id_vars="isin",
         value_vars=["client_trades", "proprietary_trades"],
@@ -610,6 +686,7 @@ def main():
             xaxis=dict(title="ISIN", categoryorder="array", categoryarray=all_isins_sorted),
             yaxis=dict(title="Trades (Buy+, Sell-)", rangemode="tozero", zeroline=True, zerolinecolor="#888"),
             barmode="relative",
+            showlegend=(not DISABLE_PLOT_LEGENDS),
         ),
     )
 
@@ -654,6 +731,7 @@ def main():
             xaxis: {{title: 'ISIN', categoryorder: 'array', categoryarray: allIsins}},
             yaxis: {{title: 'Trades (Buy+, Sell-)', rangemode: 'tozero', zeroline: true, zerolinecolor: '#888'}},
             barmode: 'relative',
+            showlegend: {(str(not DISABLE_PLOT_LEGENDS)).lower()},
           }}
         );
         return;
@@ -681,6 +759,7 @@ def main():
         xaxis: {{title: 'ISIN', categoryorder: 'array', categoryarray: allIsins}},
         yaxis: {{title: 'Trades (Buy+, Sell-)', rangemode: 'tozero', zeroline: true, zerolinecolor: '#888'}},
         barmode: 'relative',
+        showlegend: {(str(not DISABLE_PLOT_LEGENDS)).lower()},
       }});
     }});
   </script>

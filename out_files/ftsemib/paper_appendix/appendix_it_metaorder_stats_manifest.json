@@ -1,0 +1,32 @@
+{
+  "dataset_name": "ftsemib",
+  "generated_on": "2026-02-23T15:22:38",
+  "inputs": {
+    "metaorders_dict_client": "out_files/ftsemib/metaorders_dict_all_member_non_proprietary_member_nationality_it.pkl",
+    "metaorders_dict_proprietary": "out_files/ftsemib/metaorders_dict_all_member_proprietary_member_nationality_it.pkl",
+    "parquet_dir": "data/parquet"
+  },
+  "member_nationality": "it",
+  "outputs": {
+    "paper_table_tex": "paper/tables/appendix_it_metaorder_stats.tex",
+    "summary_csv": "out_files/ftsemib/paper_appendix/appendix_it_metaorder_stats_summary.csv"
+  },
+  "result_counts": {
+    "client": {
+      "buy": 13607,
+      "metaorders": 24111,
+      "sell": 10504,
+      "tie": 0
+    },
+    "proprietary": {
+      "buy": 1033,
+      "metaorders": 2093,
+      "sell": 1060,
+      "tie": 0
+    }
+  },
+  "trading_hours": {
+    "end": "17:30:00",
+    "start": "09:30:00"
+  }
+}

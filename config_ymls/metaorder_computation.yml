@@ -1,11 +1,11 @@
 # metaorder_computation.py configuration
 
 # Plotting
-TICK_FONT_SIZE: 12
-LABEL_FONT_SIZE: 14
-TITLE_FONT_SIZE: 15
-LEGEND_FONT_SIZE: 12
-DEFAULT_FIGSIZE: [9, 5.5]
+TICK_FONT_SIZE: 14
+LABEL_FONT_SIZE: 16
+TITLE_FONT_SIZE: 17
+LEGEND_FONT_SIZE: 14
+DEFAULT_FIGSIZE: [11, 7.5]
 
 # Side decomposition
 # If true, decompose (some) outputs into buy vs sell metaorders (Direction=+1/-1).
