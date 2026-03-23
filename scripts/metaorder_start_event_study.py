@@ -578,20 +578,30 @@ def _build_stratum_summaries(
     summary["n_treated"] = grp["high_eta"].sum()
     summary["n_control"] = summary["n_total"] - summary["n_treated"]
 
-    total_sums = grp[all_metric_cols].sum(min_count=1)
-    treated_sums = grp.apply(
-        lambda frame: frame.loc[frame["high_eta"].eq(1), all_metric_cols].sum(min_count=1)
-    )
-    if isinstance(treated_sums.index, pd.MultiIndex):
-        treated_sums.index = total_sums.index
-    treated_sums = treated_sums.fillna(0.0)
-    control_sums = total_sums - treated_sums
+    summary_index = summary.index
+    treated_frame = tmp.loc[tmp["high_eta"].eq(1), group_cols + all_metric_cols]
+    control_frame = tmp.loc[tmp["high_eta"].eq(0), group_cols + all_metric_cols]
 
+    treated_grp = treated_frame.groupby(group_cols, sort=False, dropna=False)
+    control_grp = control_frame.groupby(group_cols, sort=False, dropna=False)
+
+    # Keep per-metric valid counts so boundary-truncated bins are excluded from
+    # the relevant denominator instead of propagating NaNs through the whole
+    # matched aggregate.
+    treated_sums = treated_grp[all_metric_cols].sum(min_count=1).reindex(summary_index).fillna(0.0)
+    control_sums = control_grp[all_metric_cols].sum(min_count=1).reindex(summary_index).fillna(0.0)
+    treated_counts = treated_grp[all_metric_cols].count().reindex(summary_index).fillna(0.0)
+    control_counts = control_grp[all_metric_cols].count().reindex(summary_index).fillna(0.0)
+
+    metric_payload: dict[str, np.ndarray] = {}
     for col in all_metric_cols:
-        summary[f"sum_treated__{col}"] = treated_sums[col].to_numpy(dtype=float)
-        summary[f"sum_control__{col}"] = control_sums[col].to_numpy(dtype=float)
+        metric_payload[f"sum_treated__{col}"] = treated_sums[col].to_numpy(dtype=float)
+        metric_payload[f"sum_control__{col}"] = control_sums[col].to_numpy(dtype=float)
+        metric_payload[f"n_treated_valid__{col}"] = treated_counts[col].to_numpy(dtype=float)
+        metric_payload[f"n_control_valid__{col}"] = control_counts[col].to_numpy(dtype=float)
 
-    return summary.reset_index()
+    metric_frame = pd.DataFrame(metric_payload, index=summary_index)
+    return pd.concat([summary, metric_frame], axis=1).reset_index()
 
 
 def _weighted_stat_from_strata(
@@ -620,8 +630,8 @@ def _weighted_stat_from_strata(
 
     n_treated = strata_valid["n_treated"].to_numpy(dtype=float)
     n_control = strata_valid["n_control"].to_numpy(dtype=float)
-    treated_weight = row_weight * n_treated
-    total_treated = float(np.sum(treated_weight))
+    matched_treated_weight = row_weight * n_treated
+    total_treated = float(np.sum(matched_treated_weight))
     if total_treated <= 0:
         n_metrics = len(metric_cols)
         nan_vec = np.full(n_metrics, np.nan, dtype=float)
@@ -633,8 +643,42 @@ def _weighted_stat_from_strata(
     for col in metric_cols:
         treated_sum = strata_valid[f"sum_treated__{col}"].to_numpy(dtype=float)
         control_sum = strata_valid[f"sum_control__{col}"].to_numpy(dtype=float)
-        treated_mean = float(np.sum(row_weight * treated_sum) / total_treated)
-        control_mean = float(np.sum(treated_weight * (control_sum / n_control)) / total_treated)
+
+        treated_count_col = f"n_treated_valid__{col}"
+        control_count_col = f"n_control_valid__{col}"
+        if treated_count_col in strata_valid.columns:
+            n_treated_valid = strata_valid[treated_count_col].to_numpy(dtype=float)
+        else:
+            n_treated_valid = np.where(np.isfinite(treated_sum), n_treated, 0.0)
+        if control_count_col in strata_valid.columns:
+            n_control_valid = strata_valid[control_count_col].to_numpy(dtype=float)
+        else:
+            n_control_valid = np.where(np.isfinite(control_sum), n_control, 0.0)
+
+        metric_valid = (n_treated_valid > 0) & (n_control_valid > 0)
+        if not np.any(metric_valid):
+            treated_vals.append(float("nan"))
+            control_vals.append(float("nan"))
+            excess_vals.append(float("nan"))
+            continue
+
+        metric_row_weight = row_weight[metric_valid]
+        metric_treated_sum = treated_sum[metric_valid]
+        metric_control_sum = control_sum[metric_valid]
+        metric_treated_counts = n_treated_valid[metric_valid]
+        metric_control_counts = n_control_valid[metric_valid]
+        metric_treated_weight = metric_row_weight * metric_treated_counts
+        total_metric_treated = float(np.sum(metric_treated_weight))
+        if total_metric_treated <= 0:
+            treated_vals.append(float("nan"))
+            control_vals.append(float("nan"))
+            excess_vals.append(float("nan"))
+            continue
+
+        treated_mean = float(np.sum(metric_row_weight * metric_treated_sum) / total_metric_treated)
+        control_mean = float(
+            np.sum(metric_treated_weight * (metric_control_sum / metric_control_counts)) / total_metric_treated
+        )
         treated_vals.append(treated_mean)
         control_vals.append(control_mean)
         excess_vals.append(treated_mean - control_mean)
@@ -749,8 +793,8 @@ def _stratum_metric_arrays(
     metric_cols: Sequence[str],
     *,
     rng: Optional[np.random.Generator] = None,
-) -> tuple[list[tuple[np.ndarray, int]], int]:
-    arrays: list[tuple[np.ndarray, int]] = []
+) -> tuple[list[tuple[np.ndarray, np.ndarray]], int]:
+    arrays: list[tuple[np.ndarray, np.ndarray]] = []
     treated_total = 0
     for _, frame in metrics_df.groupby("stratum_key", sort=False):
         values = frame[list(metric_cols)].to_numpy(dtype=float)
@@ -764,34 +808,40 @@ def _stratum_metric_arrays(
             treated_mask = np.zeros(n_total, dtype=bool)
             treated_idx = rng.choice(n_total, size=n_treated, replace=False)
             treated_mask[treated_idx] = True
-        arrays.append((values[treated_mask], n_treated))
-        arrays.append((values[~treated_mask], -1))
+        arrays.append((values[treated_mask], values[~treated_mask]))
         treated_total += n_treated
     return arrays, treated_total
 
 
-def _summary_effect_from_metric_arrays(stratum_arrays: list[tuple[np.ndarray, int]]) -> np.ndarray:
+def _summary_effect_from_metric_arrays(stratum_arrays: list[tuple[np.ndarray, np.ndarray]]) -> np.ndarray:
     if not stratum_arrays:
         return np.full(len(SUMMARY_METRIC_SPECS), np.nan, dtype=float)
 
-    total_treated = 0
-    diff_sum: Optional[np.ndarray] = None
-    idx = 0
-    while idx < len(stratum_arrays):
-        treated_values, n_treated = stratum_arrays[idx]
-        control_values, _ = stratum_arrays[idx + 1]
-        idx += 2
+    n_metrics = stratum_arrays[0][0].shape[1] if stratum_arrays[0][0].ndim == 2 else len(SUMMARY_METRIC_SPECS)
+    total_treated_valid = np.zeros(n_metrics, dtype=float)
+    diff_sum = np.zeros(n_metrics, dtype=float)
+
+    for treated_values, control_values in stratum_arrays:
         if treated_values.size == 0 or control_values.size == 0:
             continue
-        treated_sum = np.sum(treated_values, axis=0)
-        control_mean = np.mean(control_values, axis=0)
-        contribution = treated_sum - int(n_treated) * control_mean
-        diff_sum = contribution if diff_sum is None else diff_sum + contribution
-        total_treated += int(n_treated)
 
-    if diff_sum is None or total_treated <= 0:
-        return np.full(len(SUMMARY_METRIC_SPECS), np.nan, dtype=float)
-    return diff_sum / float(total_treated)
+        n_treated_valid = np.sum(np.isfinite(treated_values), axis=0, dtype=float)
+        n_control_valid = np.sum(np.isfinite(control_values), axis=0, dtype=float)
+        metric_valid = (n_treated_valid > 0) & (n_control_valid > 0)
+        if not np.any(metric_valid):
+            continue
+
+        treated_sum = np.nansum(treated_values[:, metric_valid], axis=0)
+        control_mean = np.nanmean(control_values[:, metric_valid], axis=0)
+        diff_sum[metric_valid] += treated_sum - n_treated_valid[metric_valid] * control_mean
+        total_treated_valid[metric_valid] += n_treated_valid[metric_valid]
+
+    out = np.full(n_metrics, np.nan, dtype=float)
+    valid = total_treated_valid > 0
+    if not np.any(valid):
+        return out
+    out[valid] = diff_sum[valid] / total_treated_valid[valid]
+    return out
 
 
 def _raw_p_value(observed: float, draws: np.ndarray, *, alternative: str) -> float:

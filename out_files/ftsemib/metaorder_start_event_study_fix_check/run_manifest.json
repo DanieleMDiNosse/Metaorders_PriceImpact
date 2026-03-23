@@ -1,0 +1,27 @@
+{
+  "alpha": 0.05,
+  "bin_minutes": 5,
+  "bootstrap_runs": 0,
+  "client_path": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet",
+  "config_path": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/config_ymls/metaorder_start_event_study.yml",
+  "dataset_name": "ftsemib",
+  "event_window_minutes": 30,
+  "git_hash": "127209dade5bcff229b3ea65cd666f3daeb3b452",
+  "high_eta_quantile": 0.5,
+  "img_dir": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/metaorder_start_event_study_fix_check",
+  "matching_bucket_minutes": 30,
+  "out_dir": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorder_start_event_study_fix_check",
+  "permutation_runs": 0,
+  "plots_enabled": true,
+  "prop_path": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet",
+  "run_same_actor_robustness": false,
+  "run_timestamp": "2026-03-23T18:48:55.897893",
+  "same_actor_key": "auto",
+  "seed": 0,
+  "show_progress": false,
+  "trading_hours": [
+    "09:30:00",
+    "17:30:00"
+  ],
+  "write_parquet": false
+}

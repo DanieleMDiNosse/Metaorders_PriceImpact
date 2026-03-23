@@ -87,6 +87,8 @@ class TestMetaorderStartEventStudy(unittest.TestCase):
                 "n_control": [2, 1],
                 "sum_treated__same_pre_mean_rate": [4.0, 1.0],
                 "sum_control__same_pre_mean_rate": [2.0, 0.0],
+                "n_treated_valid__same_pre_mean_rate": [2.0, 1.0],
+                "n_control_valid__same_pre_mean_rate": [2.0, 1.0],
             }
         )
         treated, control, excess, total_treated = event_study._weighted_stat_from_strata(
@@ -98,6 +100,30 @@ class TestMetaorderStartEventStudy(unittest.TestCase):
         self.assertAlmostEqual(float(treated[0]), 5.0 / 3.0)
         self.assertAlmostEqual(float(control[0]), 4.0 / 6.0)
         self.assertAlmostEqual(float(excess[0]), 1.0)
+
+    def test_weighted_stat_from_strata_ignores_bins_without_valid_control_exposure(self) -> None:
+        strata = pd.DataFrame(
+            {
+                "Date": pd.to_datetime(["2024-01-02", "2024-01-03"]),
+                "stratum_key": ["A", "B"],
+                "n_treated": [1, 1],
+                "n_control": [1, 1],
+                "sum_treated__same_rate_-30_-25": [0.0, 2.0],
+                "sum_control__same_rate_-30_-25": [0.0, 4.0],
+                "n_treated_valid__same_rate_-30_-25": [0.0, 1.0],
+                "n_control_valid__same_rate_-30_-25": [0.0, 1.0],
+            }
+        )
+
+        treated, control, excess, total_treated = event_study._weighted_stat_from_strata(
+            strata,
+            metric_cols=["same_rate_-30_-25"],
+        )
+
+        self.assertEqual(total_treated, 2.0)
+        self.assertAlmostEqual(float(treated[0]), 2.0)
+        self.assertAlmostEqual(float(control[0]), 4.0)
+        self.assertAlmostEqual(float(excess[0]), -2.0)
 
     def test_permutation_summary_stats_returns_finite_draws(self) -> None:
         df = pd.DataFrame(
@@ -121,3 +147,17 @@ class TestMetaorderStartEventStudy(unittest.TestCase):
         self.assertEqual(observed.shape, (4,))
         self.assertEqual(draws.shape, (20, 4))
         self.assertTrue(np.all(np.isfinite(draws)))
+
+    def test_summary_effect_from_metric_arrays_ignores_nan_metrics(self) -> None:
+        stratum_arrays = [
+            (
+                np.asarray([[np.nan, 2.0], [1.0, np.nan]], dtype=float),
+                np.asarray([[2.0, np.nan], [np.nan, 1.0]], dtype=float),
+            )
+        ]
+
+        effect = event_study._summary_effect_from_metric_arrays(stratum_arrays)
+
+        self.assertEqual(effect.shape, (2,))
+        self.assertAlmostEqual(float(effect[0]), -1.0)
+        self.assertAlmostEqual(float(effect[1]), 1.0)
