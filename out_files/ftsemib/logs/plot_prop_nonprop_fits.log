@@ -1,0 +1,407 @@
+2026-03-12 16:19:32,153 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 16:19:32,153 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=True
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 16:19:32,153 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 16:19:32,154 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 16:19:32,967 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 16:19:33,840 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 16:19:33,841 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 16:19:34,016 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 16:19:34,073 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 16:19:36,844 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 16:19:37,377 - [Proprietary][Retention] Rows after filtering: 588,172
+2026-03-12 16:19:37,377 - [Client][Retention] Rows after filtering: 255,499
+2026-03-12 16:20:14,261 - [Prop vs Non-Prop][Retention] R_prop=0.745475 (CI [0.726123, 0.763875]), R_client=0.569913 (CI [0.528529, 0.608881]), delta=0.175562 (CI [0.124870, 0.225125]), p=0, valid_bootstrap_runs=1000
+2026-03-12 16:20:14,277 - [Prop vs Non-Prop][Retention] Saved summary outputs to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_summary.csv, /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_summary.parquet, and /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_draws.parquet
+2026-03-12 16:20:16,177 - [Prop vs Non-Prop][Retention] Saved bootstrap figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/impact_path_retention_bootstrap_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/impact_path_retention_bootstrap_prop_vs_nonprop.png
+2026-03-12 16:21:24,770 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 16:21:24,770 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=True
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 16:21:24,770 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 16:21:24,770 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 16:21:25,503 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 16:21:26,328 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 16:21:26,328 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 16:21:26,455 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 16:21:26,511 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 16:21:28,418 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 16:21:28,984 - [Proprietary][Retention] Rows after filtering: 588,172
+2026-03-12 16:21:28,984 - [Client][Retention] Rows after filtering: 255,499
+2026-03-12 16:22:04,442 - [Prop vs Non-Prop][Retention] R_prop=0.745475 (CI [0.726123, 0.763875]), R_client=0.569913 (CI [0.528529, 0.608881]), delta=0.175562 (CI [0.124870, 0.225125]), p=0.000999001, valid_bootstrap_runs=1000
+2026-03-12 16:22:04,448 - [Prop vs Non-Prop][Retention] Saved summary outputs to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_summary.csv, /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_summary.parquet, and /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_draws.parquet
+2026-03-12 16:22:06,479 - [Prop vs Non-Prop][Retention] Saved bootstrap figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/impact_path_retention_bootstrap_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/impact_path_retention_bootstrap_prop_vs_nonprop.png
+2026-03-12 16:24:58,669 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 16:24:58,670 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 16:24:58,670 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 16:24:58,670 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 16:24:59,388 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 16:25:00,075 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 16:25:00,075 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 16:25:00,225 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 16:25:00,286 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 16:25:03,186 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 16:31:28,015 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 16:31:28,015 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 16:31:28,015 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 16:31:28,015 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 16:31:28,751 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 16:31:29,592 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 16:31:29,592 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 16:31:29,726 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 16:31:29,774 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 16:31:31,812 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 16:32:34,758 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 16:32:34,758 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=False
+  RUN_RETENTION_BOOTSTRAP=True
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 16:32:34,758 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 16:32:34,758 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 16:32:35,482 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 16:32:36,245 - [Proprietary][Retention] Rows after filtering: 588,172
+2026-03-12 16:32:36,245 - [Client][Retention] Rows after filtering: 255,499
+2026-03-12 16:33:12,783 - [Prop vs Non-Prop][Retention] R_prop=0.745475 (CI [0.726123, 0.763875]), R_client=0.569913 (CI [0.528529, 0.608881]), delta=0.175562 (CI [0.124870, 0.225125]), p=0.000999001, valid_bootstrap_runs=1000
+2026-03-12 16:33:12,789 - [Prop vs Non-Prop][Retention] Saved summary outputs to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_summary.csv, /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_summary.parquet, and /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_draws.parquet
+2026-03-12 16:33:14,666 - [Prop vs Non-Prop][Retention] Saved bootstrap figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/impact_path_retention_bootstrap_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/impact_path_retention_bootstrap_prop_vs_nonprop.png
+2026-03-12 16:33:53,406 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 16:33:53,406 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 16:33:53,406 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 16:33:53,406 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 16:33:54,066 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 16:33:54,747 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 16:33:54,747 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 16:33:54,893 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 16:33:54,946 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 16:33:56,770 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 16:58:47,247 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 16:58:47,247 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 16:58:47,247 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 16:58:47,247 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 16:58:47,969 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 16:58:50,333 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 16:58:50,333 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 16:58:50,640 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 16:58:50,705 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 16:58:52,734 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 17:32:13,732 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 17:32:13,732 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 17:32:13,732 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 17:32:13,732 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 17:32:14,676 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 17:32:15,557 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 17:32:15,557 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 17:32:15,701 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 17:32:15,720 - [Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+2026-03-12 17:32:15,783 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 17:32:15,789 - [Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+2026-03-12 17:32:18,080 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 17:32:20,517 - [Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png
+2026-03-12 17:37:13,081 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 17:37:13,081 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 17:37:13,081 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 17:37:13,081 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 17:37:13,734 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 17:37:14,535 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 17:37:14,535 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 17:37:14,684 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 17:37:14,694 - [Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+2026-03-12 17:37:14,763 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 17:37:14,771 - [Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+2026-03-12 17:37:17,046 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 17:37:19,675 - [Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png
+2026-03-12 17:59:49,855 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 17:59:49,855 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 17:59:49,855 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 17:59:49,856 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 17:59:50,545 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 17:59:51,297 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 17:59:51,297 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 17:59:51,416 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 17:59:51,424 - [Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+2026-03-12 17:59:51,475 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 17:59:51,481 - [Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+2026-03-12 17:59:53,968 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 17:59:56,154 - [Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png
+2026-03-12 18:05:38,041 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 18:05:38,041 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=1000, RETENTION_ALPHA=0.05, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 18:05:38,041 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 18:05:38,041 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 18:05:38,738 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 18:05:39,457 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-12 18:05:39,457 - [Client][Fit] Rows after filtering: 255,499
+2026-03-12 18:05:39,575 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-12 18:05:39,583 - [Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+2026-03-12 18:05:39,631 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-12 18:05:39,637 - [Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+2026-03-12 18:05:42,206 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-12 18:05:45,459 - [Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png
+2026-03-12 18:39:55,413 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 18:39:55,413 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=False
+  RUN_RETENTION_BOOTSTRAP=True
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 18:39:55,413 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 18:39:55,413 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 18:39:56,066 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 18:39:59,213 - [Proprietary][Retention] Rows after filtering: 588,130
+2026-03-12 18:39:59,213 - [Client][Retention] Rows after filtering: 255,495
+2026-03-12 18:40:32,419 - [Prop vs Non-Prop] Comparison run started...
+2026-03-12 18:40:32,419 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=False
+  RUN_RETENTION_BOOTSTRAP=True
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-12 18:40:32,419 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-12 18:40:32,419 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-12 18:40:33,037 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-12 18:40:36,223 - [Proprietary][Retention] Rows after filtering: 588,130
+2026-03-12 18:40:36,223 - [Client][Retention] Rows after filtering: 255,495
+2026-03-12 18:41:09,342 - [Prop vs Non-Prop][Retention] R_prop=0.745423 (CI [0.720274, 0.770977]), R_client=0.569916 (CI [0.512217, 0.624367]), delta=0.175507 (CI [0.110185, 0.242425]), p=9.999e-05, valid_bootstrap_runs=10000
+2026-03-12 18:41:09,359 - [Prop vs Non-Prop][Retention] Saved summary outputs to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_summary.csv, /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_summary.parquet, and /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop/impact_path_retention_bootstrap_prop_vs_nonprop_draws.parquet
+2026-03-12 18:41:11,425 - [Prop vs Non-Prop][Retention] Saved bootstrap figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/impact_path_retention_bootstrap_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/impact_path_retention_bootstrap_prop_vs_nonprop.png
+2026-03-16 15:19:15,346 - [Prop vs Non-Prop] Comparison run started...
+2026-03-16 15:19:15,354 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=False
+  RUN_RETENTION_BOOTSTRAP=True
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-16 15:19:15,354 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-16 15:19:15,354 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-16 15:19:16,108 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-16 15:19:19,759 - [Proprietary][Retention] Rows after filtering: 588,130
+2026-03-16 15:19:19,759 - [Client][Retention] Rows after filtering: 255,495
+2026-03-16 15:19:57,754 - [Prop vs Non-Prop] Comparison run started...
+2026-03-16 15:19:57,754 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=False
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-16 15:19:57,754 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-16 15:19:57,754 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-16 15:19:58,443 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-16 15:19:58,688 - [Prop vs Non-Prop] Both run flags are false; nothing to do.
+2026-03-16 15:20:52,877 - [Prop vs Non-Prop] Comparison run started...
+2026-03-16 15:20:52,877 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-16 15:20:52,877 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-16 15:20:52,877 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-16 15:20:53,585 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-16 15:20:54,329 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-16 15:20:54,329 - [Client][Fit] Rows after filtering: 255,499
+2026-03-16 15:20:54,457 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-16 15:20:54,466 - [Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+2026-03-16 15:20:54,518 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-16 15:20:54,523 - [Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+2026-03-16 15:20:56,480 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-16 15:20:58,244 - [Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png
+2026-03-16 15:25:46,629 - [Prop vs Non-Prop] Comparison run started...
+2026-03-16 15:25:46,629 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-16 15:25:46,629 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-16 15:25:46,629 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-16 15:25:47,325 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-16 15:25:48,092 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-16 15:25:48,092 - [Client][Fit] Rows after filtering: 255,499
+2026-03-16 15:25:48,219 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-16 15:25:48,228 - [Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+2026-03-16 15:25:48,282 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-16 15:25:48,287 - [Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+2026-03-16 15:25:50,196 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-16 15:25:52,077 - [Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png
+2026-03-16 15:26:18,109 - [Prop vs Non-Prop] Comparison run started...
+2026-03-16 15:26:18,109 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-16 15:26:18,109 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-16 15:26:18,109 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-16 15:26:18,790 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-16 15:26:19,507 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-16 15:26:19,507 - [Client][Fit] Rows after filtering: 255,499
+2026-03-16 15:26:19,623 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-16 15:26:19,630 - [Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+2026-03-16 15:26:19,682 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-16 15:26:19,687 - [Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+2026-03-16 15:26:21,460 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-16 15:26:23,203 - [Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png
+2026-03-16 15:37:26,767 - [Prop vs Non-Prop] Comparison run started...
+2026-03-16 15:37:26,767 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-16 15:37:26,767 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop
+2026-03-16 15:37:26,767 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-16 15:37:27,432 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-16 15:37:28,187 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-16 15:37:28,187 - [Client][Fit] Rows after filtering: 255,499
+2026-03-16 15:37:28,320 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-16 15:37:28,329 - [Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+2026-03-16 15:37:28,377 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-16 15:37:28,383 - [Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+2026-03-16 15:37:30,361 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-16 15:37:32,063 - [Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png
+2026-03-23 14:09:52,928 - [Prop vs Non-Prop] Comparison run started...
+2026-03-23 14:09:52,928 - [Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+2026-03-23 14:09:52,928 - [Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop
+2026-03-23 14:09:52,928 - [Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-03-23 14:09:53,546 - [Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-03-23 14:09:54,171 - [Proprietary][Fit] Rows after filtering: 588,172
+2026-03-23 14:09:54,171 - [Client][Fit] Rows after filtering: 255,499
+2026-03-23 14:09:54,280 - [Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+2026-03-23 14:09:54,288 - [Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+2026-03-23 14:09:54,339 - [Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+2026-03-23 14:09:54,344 - [Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+2026-03-23 14:09:56,072 - [Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+2026-03-23 14:09:58,323 - [Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png

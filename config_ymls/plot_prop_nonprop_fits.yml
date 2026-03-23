@@ -1,0 +1,44 @@
+# plot_prop_nonprop_fits.py configuration
+
+# Plotting
+TICK_FONT_SIZE: 16
+LABEL_FONT_SIZE: 25
+TITLE_FONT_SIZE: 19
+LEGEND_FONT_SIZE: 25
+ANNOTATION_FONT_SIZE: 14
+
+# Dataset and paths
+DATASET_NAME: ftsemib
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+COMPARISON_DIRNAME: prop_vs_nonprop
+
+# Inputs
+PROPRIETARY_PATH: out_files/{DATASET_NAME}/metaorders_info_sameday_filtered_member_proprietary.parquet
+CLIENT_PATH: out_files/{DATASET_NAME}/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+
+# Power-law overlay
+RUN_POWER_LAW_OVERLAY: true
+FIT_OUTPUT_STEM: power_law_prop_vs_nonprop
+FIT_TITLE: "Power-law fits: proprietary vs client"
+FIT_N_LOGBINS: 30
+FIT_MIN_COUNT: 20
+FIT_USE_MEDIAN: false
+FIT_MIN_QV: 1.0e-5
+FIT_MAX_PARTICIPATION_RATE: 1.0
+FIT_MIN_DURATION_SECONDS: null
+
+# Retention bootstrap on R_prop - R_client
+RUN_RETENTION_BOOTSTRAP: false
+RETENTION_OUTPUT_STEM: impact_path_retention_bootstrap_prop_vs_nonprop
+RETENTION_TITLE: Bootstrap distribution of proprietary minus client retention
+RETENTION_TAU_START: 1.0
+RETENTION_TAU_END: 3.0
+RETENTION_DURATION_MULTIPLIER: 2.0
+RETENTION_BOOTSTRAP_RUNS: 10000
+RETENTION_ALPHA: 0.01
+RETENTION_RANDOM_STATE: 0
+RETENTION_MIN_QV: 1.0e-5
+RETENTION_MAX_PARTICIPATION_RATE: 0.99
+RETENTION_MIN_DURATION_SECONDS: 120
+RETENTION_SIDE_FILTER: all  # all|null|buy|sell

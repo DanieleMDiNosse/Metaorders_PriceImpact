@@ -1,0 +1,24 @@
+2026-03-20 15:51:10,558 - [Intro] Metaorder intraday analysis started...
+2026-03-20 15:51:10,558 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, MEMBER_NATIONALITY=all, MIN_QV=1e-05, MAX_PARTICIPATION_RATE=1.0, N_LOGBIN=30, MIN_COUNT=20, SESSION_WINDOWS={'morning': (datetime.time(9, 30), datetime.time(13, 30)), 'evening': (datetime.time(13, 30), datetime.time(17, 30))}
+2026-03-20 15:51:10,558 - [Intro] Paths — 
+  OUTPUT_ROOT=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  ANALYSIS_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_intraday_analysis
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_intraday_analysis
+  PROPRIETARY_INFO_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_member_proprietary.parquet
+  CLIENT_INFO_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_member_non_proprietary.parquet
+2026-03-20 15:51:13,587 - [Intraday] Proprietary: loaded 588543 metaorders | kept in-session=565237 | cross-session/excluded=23306
+2026-03-20 15:51:20,546 - [Intraday] Client: loaded 256371 metaorders | kept in-session=236702 | cross-session/excluded=19669
+2026-03-20 15:51:23,962 - [Intraday] Saved summary table to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_intraday_analysis/intraday_session_summary_prop_vs_client.parquet
+2026-03-20 15:52:20,079 - [Intro] Metaorder intraday analysis started...
+2026-03-20 15:52:20,080 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, MEMBER_NATIONALITY=all, MIN_QV=1e-05, MAX_PARTICIPATION_RATE=1.0, N_LOGBIN=30, MIN_COUNT=20, SESSION_WINDOWS={'morning': (datetime.time(9, 30), datetime.time(13, 30)), 'evening': (datetime.time(13, 30), datetime.time(17, 30))}
+2026-03-20 15:52:20,080 - [Intro] Paths — 
+  OUTPUT_ROOT=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  ANALYSIS_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_intraday_analysis
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_intraday_analysis
+  PROPRIETARY_INFO_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_member_proprietary.parquet
+  CLIENT_INFO_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_member_non_proprietary.parquet
+2026-03-20 15:52:22,918 - [Intraday] Proprietary: loaded 588543 metaorders | kept in-session=565237 | cross-session/excluded=23306
+2026-03-20 15:52:29,189 - [Intraday] Client: loaded 256371 metaorders | kept in-session=236702 | cross-session/excluded=19669
+2026-03-20 15:52:32,400 - [Intraday] Saved summary table to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_intraday_analysis/intraday_session_summary_prop_vs_client.parquet

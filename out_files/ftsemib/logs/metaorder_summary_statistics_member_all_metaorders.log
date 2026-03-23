@@ -1,0 +1,49 @@
+2026-03-12 10:47:21,713 - [Intro] Metaorder summary-statistics run started...
+2026-03-12 10:47:21,713 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_SUMMARY_STATISTICS=True, CONDITION_ON_CLIENT_PROPRIETARY=False
+2026-03-12 10:47:21,713 - [Intro] Paths — 
+  PARQUET_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics
+  PROPRIETARY_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  CLIENT_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-03-12 10:52:47,649 - [Metaorder summary] Sample counts — all_metaorders=844,914 (client=256,371, proprietary=588,543)
+2026-03-12 10:52:47,649 - [Metaorder summary][Nationality] all_it=26204, all_foreign=818710
+2026-03-12 10:52:49,374 - [Metaorder summary] Saved nationality-share figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/nationality_share_all_metaorders.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/png/nationality_share_all_metaorders.png
+2026-03-12 11:03:45,129 - [Intro] Metaorder summary-statistics run started...
+2026-03-12 11:03:45,129 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_SUMMARY_STATISTICS=True, CONDITION_ON_CLIENT_PROPRIETARY=False
+2026-03-12 11:03:45,129 - [Intro] Paths — 
+  PARQUET_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics
+  PROPRIETARY_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  CLIENT_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-03-12 11:08:32,824 - [Metaorder summary] Sample counts — all_metaorders=844,914 (client=256,371, proprietary=588,543)
+2026-03-12 11:08:32,824 - [Metaorder summary][Nationality] all_it=26204, all_foreign=818710
+2026-03-12 11:08:34,120 - [Metaorder summary] Saved nationality-share figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/nationality_share_all_metaorders.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/png/nationality_share_all_metaorders.png
+2026-03-12 11:09:24,657 - [Metaorder summary] Member metaorder profile table: members=73
+2026-03-12 11:09:24,659 - [Metaorder summary] Member metaorder profile table path=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_summary_statistics/member_metaorder_profiles_all_metaorders.parquet
+2026-03-12 11:09:26,405 - [Metaorder summary] Saved member metaorder profile figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/member_metaorder_profiles_all_metaorders.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/png/member_metaorder_profiles_all_metaorders.png
+2026-03-12 11:10:45,246 - [Metaorder summary] Mean daily metaorder-volume share by ISIN: all_metaorders=30.0855% (n_isins=41, n_isin_days=10291)
+2026-03-12 11:10:46,642 - [Metaorder summary] Saved mean daily share figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/mean_daily_metaorder_volume_share_all_metaorders.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/png/mean_daily_metaorder_volume_share_all_metaorders.png
+2026-03-12 11:20:06,561 - [Intro] Metaorder summary-statistics run started...
+2026-03-12 11:20:06,561 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, MEMBER_NATIONALITY=all, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_SUMMARY_STATISTICS=True, CONDITION_ON_CLIENT_PROPRIETARY=False
+2026-03-12 11:20:06,561 - [Intro] Paths — 
+  PARQUET_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics
+  PROPRIETARY_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+  CLIENT_DICT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-03-12 11:25:15,708 - [Metaorder summary] Sample counts — all_metaorders=844,914 (client=256,371, proprietary=588,543)
+2026-03-12 11:25:15,709 - [Metaorder summary][Nationality] all_it=26204, all_foreign=818710
+2026-03-12 11:25:17,347 - [Metaorder summary] Saved nationality-share figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/nationality_share_all_metaorders.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/png/nationality_share_all_metaorders.png
+2026-03-12 11:26:08,483 - [Metaorder summary] Member metaorder profile table: members=73
+2026-03-12 11:26:08,494 - [Metaorder summary] Member metaorder profile table path=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_summary_statistics/member_metaorder_profiles_all_metaorders.parquet
+2026-03-12 11:26:10,297 - [Metaorder summary] Saved member metaorder profile figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/member_metaorder_profiles_all_metaorders.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/png/member_metaorder_profiles_all_metaorders.png
+2026-03-12 11:27:37,787 - [Metaorder summary] Mean daily metaorder-volume share by ISIN: all_metaorders=30.0855% (n_isins=41, n_isin_days=10291)
+2026-03-12 11:27:40,242 - [Metaorder summary] Saved mean daily share figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/mean_daily_metaorder_volume_share_all_metaorders.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/png/mean_daily_metaorder_volume_share_all_metaorders.png

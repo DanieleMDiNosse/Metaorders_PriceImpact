@@ -130,6 +130,7 @@ TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
 LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
 TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
 LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
+ANNOTATION_FONT_SIZE = int(_CFG.get("ANNOTATION_FONT_SIZE", 14))
 
 apply_plotly_style(
     tick_font_size=TICK_FONT_SIZE,
@@ -2354,6 +2355,7 @@ def plot_daily_count_imbalance(daily_metaorders: pd.DataFrame, out_prefix: str) 
             xref="paper",
             yref="paper",
             showarrow=False,
+            font=dict(size=ANNOTATION_FONT_SIZE),
         )
     fig_hist.update_layout(
         title=hist_title,
@@ -2794,14 +2796,30 @@ def plot_imbalance_distributions(
     for values, label, color in within_series:
         added_within = _add_density_trace(fig, row=1, values=values, label=label, color=color) or added_within
     if not added_within:
-        fig.add_annotation(text="No within-group data", x=0.5, y=0.85, xref="paper", yref="paper", showarrow=False)
+        fig.add_annotation(
+            text="No within-group data",
+            x=0.5,
+            y=0.85,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            font=dict(size=ANNOTATION_FONT_SIZE),
+        )
 
     added_cross = False
     has_cross_cols = ("imbalance_client_env" in metaorders_proprietary.columns) and (
         "imbalance_prop_env" in metaorders_non_proprietary.columns
     )
     if not has_cross_cols:
-        fig.add_annotation(text="Cross-group imbalance columns not found", x=0.5, y=0.36, xref="paper", yref="paper", showarrow=False)
+        fig.add_annotation(
+            text="Cross-group imbalance columns not found",
+            x=0.5,
+            y=0.36,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            font=dict(size=ANNOTATION_FONT_SIZE),
+        )
         print("\n[Imbalance distribution] Cross-group imbalance columns not found; skipping cross density plot.")
     else:
         cross_series = [
@@ -2830,7 +2848,15 @@ def plot_imbalance_distributions(
         for values, label, color in cross_series:
             added_cross = _add_density_trace(fig, row=1, values=values, label=label, color=color) or added_cross
         if not added_cross:
-            fig.add_annotation(text="No cross-group data", x=0.5, y=0.36, xref="paper", yref="paper", showarrow=False)
+            fig.add_annotation(
+                text="No cross-group data",
+                x=0.5,
+                y=0.36,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=ANNOTATION_FONT_SIZE),
+            )
 
     fig.update_xaxes(title_text="Within-group imbalance", row=1, col=1)
     fig.update_yaxes(title_text="Density", row=1, col=1)

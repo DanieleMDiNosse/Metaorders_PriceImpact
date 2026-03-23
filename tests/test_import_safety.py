@@ -13,10 +13,16 @@ class TestImportSafety(unittest.TestCase):
 
         original_print = builtins.print
 
-        importlib.import_module("scripts.metaorder_statistics")
+        importlib.import_module("scripts.metaorder_summary_statistics")
+        self.assertIs(builtins.print, original_print)
+
+        importlib.import_module("scripts.metaorder_distributions")
         self.assertIs(builtins.print, original_print)
 
         importlib.import_module("scripts.crowding_analysis")
+        self.assertIs(builtins.print, original_print)
+
+        importlib.import_module("scripts.metaorder_start_event_study")
         self.assertIs(builtins.print, original_print)
 
         importlib.import_module("scripts.metaorder_computation")

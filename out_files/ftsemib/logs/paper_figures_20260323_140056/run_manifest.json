@@ -1,0 +1,38 @@
+{
+  "generated_at": "20260323_140056",
+  "paper_tex": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/main.tex",
+  "paper_figures_config": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/config_ymls/paper_figures.yml",
+  "dataset_name": "ftsemib",
+  "img_output_root": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images",
+  "targets": [
+    "impact"
+  ],
+  "explicit_figures": [],
+  "selected_figures": [
+    "images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png",
+    "images/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png",
+    "images/member_non_proprietary/png/power_law_fits_by_participation_rate.png",
+    "images/member_proprietary/png/power_law_fits_by_participation_rate.png",
+    "images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.png",
+    "images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.png",
+    "images/member_proprietary/png/normalized_impact_path_member_proprietary.png",
+    "images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side.png",
+    "images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary.png",
+    "images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side.png"
+  ],
+  "tasks": [
+    "impact_main",
+    "impact_overlays"
+  ],
+  "style_updates": {
+    "TICK_FONT_SIZE": 16,
+    "LABEL_FONT_SIZE": 18,
+    "TITLE_FONT_SIZE": 19,
+    "LEGEND_FONT_SIZE": 16,
+    "ANNOTATION_FONT_SIZE": 14
+  },
+  "stage_all": "IMPACT_BY_SIDE",
+  "stage_it": "NONE",
+  "python_executable": "/home/danielemdn/miniconda3/envs/main/bin/python",
+  "dry_run": false
+}

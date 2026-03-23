@@ -1,0 +1,22 @@
+[Prop vs Non-Prop] Comparison run started...
+[Prop vs Non-Prop] Parameters — 
+  DATASET=ftsemib
+  RUN_POWER_LAW_OVERLAY=True
+  RUN_RETENTION_BOOTSTRAP=False
+  FIT_N_LOGBINS=30, FIT_MIN_COUNT=20, FIT_USE_MEDIAN=False
+  RETENTION_TAU_START=1.0, RETENTION_TAU_END=3.0, RETENTION_BOOTSTRAP_RUNS=10000, RETENTION_ALPHA=0.01, RETENTION_RANDOM_STATE=0, RETENTION_SIDE_FILTER=None
+[Prop vs Non-Prop] Paths — 
+  PROPRIETARY_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+  SUMMARY_OUTPUT_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/prop_vs_nonprop
+  IMG_DIR=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop
+[Proprietary] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+[Client] Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+[Proprietary][Fit] Rows after filtering: 588,172
+[Client][Fit] Rows after filtering: 255,499
+[Proprietary][Fit] Y=0.0726443 +/- 0.00366 | gamma=0.366203 +/- 0.00828 | R2_log=0.9864 | R2_lin=0.9877 | bins=29
+[Proprietary][Log Fit] a=0.00677111 +/- 0.000112 | b=6650.44 +/- 305 | R2_lin=0.9234 | bins=29
+[Client][Fit] Y=0.128059 +/- 0.0154 | gamma=0.508211 +/- 0.0228 | R2_log=0.9593 | R2_lin=0.9511 | bins=23
+[Client][Log Fit] a=0.0144226 +/- 0.000614 | b=682.272 +/- 54.3 | R2_lin=0.9934 | bins=23
+[Prop vs Non-Prop] Saved power-law overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/html/power_law_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png
+[Prop vs Non-Prop] Saved logarithmic overlay figure to HTML=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/html/logarithmic_prop_vs_nonprop.html PNG=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/png/logarithmic_prop_vs_nonprop.png

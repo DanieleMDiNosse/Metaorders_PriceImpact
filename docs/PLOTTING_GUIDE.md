@@ -1,141 +1,148 @@
-# Plotting Guide (Titles, Labels, Styling, Exports)
+# Plotting Guide
 
-This repository uses a Plotly-first workflow with shared helpers so plots look consistent across scripts.
+The repository uses a Plotly-first workflow with shared helpers in
+`moimpact/plot_style.py` and `moimpact/plotting.py`. This note documents the
+current conventions so new analyses match the existing output tree and styling.
 
-## 1) Shared plotting modules
+## Shared plotting modules
 
-- `moimpact/plot_style.py`
-  - Registers a global Plotly template via `apply_plotly_style(...)`.
-  - Controls default font family, color palette, grid color, and default font sizes.
-- `moimpact/plotting.py`
-  - Provides canonical output folder handling:
-    - `make_plot_output_dirs(...)`
-    - `ensure_plot_dirs(...)`
-  - Provides unified export:
-    - `save_plotly_figure(...)` (writes HTML and/or PNG).
-  - Defines canonical colors (for proprietary/client/bands).
+`moimpact/plot_style.py`
 
-## 2) Fastest way to change titles and axis labels
+- defines the repository theme colors
+- registers the `moimpact_white` Plotly template
+- exposes `apply_plotly_style(...)`
 
-For any `go.Figure`:
+`moimpact/plotting.py`
+
+- defines canonical group colors:
+  - `COLOR_PROPRIETARY`
+  - `COLOR_CLIENT`
+  - `COLOR_NEUTRAL`
+  - confidence-band colors
+- provides `PlotOutputDirs`
+- provides:
+  - `make_plot_output_dirs(...)`
+  - `ensure_plot_dirs(...)`
+  - `save_plotly_figure(...)`
+
+## Default output layout
+
+Most scripts call:
 
 ```python
-fig.update_layout(
-    title="My New Title",
-    xaxis_title="X label",
-    yaxis_title="Y label",
-)
+dirs = make_plot_output_dirs(Path("images/my_analysis"), use_subdirs=True)
 ```
 
-For subplots:
+which implies:
+
+- HTML files go to `.../html/`
+- PNG files go to `.../png/`
+
+The helper creates directories on demand through `ensure_plot_dirs(...)`.
+
+## Shared save helper
+
+Canonical export pattern:
 
 ```python
-fig.update_xaxes(title_text="X label", row=1, col=1)
-fig.update_yaxes(title_text="Y label", row=1, col=1)
-```
-
-For Plotly Express (e.g. `px.bar`, `px.line`), set labels at creation time:
-
-```python
-fig = px.bar(
-    df,
-    x="col_x",
-    y="col_y",
-    title="My New Title",
-    labels={"col_x": "X label", "col_y": "Y label"},
-)
-```
-
-## 3) Global font-size styling (recommended)
-
-Most scripts load these values from YAML:
-
-- `TICK_FONT_SIZE`
-- `LABEL_FONT_SIZE`
-- `TITLE_FONT_SIZE`
-- `LEGEND_FONT_SIZE`
-
-Config files:
-
-- `config_ymls/metaorder_computation.yml`
-- `config_ymls/metaorder_statistics.yml`
-- `config_ymls/crowding_analysis.yml`
-
-Each script then calls:
-
-```python
-apply_plotly_style(
-    tick_font_size=...,
-    label_font_size=...,
-    title_font_size=...,
-    legend_font_size=...,
-    theme_colorway=THEME_COLORWAY,
-    theme_grid_color=THEME_GRID_COLOR,
-    theme_bg_color=THEME_BG_COLOR,
-    theme_font_family=THEME_FONT_FAMILY,
-)
-```
-
-If you want all plots in a script to use bigger/smaller text, change these four values first.
-
-## 4) Changing colors
-
-- Main palette: `THEME_COLORWAY` in `moimpact/plot_style.py`
-- Group colors used across analyses: `COLOR_PROPRIETARY`, `COLOR_CLIENT`, and confidence-band colors in `moimpact/plotting.py`
-
-If you change colors there, all scripts importing these constants will inherit the new palette.
-
-## 5) Saving HTML/PNG consistently
-
-Use the shared save helper instead of custom file writing:
-
-```python
-plot_dirs = make_plot_output_dirs(Path("images/my_analysis"), use_subdirs=True)
 html_path, png_path = save_plotly_figure(
     fig,
-    stem="my_plot_name",
-    dirs=plot_dirs,
+    stem="my_plot",
+    dirs=dirs,
     write_html=True,
     write_png=True,
     strict_png=False,
 )
 ```
 
-Notes:
+Important behavior in `save_plotly_figure(...)`:
 
-- With `use_subdirs=True`, files go into `.../html/` and `.../png/`.
-- PNG export requires Plotly static export backend (`kaleido`).
-- If PNG export fails and `strict_png=False`, HTML is still written.
+- HTML export includes Plotly JS from CDN
+- HTML export includes MathJax from CDN, so LaTeX labels render in saved HTML
+- PNG export uses Plotly's static backend, typically `kaleido`
+- if `strict_png=False`, failed PNG export does not block HTML export
 
-## 6) Where to edit existing plots
+Pipeline-level legend suppression:
+
+- setting `DISABLE_PLOT_LEGENDS=true` hides legends for all figures saved
+  through the shared helper
+
+## Title handling
+
+Several scripts wrap the shared save helper and remove top-level titles before
+export so that paper captions carry the final title text. Current wrappers
+exist in:
 
 - `scripts/metaorder_computation.py`
-  - Edit `fig.update_layout(...)` in plot functions like `plot_fit`, `plot_normalized_impact_path`, and surface/heatmap helpers.
-- `scripts/metaorder_statistics.py`
-  - Edit titles/labels in `fig.update_layout(...)` and `px.*(..., labels=..., title=...)` inside stats plotting blocks.
-- `scripts/crowding_analysis.py`
-  - Edit titles/labels inside plotting helpers like `plot_daily_crowding`, `plot_imbalance_distributions`, and return/ACF plotting functions.
-- `scripts/member_statistics.py`
-  - Edit titles/labels in `px.bar(...)`, heatmap layout blocks, and helper `save_plotly`.
-- `scripts/crowding_vs_part_rate.py`
-  - Edit shared plot helpers `_plotly_curve_date_ci(...)` and `plotly_heatmap_align(...)`.
-- `scripts/plot_prop_nonprop_fits.py`
-  - Quick title override from CLI:
-    - `python scripts/plot_prop_nonprop_fits.py --title "Your title"`
+- `scripts/metaorder_distributions.py`
+- `scripts/metaorder_summary_statistics.py`
+- `scripts/metaorder_intraday_analysis.py`
+- `scripts/metaorder_start_event_study.py`
+- `scripts/metaorder_clustering.py`
 
-## 7) Minimal pattern for new plots
+If you want the exported file to keep its title, check whether the script uses a
+local `save_plotly_figure(...)` wrapper that calls `fig.update_layout(title=None)`.
+
+## Global style knobs
+
+Most plotting scripts read font sizes from YAML:
+
+- `TICK_FONT_SIZE`
+- `LABEL_FONT_SIZE`
+- `TITLE_FONT_SIZE`
+- `LEGEND_FONT_SIZE`
+- `ANNOTATION_FONT_SIZE` in scripts that use subplot annotations
+
+These values are passed into `apply_plotly_style(...)`.
+
+Configs that currently expose these keys include:
+
+- `config_ymls/metaorder_computation.yml`
+- `config_ymls/metaorder_distributions.yml`
+- `config_ymls/metaorder_summary_statistics.yml`
+- `config_ymls/crowding_analysis.yml`
+- `config_ymls/metaorder_start_event_study.yml`
+- `config_ymls/metaorder_intraday_analysis.yml`
+- `config_ymls/plot_prop_nonprop_fits.yml`
+- `config_ymls/paper_figures.yml`
+
+## Common places to edit plots
+
+- `scripts/metaorder_computation.py`
+  - one-dimensional fits, surfaces, and impact paths
+- `scripts/metaorder_distributions.py`
+  - multi-panel distribution figure and fit annotations
+- `scripts/metaorder_summary_statistics.py`
+  - nationality, member profile, and daily-share figures
+- `scripts/crowding_analysis.py`
+  - daily crowding, diagnostics, and member-level plots
+- `scripts/crowding_vs_part_rate.py`
+  - `eta` curves, noise bands, and optional heatmaps
+- `scripts/metaorder_start_event_study.py`
+  - treated-vs-control event curves
+- `scripts/metaorder_intraday_analysis.py`
+  - session counts and session fit comparisons
+- `scripts/metaorder_clustering.py`
+  - PCA, silhouette, composition, and cluster-profile figures
+
+## Minimal new-figure pattern
 
 ```python
-import plotly.graph_objects as go
 from pathlib import Path
+import plotly.graph_objects as go
+
 from moimpact.plotting import make_plot_output_dirs, save_plotly_figure
 
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=[1, 2, 3], y=[2, 1, 3], mode="lines+markers", name="Series"))
-fig.update_layout(title="Example", xaxis_title="X", yaxis_title="Y")
+fig.add_trace(go.Scatter(x=[1, 2, 3], y=[2, 1, 3], mode="lines+markers"))
+fig.update_layout(xaxis_title="X", yaxis_title="Y")
 
 dirs = make_plot_output_dirs(Path("images/example"), use_subdirs=True)
 save_plotly_figure(fig, stem="example_plot", dirs=dirs, write_html=True, write_png=True, strict_png=False)
 ```
 
-This keeps output structure and styling aligned with the rest of the repository.
+## Related docs
+
+- [`index.md`](index.md)
+- [`market_impact.md`](market_impact.md)
+- [`imbalance_and_crowding.md`](imbalance_and_crowding.md)

@@ -171,6 +171,7 @@ def save_plotly_figure(
     height: int = PLOTLY_EXPORT_HEIGHT,
     scale: int = PLOTLY_EXPORT_SCALE,
     include_plotlyjs: str = "cdn",
+    include_mathjax: str = "cdn",
     write_html: bool = True,
     write_png: bool = True,
     strict_png: bool = False,
@@ -196,6 +197,9 @@ def save_plotly_figure(
         Plotly export scale multiplier for PNG quality.
     include_plotlyjs : str, default="cdn"
         Plotly JS inclusion mode for HTML exports.
+    include_mathjax : str, default="cdn"
+        MathJax inclusion mode for HTML exports. The default ensures LaTeX
+        text in annotations, titles, and axis labels renders in saved HTML.
     write_html : bool, default=True
         Whether to save the interactive HTML file.
     write_png : bool, default=True
@@ -212,6 +216,8 @@ def save_plotly_figure(
     Notes
     -----
     PNG export relies on Plotly's static export backend (usually `kaleido`).
+    HTML exports load MathJax by default so saved figures preserve LaTeX
+    formatting used across the research plots.
 
     Examples
     --------
@@ -227,7 +233,11 @@ def save_plotly_figure(
 
     if write_html:
         html_path = dirs.html_dir / f"{stem}.html"
-        fig.write_html(str(html_path), include_plotlyjs=include_plotlyjs)
+        fig.write_html(
+            str(html_path),
+            include_plotlyjs=include_plotlyjs,
+            include_mathjax=include_mathjax,
+        )
 
     if write_png:
         png_path_tmp = dirs.png_dir / f"{stem}.png"

@@ -8,7 +8,8 @@ executed by Italian members (member nationality tag = ``it``) and writes:
 - a CSV summary under ``out_files/{DATASET_NAME}/paper_appendix/``
 - a LaTeX table under ``paper/tables/`` (to be included in the manuscript appendix)
 
-The definitions match those used in ``scripts/metaorder_statistics.py``:
+The definitions match those used in ``scripts/metaorder_distributions.py`` and
+the shared sample helpers in ``moimpact/metaorder_distribution_samples.py``:
 - metaorders are read from the metaorder-index dictionaries (pickle)
 - trade-level quantities are taken from the per-ISIN tapes in ``data/parquet``
 - durations and inter-arrivals are computed from child-trade timestamps
@@ -201,7 +202,7 @@ def _volume_over_window(
 
     Notes
     -----
-    The implementation mirrors the helper in `scripts/metaorder_statistics.py`.
+    The implementation mirrors the shared metaorder sample-construction logic.
     """
 
     start_idx = np.searchsorted(ts_ns, start_ns, side="left")
@@ -625,4 +626,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -6,9 +6,11 @@
 # proprietary/client split and member-nationality slices.
 #
 # Parallelism:
-# - Independent (PROPRIETARY, MEMBER_NATIONALITY) slices are run in parallel as
-#   separate `python` processes (no shared state). Control concurrency via
-#   `MAX_JOBS` (default: 4).
+# - `metaorder_computation.py` runs independent `(PROPRIETARY,
+#   MEMBER_NATIONALITY)` slices in parallel.
+# - `metaorder_distributions.py` and `metaorder_summary_statistics.py` each run
+#   one comparison job per `MEMBER_NATIONALITY` slice.
+# - Control concurrency via `MAX_JOBS` (default: 4).
 #
 # Runtime controls:
 # - DISABLE_PLOT_LEGENDS=true|false (default: false): force hide legends in all
@@ -20,7 +22,8 @@
 # - Never edits `config_ymls/*.yml` in place. Each run uses a temporary YAML copy
 #   passed via environment variables:
 #     - METAORDER_COMP_CONFIG for `scripts/metaorder_computation.py`
-#     - METAORDER_STATS_CONFIG for `scripts/metaorder_statistics.py`
+#     - METAORDER_DISTRIBUTIONS_CONFIG for `scripts/metaorder_distributions.py`
+#     - METAORDER_SUMMARY_STATS_CONFIG for `scripts/metaorder_summary_statistics.py`
 #     - CROWDING_CONFIG for `scripts/crowding_analysis.py`
 # - Runs the CSV->parquet transform step (RUN_INTRO) once, serially, before
 #   launching parallel jobs, because it writes to `data/parquet/`.
@@ -31,15 +34,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 METAORDER_COMP_CFG="config_ymls/metaorder_computation.yml"
-METAORDER_STATS_CFG="config_ymls/metaorder_statistics.yml"
+METAORDER_DISTRIBUTIONS_CFG="config_ymls/metaorder_distributions.yml"
+METAORDER_SUMMARY_CFG="config_ymls/metaorder_summary_statistics.yml"
 CROWDING_CFG="config_ymls/crowding_analysis.yml"
 
 if [[ ! -f "$METAORDER_COMP_CFG" ]]; then
   echo "[error] Missing config: $METAORDER_COMP_CFG" >&2
   exit 1
 fi
-if [[ ! -f "$METAORDER_STATS_CFG" ]]; then
-  echo "[error] Missing config: $METAORDER_STATS_CFG" >&2
+if [[ ! -f "$METAORDER_DISTRIBUTIONS_CFG" ]]; then
+  echo "[error] Missing config: $METAORDER_DISTRIBUTIONS_CFG" >&2
+  exit 1
+fi
+if [[ ! -f "$METAORDER_SUMMARY_CFG" ]]; then
+  echo "[error] Missing config: $METAORDER_SUMMARY_CFG" >&2
   exit 1
 fi
 if [[ ! -f "$CROWDING_CFG" ]]; then
@@ -309,21 +317,32 @@ metaorder_slice_job() (
   METAORDER_COMP_CONFIG="$cfg" python scripts/metaorder_computation.py
 )
 
-metaorder_stats_slice_job() (
+metaorder_distributions_job() (
   set -euo pipefail
-  local proprietary="$1"
-  local member_nationality="$2"
+  local member_nationality="$1"
   local tmpdir cfg
   tmpdir="$(mktemp -d)"
   trap 'rm -rf "$tmpdir"' EXIT
-  cfg="$tmpdir/metaorder_statistics.yml"
-  cp "$METAORDER_STATS_CFG" "$cfg"
+  cfg="$tmpdir/metaorder_distributions.yml"
+  cp "$METAORDER_DISTRIBUTIONS_CFG" "$cfg"
   apply_img_output_override "$cfg"
-
-  set_yaml_bool "$cfg" "METAORDER_STATS_PROPRIETARY" "$proprietary"
   set_yaml_scalar "$cfg" "MEMBER_NATIONALITY" "$member_nationality"
 
-  METAORDER_STATS_CONFIG="$cfg" python scripts/metaorder_statistics.py
+  METAORDER_DISTRIBUTIONS_CONFIG="$cfg" python scripts/metaorder_distributions.py
+)
+
+metaorder_summary_stats_job() (
+  set -euo pipefail
+  local member_nationality="$1"
+  local tmpdir cfg
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir"' EXIT
+  cfg="$tmpdir/metaorder_summary_statistics.yml"
+  cp "$METAORDER_SUMMARY_CFG" "$cfg"
+  apply_img_output_override "$cfg"
+  set_yaml_scalar "$cfg" "MEMBER_NATIONALITY" "$member_nationality"
+
+  METAORDER_SUMMARY_STATS_CONFIG="$cfg" python scripts/metaorder_summary_statistics.py
 )
 
 crowding_job() (
@@ -352,13 +371,19 @@ for member_nationality in all it foreign; do
 done
 wait_all_jobs
 
-echo "[phase] scripts/metaorder_statistics.py slices (parallel)"
+echo "[phase] scripts/metaorder_distributions.py slices (parallel)"
 for member_nationality in all it foreign; do
-  for proprietary in true false; do
-    label="metaorder_statistics (PROPRIETARY=${proprietary}, MEMBER_NATIONALITY=${member_nationality})"
-    log_path="${PIPELINE_LOG_DIR}/metaorder_statistics_prop_${proprietary}_nat_${member_nationality}.log"
-    start_job "$label" "$log_path" metaorder_stats_slice_job "$proprietary" "$member_nationality"
-  done
+  label="metaorder_distributions (MEMBER_NATIONALITY=${member_nationality})"
+  log_path="${PIPELINE_LOG_DIR}/metaorder_distributions_nat_${member_nationality}.log"
+  start_job "$label" "$log_path" metaorder_distributions_job "$member_nationality"
+done
+wait_all_jobs
+
+echo "[phase] scripts/metaorder_summary_statistics.py slices (parallel)"
+for member_nationality in all it foreign; do
+  label="metaorder_summary_statistics (MEMBER_NATIONALITY=${member_nationality})"
+  log_path="${PIPELINE_LOG_DIR}/metaorder_summary_statistics_nat_${member_nationality}.log"
+  start_job "$label" "$log_path" metaorder_summary_stats_job "$member_nationality"
 done
 wait_all_jobs
 

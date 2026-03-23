@@ -7,14 +7,14 @@ import numpy as np
 import pandas as pd
 
 from moimpact.plotting import COLOR_CLIENT, COLOR_PROPRIETARY
-from scripts.metaorder_statistics import (
+from scripts.metaorder_summary_statistics import (
     _daily_metaorder_volume,
     build_daily_metaorder_share_table,
     build_mean_daily_metaorder_share_figure,
 )
 
 
-class TestMetaorderStatisticsHelpers(unittest.TestCase):
+class TestMetaorderSummaryStatisticsHelpers(unittest.TestCase):
     def test_daily_metaorder_volume_aggregates_by_start_day(self) -> None:
         trades = pd.DataFrame(
             {
@@ -87,7 +87,7 @@ class TestMetaorderStatisticsHelpers(unittest.TestCase):
         np.testing.assert_allclose(traces["Proprietary"].y, [10.0, 5.0])
         np.testing.assert_allclose(traces["Client"].y, [12.5, 10.0])
         self.assertEqual(fig.layout.barmode, "stack")
-        self.assertFalse(bool(fig.layout.showlegend))
+        self.assertTrue(bool(fig.layout.showlegend))
         np.testing.assert_allclose(traces["Proprietary"].customdata[:, 0], [22.5, 15.0])
         np.testing.assert_array_equal(traces["Proprietary"].customdata[:, 1], [2, 1])
 

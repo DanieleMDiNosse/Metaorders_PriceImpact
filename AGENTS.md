@@ -14,7 +14,7 @@ Core questions the code supports:
 ### One-command pipeline (recommended)
 - `bash run_all_pipelines.sh`
   - Activates conda env `main`.
-  - Runs `scripts/metaorder_computation.py` twice (`PROPRIETARY=true/false`), `scripts/metaorder_statistics.py` twice, then `scripts/crowding_analysis.py`, then `scripts/member_statistics.py`.
+  - Runs `scripts/metaorder_computation.py` twice (`PROPRIETARY=true/false`), then `scripts/metaorder_distributions.py`, `scripts/metaorder_summary_statistics.py`, `scripts/crowding_analysis.py`, and `scripts/member_statistics.py`.
   - Temporarily edits YAML configs under `config_ymls/` and restores them on exit.
 
 ### Core scripts (paper backend)
@@ -28,10 +28,15 @@ Core questions the code supports:
     - `LEVEL: member|client`, `PROPRIETARY: true|false`
     - `MEMBER_NATIONALITY: null|it|foreign` (optional filter applied on the tape column `Aggressive Member Nationality`)
 
-- `scripts/metaorder_statistics.py` (metaorder distributions + auxiliary diagnostics)
-  - Inputs: per‑metaorder parquet(s) from `out_files/{DATASET_NAME}/...` and (optionally) trade tapes from `data/parquet/`.
-  - Outputs: distribution figures and diagnostics under `images/{DATASET_NAME}/{METAORDER_STATS_LEVEL}_{proprietary_tag}/png/` and `.../html/` plus `metaorder_statistics.log`.
-  - Config: `config_ymls/metaorder_statistics.yml`.
+- `scripts/metaorder_distributions.py` (combined distribution diagnostics + power-law overlays)
+  - Inputs: proprietary and client metaorder dictionaries from `out_files/{DATASET_NAME}/...` plus the per-ISIN trade tapes from `data/parquet/`.
+  - Outputs: one combined distributions figure under `images/{DATASET_NAME}/{LEVEL}_metaorder_distributions/png/` and `.../html/`, plus fit-summary tables under `out_files/{DATASET_NAME}/{LEVEL}_metaorder_distributions/`.
+  - Config: `config_ymls/metaorder_distributions.yml`.
+
+- `scripts/metaorder_summary_statistics.py` (member profile, nationality share, and mean daily metaorder-volume share)
+  - Inputs: proprietary and client metaorder dictionaries from `out_files/{DATASET_NAME}/...` plus the per-ISIN trade tapes from `data/parquet/`.
+  - Outputs: combined summary figures under `images/{DATASET_NAME}/{LEVEL}_metaorder_summary_statistics/png/` and `.../html/`.
+  - Config: `config_ymls/metaorder_summary_statistics.yml`.
 
 - `scripts/crowding_analysis.py` (canonical “prop vs client” crowding figures)
   - Inputs: filtered per‑metaorder parquets produced by `scripts/metaorder_computation.py`.
@@ -87,7 +92,7 @@ Treat YAML files in `config_ymls/` as the single source of truth for defaults:
   - identification/filtering knobs: `LEVEL`, `PROPRIETARY`, `MIN_TRADES`, `SECONDS_FILTER`, `MAX_GAP`, `TRADING_HOURS`
   - normalization knobs: `Q_V_DENOMINATOR_MODE ∈ {same_day, prev_day, avg_5d}`, `DAILY_VOL_MODE ∈ {same_day, prev_day, avg_5d}`
   - estimation knobs: `N_LOGBIN`, `MIN_COUNT`, `MIN_QV`, `RESAMPLE_FREQ`
-- `config_ymls/crowding_analysis.yml` and `config_ymls/metaorder_statistics.yml`
+- `config_ymls/crowding_analysis.yml`, `config_ymls/metaorder_distributions.yml`, and `config_ymls/metaorder_summary_statistics.yml`
   - inference knobs: `BOOTSTRAP_RUNS`, `ALPHA`, `MIN_N`, `SMOOTHING_DAYS`
   - plotting toggles and (if used) permutation/heatmap controls
 
@@ -135,4 +140,5 @@ and keep a manifest in that folder. (Some scripts already do this partially; if 
 - Impact fits and filters: `docs/POWER_LAW_IMPACT_FITS.md`
 - Crowding definitions and inference: `docs/prop_vs_nonprop.md`
 - Metaorder distributions: `docs/metaorder_distributions.md`
+- Metaorder summary statistics: `docs/metaorder_summary_statistics.md`
 - Paper artifacts and figure syncing: see `paper/AGENTS.md`

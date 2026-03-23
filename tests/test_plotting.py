@@ -65,3 +65,28 @@ class TestPlottingHelpers(unittest.TestCase):
             self.assertFalse(bool(fig.layout.showlegend))
             self.assertIsNotNone(html_path)
             self.assertIsNone(png_path)
+
+    def test_save_plotly_figure_enables_mathjax_in_html_exports(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirs = make_plot_output_dirs(Path(tmpdir) / "plots", use_subdirs=True)
+            ensure_plot_dirs(dirs)
+
+            fig = go.Figure(data=[go.Scatter(x=[1, 2], y=[1, 4], mode="lines")])
+            fig.update_layout(
+                title="$x$",
+                annotations=[dict(text="$x_{\\min}$", x=1, y=4, showarrow=False)],
+            )
+            html_path, png_path = save_plotly_figure(
+                fig,
+                stem="mathjax_on",
+                dirs=dirs,
+                write_html=True,
+                write_png=False,
+            )
+
+            self.assertIsNotNone(html_path)
+            html_text = html_path.read_text(encoding="utf-8")
+            self.assertIn("MathJax.js", html_text)
+            self.assertIn("$x_{\\\\min}$", html_text)
+            self.assertEqual(html_path, dirs.html_dir / "mathjax_on.html")
+            self.assertIsNone(png_path)

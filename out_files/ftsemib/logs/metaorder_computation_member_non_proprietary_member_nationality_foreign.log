@@ -305,3 +305,14 @@
 2026-02-22 10:24:05,119 - [Bivariate Fits]   R^2_lin = 0.7964
 2026-02-22 10:24:08,435 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_non_proprietary/html/impact_surface_qv_duration_sell_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_foreign.html
 2026-02-22 10:24:08,436 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images_new/member_non_proprietary/png/impact_surface_qv_duration_sell_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_foreign.png
+2026-03-12 15:20:46,367 - [Intro] Ensuring parquet transforms are up to date...
+2026-03-12 15:20:46,368 - [Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=False, DATASET=ftsemib,   MEMBER_NATIONALITY=foreign,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+2026-03-12 15:20:46,368 - [Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/images/ftsemib
+2026-03-12 15:20:46,452 - [Intro] Parquet files available for dataset 'ftsemib': 41
+
+2026-03-12 15:20:46,452 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...

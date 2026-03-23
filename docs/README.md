@@ -1,39 +1,64 @@
-# Metaorders_PriceImpact
+# Metaorders_PriceImpact Docs
 
-Toolkit for detecting metaorders in CONSOB trade data, measuring price impact, and studying crowding between proprietary and client flow.
+This folder documents the current research pipeline, not just one historical
+run. The goal is to keep the markdown aligned with the live scripts under
+`scripts/`, the shared helpers under `moimpact/`, and the YAML contracts under
+`config_ymls/`.
 
-## Main scripts
-- `scripts/metaorder_computation.py`:
-  - builds metaorders and per-metaorder tables in `out_files/{DATASET_NAME}/`
-  - writes impact/fits/surfaces/paths in `images/{DATASET_NAME}/{LEVEL}_{PROPRIETARY_TAG}/png/` and `images/{DATASET_NAME}/{LEVEL}_{PROPRIETARY_TAG}/html/`
-- `scripts/metaorder_statistics.py`:
-  - computes metaorder-dictionary distribution diagnostics (durations, inter-arrivals, volumes, Q/V, participation, nationality share)
-  - writes figures in `images/{DATASET_NAME}/{METAORDER_STATS_LEVEL}_{METAORDER_STATS_PROPRIETARY_TAG}/png/` and `.../html/`
-- `scripts/crowding_analysis.py`:
-  - runs proprietary vs client crowding analyses (within-group, cross-group, all-vs-all, member-level, diagnostics)
-  - writes figures in `images/{DATASET_NAME}/prop_vs_nonprop/png/` and `.../html/`
-- `scripts/plot_prop_nonprop_fits.py`:
-  - overlays proprietary vs client impact fits from filtered parquet outputs
-  - if `--out images/{DATASET_NAME}/prop_vs_nonprop/power_law_prop_vs_nonprop.png`, output files are written to `.../prop_vs_nonprop/png/` and `.../prop_vs_nonprop/html/`
-- `scripts/member_statistics.py`:
-  - computes member/ISIN descriptive plots in `images/ftsemib/member_statistics/png/` and `.../html/`
-- `run_all_pipelines.sh`:
-  - activates conda env `main`, runs computation/statistics for both groups, then crowding and member stats
+Start here:
 
-## Data and outputs
-- Inputs are config-driven. Current defaults are:
-  - raw CSV: `data/csv/*.csv`
-  - trade tapes: `data/parquet/*.parquet`
-- Tables/serialized outputs: `out_files/{DATASET_NAME}/...`
-- Figures: `images/{DATASET_NAME}/...` with canonical `png/` and `html/` subfolders.
-- Logs are written under `out_files/{DATASET_NAME}/logs/` for pipeline scripts, plus script-level logs where applicable.
+- [`index.md`](index.md): repository overview, workflow map, inputs, outputs,
+  and the main entrypoints.
+- [`market_impact.md`](market_impact.md): metaorder construction, impact
+  normalization, power-law/log fits, surfaces, and impact-path outputs.
+- [`imbalance_and_crowding.md`](imbalance_and_crowding.md): within-group,
+  cross-group, all-others, and member-level crowding analyses.
+- [`bootstrap_methods.md`](bootstrap_methods.md): bootstrap and permutation
+  schemes used across crowding, event-study, retention, and distribution fits.
+- [`metaorder_distributions.md`](metaorder_distributions.md): combined client
+  vs proprietary distribution diagnostics and tail-model overlays.
+- [`metaorder_summary_statistics.md`](metaorder_summary_statistics.md):
+  nationality share, member profiles, and mean daily metaorder-volume share.
+- [`metaorder_start_event_study.md`](metaorder_start_event_study.md): matched
+  event-study of metaorder starts around high-participation anchors.
+- [`PLOTTING_GUIDE.md`](PLOTTING_GUIDE.md): shared Plotly styling and export
+  conventions.
 
-## Running
-Typical usage from repo root:
-- `conda activate main`
-- `python scripts/metaorder_computation.py` (run once with `PROPRIETARY=true`, once with `PROPRIETARY=false`)
-- `python scripts/metaorder_statistics.py` (run once with `METAORDER_STATS_PROPRIETARY=true`, once with `METAORDER_STATS_PROPRIETARY=false`)
-- `python scripts/crowding_analysis.py`
-- `python scripts/member_statistics.py`
-- optional: `python scripts/plot_prop_nonprop_fits.py --out images/{DATASET_NAME}/prop_vs_nonprop/power_law_prop_vs_nonprop.png`
-- one-shot: `bash run_all_pipelines.sh`
+Supporting notes:
+
+- [`crowding_review.md`](crowding_review.md): editorial checklist for the
+  crowding section in `paper/main.tex`. This is not the method source of truth;
+  use the crowding and bootstrap docs above for the implemented workflow.
+
+Quick start from the repo root:
+
+```bash
+source /home/danielemdn/miniconda3/etc/profile.d/conda.sh
+conda activate main
+bash run_all_pipelines.sh
+```
+
+Common script-level entrypoints:
+
+```bash
+python scripts/metaorder_computation.py
+python scripts/metaorder_distributions.py
+python scripts/metaorder_summary_statistics.py
+python scripts/crowding_analysis.py
+python scripts/metaorder_start_event_study.py
+python scripts/metaorder_intraday_analysis.py
+python scripts/plot_prop_nonprop_fits.py
+python scripts/metaorder_clustering.py
+python scripts/generate_paper_figures.py
+```
+
+Most scripts also support config overrides via environment variables. The main
+ones are:
+
+- `METAORDER_COMP_CONFIG`
+- `METAORDER_DISTRIBUTIONS_CONFIG`
+- `METAORDER_SUMMARY_STATS_CONFIG`
+- `CROWDING_CONFIG`
+- `METAORDER_INTRADAY_CONFIG`
+- `PLOT_PROP_NONPROP_FITS_CONFIG`
+- `PAPER_FIGURES_CONFIG`

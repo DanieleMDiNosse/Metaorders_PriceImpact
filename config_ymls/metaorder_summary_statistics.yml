@@ -1,0 +1,25 @@
+# metaorder_summary_statistics.py configuration
+
+# Plotting
+TICK_FONT_SIZE: 16
+LABEL_FONT_SIZE: 18
+TITLE_FONT_SIZE: 19
+LEGEND_FONT_SIZE: 16
+ANNOTATION_FONT_SIZE: 14
+
+# Dataset and paths
+DATASET_NAME: ftsemib
+LEVEL: member
+# You may use placeholders: {DATASET_NAME}, {LEVEL}, {MEMBER_NATIONALITY_TAG}.
+PARQUET_PATH: data/parquet
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+
+# Trade-tape filtering
+TRADING_HOURS: ["09:30:00", "17:30:00"]
+MEMBER_NATIONALITY: null  # null/all -> no filter; "it" or "foreign" to match metaorder_computation
+
+# Execution
+RUN_METAORDER_SUMMARY_STATISTICS: true
+PROPRIETARY_DICT_PATH: null  # null -> {OUTPUT_FILE_PATH}/metaorders_dict_all_{LEVEL}_proprietary[ _member_nationality_{it|foreign} ].pkl
+CLIENT_DICT_PATH: null  # null -> {OUTPUT_FILE_PATH}/metaorders_dict_all_{LEVEL}_non_proprietary[ _member_nationality_{it|foreign} ].pkl

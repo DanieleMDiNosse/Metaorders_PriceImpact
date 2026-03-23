@@ -1,0 +1,46 @@
+# metaorder_start_event_study.py configuration
+
+# Plotting
+TICK_FONT_SIZE: 16
+LABEL_FONT_SIZE: 18
+TITLE_FONT_SIZE: 19
+LEGEND_FONT_SIZE: 16
+
+# Dataset label
+DATASET_NAME: ftsemib
+
+# Paths
+# You may use placeholders: {DATASET_NAME}.
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+
+# Inputs (override if needed)
+PROP_PATH: null
+CLIENT_PATH: null
+
+# Output subfolder
+ANALYSIS_TAG: metaorder_start_event_study
+
+# Session used for exposure correction
+TRADING_HOURS: ["09:30:00", "17:30:00"]
+
+# Event-study design
+EVENT_WINDOW_MINUTES: 30
+BIN_MINUTES: 5
+MATCHING_BUCKET_MINUTES: 30
+HIGH_ETA_QUANTILE: 0.5
+
+# Inference
+ALPHA: 0.05
+BOOTSTRAP_RUNS: 1000
+PERMUTATION_RUNS: 1000
+SEED: 0
+
+# Robustness
+RUN_SAME_ACTOR_ROBUSTNESS: true
+SAME_ACTOR_KEY: auto  # auto -> Member if present, else Client if present
+
+# Outputs
+PLOTS: true
+WRITE_PARQUET: false
+SHOW_PROGRESS: true

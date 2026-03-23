@@ -1,0 +1,36 @@
+# metaorder_intraday_analysis.py configuration
+
+# Plotting
+TICK_FONT_SIZE: 16
+LABEL_FONT_SIZE: 18
+TITLE_FONT_SIZE: 19
+LEGEND_FONT_SIZE: 16
+
+# Dataset / analysis selection
+LEVEL: member  # "member" or "client"
+MEMBER_NATIONALITY: null  # null|all for no filter, or "it" / "foreign"
+DATASET_NAME: ftsemib
+
+# Session definition
+# Session membership is determined from the metaorder start/end timestamps:
+# a metaorder is kept only when both timestamps fall in the same session.
+# With the default ordered windows this means:
+#   morning -> [09:30:00, 13:30:00)
+#   evening -> [13:30:00, 17:30:00]
+SESSION_WINDOWS:
+  morning: ["09:30:00", "13:30:00"]
+  evening: ["13:30:00", "17:30:00"]
+
+# Optional explicit input tables. null -> use the canonical metaorder_computation outputs.
+PROPRIETARY_INFO_PATH: null
+CLIENT_INFO_PATH: null
+
+# Output roots
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+
+# Fit settings mirrored from metaorder_computation.py
+MIN_QV: 1.0e-5
+MAX_PARTICIPATION_RATE: 1.0
+N_LOGBIN: 30
+MIN_COUNT: 20

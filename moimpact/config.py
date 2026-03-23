@@ -38,7 +38,7 @@ def load_yaml_mapping(config_path: Path) -> dict[str, Any]:
     Examples
     --------
     >>> from pathlib import Path
-    >>> cfg = load_yaml_mapping(Path("config_ymls/metaorder_statistics.yml"))
+    >>> cfg = load_yaml_mapping(Path("config_ymls/metaorder_summary_statistics.yml"))
     >>> isinstance(cfg, dict)
     True
     """
@@ -203,4 +203,3 @@ def resolve_opt_repo_path(
     if value is None:
         return resolve_repo_path(script_dir, default)
     return resolve_repo_path(script_dir, value)
-

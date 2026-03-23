@@ -1,0 +1,42 @@
+# metaorder_distributions.py configuration
+
+# Plotting
+TICK_FONT_SIZE: 16
+LABEL_FONT_SIZE: 25
+TITLE_FONT_SIZE: 19
+LEGEND_FONT_SIZE: 25
+ANNOTATION_FONT_SIZE: 18
+
+# Dataset and paths
+DATASET_NAME: ftsemib
+LEVEL: member
+# You may use placeholders: {DATASET_NAME}, {LEVEL}, {MEMBER_NATIONALITY_TAG}.
+PARQUET_PATH: data/parquet
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+
+# Trade-tape filtering
+TRADING_HOURS: ["09:30:00", "17:30:00"]
+MEMBER_NATIONALITY: null  # null/all -> no filter; "it" or "foreign" to match metaorder_computation
+
+# Execution
+RUN_METAORDER_DISTRIBUTIONS: true
+PROPRIETARY_DICT_PATH: null  # null -> {OUTPUT_FILE_PATH}/metaorders_dict_all_{LEVEL}_proprietary[ _member_nationality_{it|foreign} ].pkl
+CLIENT_DICT_PATH: null  # null -> {OUTPUT_FILE_PATH}/metaorders_dict_all_{LEVEL}_non_proprietary[ _member_nationality_{it|foreign} ].pkl
+
+# Power-law overlays
+POWERLAW_FIT_ENABLED: true
+POWERLAW_FIT_METHOD: approx  # "approx" = repository coarse xmin search; "powerlaw" = full powerlaw-package xmin search
+POWERLAW_MIN_TAIL: 1000
+POWERLAW_NUM_CANDIDATES: 500  # used only when POWERLAW_FIT_METHOD: approx
+POWERLAW_REFINE_WINDOW: 100  # used only when POWERLAW_FIT_METHOD: approx
+POWERLAW_COMPARE_ENABLED: true
+POWERLAW_COMPARE_ALTERNATIVES: [lognormal, exponential, truncated_power_law]
+POWERLAW_FULL_BOOTSTRAP_ENABLED: true  # if true, rerun the entire Clauset pipeline on bootstrap resamples for all fitted candidate models
+BOOTSTRAP_DISTRIBUTION: [power_law, lognormal, truncated_power_law]  # subset of power_law + POWERLAW_COMPARE_ALTERNATIVES to summarize with bootstrap CI/std
+POWERLAW_FULL_BOOTSTRAP_RUNS: 50
+POWERLAW_FULL_BOOTSTRAP_ALPHA: 0.05  # two-sided percentile CI level; 0.05 -> 95% intervals
+POWERLAW_FULL_BOOTSTRAP_RANDOM_STATE: 0
+POWERLAW_FULL_BOOTSTRAP_NUM_CANDIDATES: 500  # bootstrap-only xmin coarse search; smaller than the empirical fit keeps the CI step tractable
+POWERLAW_FULL_BOOTSTRAP_REFINE_WINDOW: 100  # bootstrap-only local xmin refinement window
+POWERLAW_FIT_MAX_WORKERS: -1  # null or <=0 -> auto; full-bootstrap runs are conservatively capped in code to avoid swap-heavy oversubscription

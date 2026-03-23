@@ -148,6 +148,20 @@ def _env_flag(name: str, *, default: bool = False) -> bool:
     return default
 
 
+def _env_int(name: str, *, default: int) -> int:
+    """Parse an integer environment variable, falling back to `default`."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    text = raw.strip()
+    if text == "":
+        return default
+    try:
+        return int(text)
+    except ValueError:
+        return default
+
+
 # Per-ISIN parquet trade tapes live under `data/parquet/` in this repo.
 DATA_DIR = _REPO_ROOT / "data" / "parquet"
 DATASET_NAME = (os.environ.get("DATASET_NAME") or "ftsemib").strip() or "ftsemib"
@@ -165,10 +179,10 @@ HTML_DIR = PLOT_OUTPUT_DIRS.html_dir
 PNG_DIR = PLOT_OUTPUT_DIRS.png_dir
 TRADING_HOURS = ("09:30:00", "17:30:00")
 AGGRESSIVE_MEMBER_NATIONALITY_COL = "Aggressive Member Nationality"
-TICK_FONT_SIZE = 12
-LABEL_FONT_SIZE = 14
-TITLE_FONT_SIZE = 15
-LEGEND_FONT_SIZE = 12
+TICK_FONT_SIZE = _env_int("TICK_FONT_SIZE_OVERRIDE", default=12)
+LABEL_FONT_SIZE = _env_int("LABEL_FONT_SIZE_OVERRIDE", default=14)
+TITLE_FONT_SIZE = _env_int("TITLE_FONT_SIZE_OVERRIDE", default=15)
+LEGEND_FONT_SIZE = _env_int("LEGEND_FONT_SIZE_OVERRIDE", default=12)
 ensure_plot_dirs(PLOT_OUTPUT_DIRS)
 
 apply_plotly_style(

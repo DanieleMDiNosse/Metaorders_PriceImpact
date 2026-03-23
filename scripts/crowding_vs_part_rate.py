@@ -18,7 +18,8 @@ It produces:
 - optional 2D heatmaps conditioning jointly on (Q/V, eta),
 - optional within-Date permutation placebos.
 
-The script is standalone by design: it does not import metaorder_statistics.py
+The script is standalone by design: it does not import the metaorder summary or
+distribution scripts
 to avoid side effects (e.g., monkey-patching print).
 
 Usage
@@ -79,7 +80,7 @@ from moimpact.plotting import (
     save_plotly_figure as _save_plotly_figure,
 )
 
-_DEFAULT_CONFIG_PATH = _REPO_ROOT / "config_ymls" / "metaorder_statistics.yml"
+_DEFAULT_CONFIG_PATH = _REPO_ROOT / "config_ymls" / "crowding_analysis.yml"
 
 # Canonical column names in this repository's metaorder parquet outputs.
 COL_ISIN = "ISIN"
@@ -130,6 +131,47 @@ def _env_flag(name: str, *, default: bool = False) -> bool:
     if value in {"0", "false", "no", "off"}:
         return False
     return default
+
+
+def _font_size_from_cfg(cfg: Mapping[str, Any], key: str, *, default: int) -> int:
+    """
+    Read one font-size override from YAML or environment, falling back to `default`.
+
+    Environment variables use the pattern `<KEY>_OVERRIDE`, for example
+    `LABEL_FONT_SIZE_OVERRIDE`.
+    """
+    env_raw = os.environ.get(f"{key}_OVERRIDE")
+    if env_raw is not None and env_raw.strip() != "":
+        try:
+            return int(env_raw)
+        except ValueError:
+            pass
+
+    raw = cfg.get(key, default)
+    if raw is None:
+        return int(default)
+    return int(raw)
+
+
+def _apply_plot_style_from_cfg(cfg: Mapping[str, Any]) -> None:
+    """Apply Plotly style using YAML/env font-size overrides."""
+    tick_font_size = _font_size_from_cfg(cfg, "TICK_FONT_SIZE", default=TICK_FONT_SIZE)
+    label_font_size = _font_size_from_cfg(cfg, "LABEL_FONT_SIZE", default=LABEL_FONT_SIZE)
+    title_font_size = _font_size_from_cfg(cfg, "TITLE_FONT_SIZE", default=TITLE_FONT_SIZE)
+    legend_font_size = _font_size_from_cfg(cfg, "LEGEND_FONT_SIZE", default=LEGEND_FONT_SIZE)
+    try:
+        apply_plotly_style(
+            tick_font_size=tick_font_size,
+            label_font_size=label_font_size,
+            title_font_size=title_font_size,
+            legend_font_size=legend_font_size,
+            theme_colorway=THEME_COLORWAY,
+            theme_grid_color=THEME_GRID_COLOR,
+            theme_bg_color=THEME_BG_COLOR,
+            theme_font_family=THEME_FONT_FAMILY,
+        )
+    except ImportError:
+        pass
 
 
 DISABLE_PLOT_LEGENDS = _env_flag("DISABLE_PLOT_LEGENDS", default=False)
@@ -216,14 +258,14 @@ def load_yaml_defaults(config_path: Path) -> Dict[str, Any]:
 
     Notes
     -----
-    This script uses `config_ymls/metaorder_statistics.yml` only for convenient
+    This script uses `config_ymls/crowding_analysis.yml` only for convenient
     defaults (e.g., DATASET_NAME and base output/image paths). CLI arguments always
     override YAML values.
 
     Examples
     --------
     >>> from pathlib import Path
-    >>> cfg = load_yaml_defaults(Path("config_ymls/metaorder_statistics.yml"))
+    >>> cfg = load_yaml_defaults(Path("config_ymls/crowding_analysis.yml"))
     >>> isinstance(cfg, dict)
     True
     """
@@ -261,7 +303,8 @@ def resolve_paths(cfg: Mapping[str, Any], args: argparse.Namespace) -> ResolvedP
 
     Notes
     -----
-    Defaults follow the same conventions as metaorder_statistics.py:
+    Defaults follow the same output conventions as the metaorder computation
+    pipeline:
     `out_files/{DATASET_NAME}/metaorders_info_sameday_filtered_member_...parquet`.
 
     Examples
@@ -2319,8 +2362,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--config-path",
         type=str,
-        default="config_ymls/metaorder_statistics.yml",
-        help="YAML config path for defaults. Default: config_ymls/metaorder_statistics.yml.",
+        default="config_ymls/crowding_analysis.yml",
+        help="YAML config path for defaults. Default: config_ymls/crowding_analysis.yml.",
     )
     p.add_argument(
         "--dataset-name",
@@ -2526,6 +2569,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     cfg = load_yaml_defaults(_resolve_repo_path(args.config_path) if args.config_path else _DEFAULT_CONFIG_PATH)
+    _apply_plot_style_from_cfg(cfg)
     paths = resolve_paths(cfg, args)
 
     imbalance_kinds = [s.strip() for s in str(args.imbalance_kind).split(",") if s.strip()]

@@ -1,0 +1,20 @@
+# Runtime requirements for a fresh pip/venv installation of Metaorders_PriceImpact.
+# The repository uses Python 3.10+ syntax; Python 3.11 is the closest match to
+# the current working conda environment (`main` reports Python 3.11.14).
+#
+# Docs-only dependencies remain in `requirements-docs.txt`.
+
+numpy==2.3.5
+pandas==2.3.3
+scipy==1.17.0
+plotly==6.5.1
+kaleido==1.2.0
+PyYAML==6.0.3
+tqdm==4.67.1
+pyarrow==22.0.0
+scikit-learn==1.8.0
+matplotlib==3.10.8
+
+# `scripts/crowding_vs_part_rate.py` enables interaction regressions by default
+# and skips that step when statsmodels is missing.
+statsmodels>=0.14

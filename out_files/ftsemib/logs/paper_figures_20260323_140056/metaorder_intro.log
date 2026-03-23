@@ -1,0 +1,11 @@
+[Intro] Ensuring parquet transforms are up to date...
+[Intro] Parameters — 
+  LEVEL=member, PROPRIETARY=False, DATASET=ftsemib,   MEMBER_NATIONALITY=all,   IMPACT_HORIZONS_MIN=(1, 3, 10, 30, 60), RECOMPUTE=True
+[Intro] Paths — 
+  CSV_LOAD_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/csv
+    PARQUET_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+   OUTPUT_FILE_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib
+    IMG_OUTPUT_PATH=/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images
+[Intro] Transforming CSV->parquet: 0it [00:00, ?it/s][Intro] Transforming CSV->parquet: 0it [00:00, ?it/s]
+[Intro] Parquet files available for dataset 'ftsemib': 41
+
