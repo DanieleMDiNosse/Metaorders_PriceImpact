@@ -1,0 +1,16 @@
+2026-04-02 22:42:58,498 - [Intro] Metaorder execution-schedule run started...
+2026-04-02 22:42:58,498 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, MEMBER_NATIONALITY=all,
+  RUN_EXECUTION_SCHEDULE=True, N_TIME_GRID=200, N_HEATMAP_BINS_Y=150
+2026-04-02 22:42:58,499 - [Intro] Paths — 
+  OUTPUT_ROOT=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  SUMMARY_OUTPUT_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule
+  IMG_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_execution_schedule
+  PROPRIETARY_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+  CLIENT_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-04-02 22:44:42,005 - [Execution schedule] Proprietary valid metaorders: 588334/588334
+2026-04-02 22:44:42,006 - [Execution schedule] Client valid metaorders: 255535/255535
+2026-04-02 22:44:42,858 - [Execution schedule] Saved cumulative schedule table to /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule/cumulative_execution_schedule_prop_vs_client.parquet
+2026-04-02 22:44:42,859 - [Execution schedule] Saved heatmap table to /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule/execution_schedule_heatmap_prop_vs_client.parquet
+2026-04-02 22:44:42,859 - [Execution schedule] Saved run manifest to /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule/run_manifest.json
+2026-04-02 22:44:42,859 - [Execution schedule] Saved figures under /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_execution_schedule

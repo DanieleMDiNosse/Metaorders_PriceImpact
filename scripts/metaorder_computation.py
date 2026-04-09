@@ -258,6 +258,7 @@ IMPACT_HORIZONS_MIN = tuple(int(x) for x in _cfg_require("IMPACT_HORIZONS_MIN"))
 SECONDS_FILTER = int(_cfg_require("SECONDS_FILTER"))
 MIN_QV = float(_cfg_require("MIN_QV"))
 COMPUTE_IMPACT_PATHS = bool(_cfg_require("COMPUTE_IMPACT_PATHS"))
+COMPUTE_EXECUTION_SCHEDULES = bool(_cfg_require("COMPUTE_EXECUTION_SCHEDULES"))
 AFTERMATH_DURATION_MULTIPLIER = float(_cfg_require("AFTERMATH_DURATION_MULTIPLIER"))
 AFTERMATH_NUM_SAMPLES = int(_cfg_require("AFTERMATH_NUM_SAMPLES"))
 MAX_GAP = pd.Timedelta(str(_cfg_require("MAX_GAP")))
@@ -590,12 +591,72 @@ def _select_daily_metric(
     return daily_cache.get(current_day, default_entry)[value_index]
 
 
+def _compute_normalized_execution_schedule(
+    idx_list: List[int],
+    ts_meta_ns: np.ndarray,
+    vol_arr: np.ndarray,
+) -> Tuple[Optional[List[float]], Optional[List[float]]]:
+    """
+    Build normalized child-time and child-volume arrays for one metaorder.
+
+    The time path is normalized to [0, 1] using elapsed clock time within the
+    execution window. If the metaorder has zero duration but at least two child
+    trades, the time path falls back to an equally spaced event-time grid.
+    """
+    if not idx_list:
+        return None, None
+
+    idx_arr = np.asarray(idx_list, dtype=np.int64)
+    if idx_arr.size < 2:
+        return None, None
+    if int(idx_arr.min()) < 0 or int(idx_arr.max()) >= len(ts_meta_ns):
+        return None, None
+
+    child_times_ns = ts_meta_ns[idx_arr]
+    child_volumes = np.asarray(vol_arr[idx_arr], dtype=float)
+    if child_times_ns.size != child_volumes.size:
+        return None, None
+    if not np.all(np.isfinite(child_volumes)):
+        return None, None
+
+    total_volume = float(child_volumes.sum())
+    if not np.isfinite(total_volume) or total_volume <= 0.0:
+        return None, None
+
+    duration_ns = int(child_times_ns[-1] - child_times_ns[0])
+    if duration_ns > 0:
+        time_norm = (child_times_ns - child_times_ns[0]).astype(np.float64) / float(duration_ns)
+    else:
+        time_norm = np.linspace(0.0, 1.0, child_times_ns.size, dtype=float)
+
+    if time_norm.size != child_volumes.size:
+        return None, None
+
+    time_norm = np.clip(np.asarray(time_norm, dtype=float), 0.0, 1.0)
+    if time_norm.size > 0:
+        time_norm[0] = 0.0
+        time_norm[-1] = 1.0
+
+    child_volume_fraction = child_volumes / total_volume
+    if not np.all(np.isfinite(child_volume_fraction)) or np.any(child_volume_fraction < 0.0):
+        return None, None
+
+    child_volume_fraction = np.asarray(child_volume_fraction, dtype=float)
+    volume_fraction_sum = float(child_volume_fraction.sum())
+    if not np.isfinite(volume_fraction_sum) or volume_fraction_sum <= 0.0:
+        return None, None
+    child_volume_fraction /= volume_fraction_sum
+
+    return time_norm.tolist(), child_volume_fraction.tolist()
+
+
 def compute_metaorders_info(
     trades: pd.DataFrame,
     metaorders_dict: Dict[int, List[List[int]]],
     trades_full: pd.DataFrame,
     impact_horizons_min: Iterable[int] = IMPACT_HORIZONS_MIN,
     compute_paths: bool = COMPUTE_IMPACT_PATHS,
+    compute_execution_schedules: bool = COMPUTE_EXECUTION_SCHEDULES,
     aftermath_num_samples: int = AFTERMATH_NUM_SAMPLES,
     aftermath_duration_multiplier: float = AFTERMATH_DURATION_MULTIPLIER,
 ) -> List[Tuple]:
@@ -665,6 +726,15 @@ def compute_metaorders_info(
 
             partial_impacts: Optional[List[float]] = None
             aftermath_impacts: Optional[List[float]] = None
+            child_time_norm: Optional[List[float]] = None
+            child_volume_fraction: Optional[List[float]] = None
+
+            if compute_execution_schedules:
+                child_time_norm, child_volume_fraction = _compute_normalized_execution_schedule(
+                    idx_list,
+                    ts_meta_ns,
+                    vol_arr,
+                )
 
             if compute_paths:
                 partial_impacts = []
@@ -705,6 +775,10 @@ def compute_metaorders_info(
                 else:
                     imp = np.nan
                 impact_h_vals.append(float(imp) if np.isfinite(imp) else np.nan)
+            child_time_norm_blob = pack_path(child_time_norm) if compute_execution_schedules else None
+            child_volume_fraction_blob = (
+                pack_path(child_volume_fraction) if compute_execution_schedules else None
+            )
             partial_blob = pack_path(partial_impacts) if compute_paths else None
             aftermath_blob = pack_path(aftermath_impacts) if compute_paths else None
             rows.append(
@@ -723,6 +797,8 @@ def compute_metaorders_info(
                     # Store period endpoints as epoch-nanoseconds (Python ints) so fastparquet can
                     # JSON-encode the list deterministically (Timestamp / numpy scalar are not JSON-serializable).
                     [int(start_ns), int(end_ns)],
+                    child_time_norm_blob,
+                    child_volume_fraction_blob,
                     partial_blob,
                     aftermath_blob,
                     *impact_h_vals,
@@ -2284,7 +2360,8 @@ def main() -> None:
                 "[Intro] Parameters — \n"
                 f"  LEVEL={LEVEL}, PROPRIETARY={PROPRIETARY}, DATASET={DATASET_NAME}, "
                 f"  MEMBER_NATIONALITY={MEMBER_NATIONALITY_TAG}, "
-                f"  IMPACT_HORIZONS_MIN={IMPACT_HORIZONS_MIN}, RECOMPUTE={RECOMPUTE}"
+                f"  IMPACT_HORIZONS_MIN={IMPACT_HORIZONS_MIN}, RECOMPUTE={RECOMPUTE}, "
+                f"  COMPUTE_EXECUTION_SCHEDULES={COMPUTE_EXECUTION_SCHEDULES}"
             )
             print(
                 "[Intro] Paths — \n"
@@ -2506,6 +2583,8 @@ def main() -> None:
                     "Vt/V",
                     "N Child",
                     "Period",
+                    "child_time_norm",
+                    "child_volume_fraction",
                     "partial_impact",
                     "aftermath_impact",
                     *impact_cols,

@@ -1,0 +1,23 @@
+2026-04-02 22:00:39,053 - [Intro] Metaorder summary-statistics run started...
+2026-04-02 22:00:39,053 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, MEMBER_NATIONALITY=it, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_SUMMARY_STATISTICS=True, CONDITION_ON_CLIENT_PROPRIETARY=True
+2026-04-02 22:00:39,053 - [Intro] Paths — 
+  PARQUET_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics
+  PROPRIETARY_DICT_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary_member_nationality_it.pkl
+  CLIENT_DICT_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary_member_nationality_it.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-04-02 22:05:20,152 - [Metaorder summary] Sample counts — client_metaorders=24,111, proprietary_metaorders=2,093
+2026-04-02 22:05:20,152 - [Metaorder summary][Nationality] client_it=24111, client_foreign=0, prop_it=2093, prop_foreign=0
+2026-04-02 22:05:20,162 - [Metaorder summary] Nationality context table paths=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_summary_statistics/nationality_overall_context_member_nationality_it.parquet and /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_summary_statistics/nationality_overall_context_member_nationality_it.csv
+2026-04-02 22:05:20,164 - [Metaorder summary][Nationality context] flow=client, it_trade_volume_share=100.00%, it_metaorder_share=100.00%, it_metaorder_volume_share=100.00%, it_own_volume_in_metaorders=4.15%, foreign_trade_volume_share=0.00%, foreign_metaorder_share=0.00%, foreign_metaorder_volume_share=0.00%, foreign_own_volume_in_metaorders=NA, unknown_trade_volume=0, unknown_metaorders=0, mixed_metaorders=0
+2026-04-02 22:05:20,166 - [Metaorder summary][Nationality context] flow=proprietary, it_trade_volume_share=100.00%, it_metaorder_share=100.00%, it_metaorder_volume_share=100.00%, it_own_volume_in_metaorders=11.00%, foreign_trade_volume_share=0.00%, foreign_metaorder_share=0.00%, foreign_metaorder_volume_share=0.00%, foreign_own_volume_in_metaorders=NA, unknown_trade_volume=0, unknown_metaorders=0, mixed_metaorders=0
+2026-04-02 22:05:20,167 - [Metaorder summary][Nationality context] flow=all_metaorders, it_trade_volume_share=100.00%, it_metaorder_share=100.00%, it_metaorder_volume_share=100.00%, it_own_volume_in_metaorders=4.41%, foreign_trade_volume_share=0.00%, foreign_metaorder_share=0.00%, foreign_metaorder_volume_share=0.00%, foreign_own_volume_in_metaorders=NA, unknown_trade_volume=0, unknown_metaorders=0, mixed_metaorders=0
+2026-04-02 22:05:20,319 - [Metaorder summary] Saved nationality-context figure to HTML=/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/nationality_overall_context_member_nationality_it.html PNG=None
+2026-04-02 22:05:20,395 - [Metaorder summary] Saved nationality-share figure to HTML=/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/nationality_share_prop_vs_client_member_nationality_it.html PNG=None
+2026-04-02 22:06:44,417 - [Metaorder summary] Member metaorder profile table: client_members=21, prop_members=16
+2026-04-02 22:06:44,420 - [Metaorder summary] Member metaorder profile table path=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_summary_statistics/member_metaorder_profiles_member_nationality_it.parquet
+2026-04-02 22:06:44,541 - [Metaorder summary] Saved member metaorder profile figure to HTML=/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/member_metaorder_profiles_member_nationality_it.html PNG=None
+2026-04-02 22:09:33,503 - [Metaorder summary] Mean daily metaorder-volume share by ISIN: proprietary=0.0970%, client=0.7074%, total=0.8044% (n_isins=41, n_isin_days=10291)
+2026-04-02 22:09:33,568 - [Metaorder summary] Saved mean daily share figure to HTML=/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_summary_statistics/html/mean_daily_metaorder_volume_share_member_nationality_it.html PNG=None

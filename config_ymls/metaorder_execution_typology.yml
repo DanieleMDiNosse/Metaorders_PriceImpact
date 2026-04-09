@@ -1,0 +1,44 @@
+# metaorder_execution_typology.py configuration
+
+# Plotting
+TICK_FONT_SIZE: 16
+LABEL_FONT_SIZE: 18
+TITLE_FONT_SIZE: 19
+LEGEND_FONT_SIZE: 16
+
+# Dataset
+DATASET_NAME: ftsemib
+LEVEL: member
+
+# Paths
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+PROP_PATH: null
+CLIENT_PATH: null
+
+# Output subfolder
+ANALYSIS_TAG: execution_typology
+
+# Clustering
+K_MIN: 2
+K_MAX: 8
+PCA_VARIANCE_THRESHOLD: 0.9
+SILHOUETTE_SAMPLE_SIZE: 50000
+MINIBATCH_BATCH_SIZE: 4096
+SEED: 0
+
+# Packed-path feature engineering
+TWAP_GRID_SIZE: 21
+
+# Performance
+N_JOBS: 0
+CHUNK_SIZE: 50000
+PCA_SCATTER_SAMPLE_SIZE: 40000
+
+# Optional cluster label overrides by cluster id after the first run
+TYPE_LABEL_OVERRIDES: {}
+
+# Outputs
+PLOTS: true
+WRITE_PARQUET: true
+SHOW_PROGRESS: true

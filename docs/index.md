@@ -33,6 +33,10 @@ The main scripts are:
 - `scripts/metaorder_start_event_study.py`
   - matched start-intensity event-study around high-participation anchors
   - config: `config_ymls/metaorder_start_event_study.yml`
+- `scripts/metaorder_execution_typology.py`
+  - pooled execution typology with behavior-led clustering, type shares,
+    within-type impact profiles, and within-type execution schedule profiles
+  - config: `config_ymls/metaorder_execution_typology.yml`
 - `scripts/metaorder_intraday_analysis.py`
   - morning-vs-evening session split on existing metaorder tables
   - config: `config_ymls/metaorder_intraday_analysis.yml`
@@ -73,10 +77,11 @@ The typical member-level workflow is:
    - `scripts/metaorder_distributions.py`
    - `scripts/metaorder_summary_statistics.py`
    - `scripts/crowding_analysis.py`
-   - `scripts/metaorder_start_event_study.py`
-   - `scripts/metaorder_intraday_analysis.py`
-   - `scripts/plot_prop_nonprop_fits.py`
-   - `scripts/metaorder_clustering.py`
+- `scripts/metaorder_start_event_study.py`
+- `scripts/metaorder_intraday_analysis.py`
+- `scripts/metaorder_execution_typology.py`
+- `scripts/plot_prop_nonprop_fits.py`
+- `scripts/metaorder_clustering.py`
 3. Use `scripts/generate_paper_figures.py` when the target is the figure set
    referenced in `paper/main.tex`.
 
@@ -165,6 +170,7 @@ The main config files are:
 - `config_ymls/metaorder_summary_statistics.yml`
 - `config_ymls/crowding_analysis.yml`
 - `config_ymls/metaorder_start_event_study.yml`
+- `config_ymls/metaorder_execution_typology.yml`
 - `config_ymls/metaorder_intraday_analysis.yml`
 - `config_ymls/plot_prop_nonprop_fits.yml`
 - `config_ymls/paper_figures.yml`
@@ -207,6 +213,7 @@ available the current git hash.
 - [`metaorder_distributions.md`](metaorder_distributions.md)
 - [`metaorder_summary_statistics.md`](metaorder_summary_statistics.md)
 - [`metaorder_start_event_study.md`](metaorder_start_event_study.md)
+- [`execution_typology.md`](execution_typology.md)
 - [`PLOTTING_GUIDE.md`](PLOTTING_GUIDE.md)
 
 ## Notes

@@ -58,6 +58,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
+# This script already parallelizes work across panel-level processes. Keep the
+# numerical kernels single-threaded by default so each worker does not also spin
+# up its own OpenBLAS/OpenMP thread team.
+for _thread_var in (
+    "OPENBLAS_NUM_THREADS",
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+    "BLIS_NUM_THREADS",
+):
+    os.environ.setdefault(_thread_var, "1")
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go

@@ -1,0 +1,51 @@
+{
+  "best_k": 2,
+  "cluster_feature_columns": [
+    "log_Q",
+    "log_Q_over_V",
+    "log_participation_rate",
+    "log_vt_over_v",
+    "log_duration_seconds",
+    "log_n_child",
+    "asinh_daily_vol",
+    "schedule_front25_share",
+    "schedule_front50_share",
+    "schedule_back25_share",
+    "schedule_center_of_mass",
+    "schedule_hhi",
+    "schedule_twap_l1_distance",
+    "abs_impact_end",
+    "abs_impact_1m",
+    "abs_impact_10m",
+    "abs_impact_30m",
+    "abs_impact_60m",
+    "retention_30_over_end",
+    "retention_60_over_end",
+    "peak_abs_partial_impact",
+    "overshoot_peak_over_end"
+  ],
+  "k_values": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "pca_explained_variance_ratio": [
+    0.43677797980238925,
+    0.187699270110656,
+    0.1369477855775067,
+    0.039379239658859415,
+    0.03773727941292868,
+    0.03633194273262046,
+    0.024202870358107066,
+    0.021809157623156227
+  ],
+  "pca_n_components": 8,
+  "pca_variance_threshold": 0.9,
+  "rows_loaded": 843869,
+  "rows_valid_for_clustering": 797428,
+  "silhouette_sample_size_effective": 50000
+}

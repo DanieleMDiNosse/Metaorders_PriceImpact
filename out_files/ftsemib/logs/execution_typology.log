@@ -1,0 +1,10 @@
+2026-04-02 09:54:39,952 - [Typology] Execution typology run started.
+2026-04-02 09:54:39,953 - [Typology] Proprietary path: /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-04-02 09:54:39,953 - [Typology] Client path: /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-04-02 09:54:42,606 - [Typology] Loaded pooled sample: 843869 rows.
+2026-04-02 09:55:52,855 - [Typology] Engineered execution, schedule, and impact-shape features.
+2026-04-02 09:55:53,958 - [Typology] Valid rows for clustering: 797428/843869.
+2026-04-02 09:59:46,069 - [Typology] Selected k=2 from silhouette sweep.
+2026-04-02 10:00:23,738 - [Typology] Wrote row-level clusters to /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/execution_typology/clustered_metaorders.parquet
+2026-04-02 10:00:23,738 - [Typology] Wrote cluster summary to /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/execution_typology/cluster_summary.csv
+2026-04-02 10:00:23,738 - [Typology] Wrote figures under /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/execution_typology

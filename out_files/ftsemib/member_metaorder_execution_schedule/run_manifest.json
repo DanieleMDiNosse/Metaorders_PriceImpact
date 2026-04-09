@@ -1,0 +1,32 @@
+{
+  "config_path": "/tmp/tmp.q4xQ97NZJr",
+  "dataset_name": "ftsemib",
+  "groups": {
+    "client": {
+      "n_input_rows": 231682,
+      "n_valid_metaorders": 231682,
+      "skipped_reasons": {}
+    },
+    "proprietary": {
+      "n_input_rows": 586291,
+      "n_valid_metaorders": 586291,
+      "skipped_reasons": {}
+    }
+  },
+  "input_paths": {
+    "client": "/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary_member_nationality_foreign.parquet",
+    "proprietary": "/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary_member_nationality_foreign.parquet"
+  },
+  "level": "member",
+  "member_nationality": "foreign",
+  "n_heatmap_bins_y": 150,
+  "n_time_grid": 200,
+  "output_paths": {
+    "curve_table": "/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule/cumulative_execution_schedule_prop_vs_client_member_nationality_foreign.parquet",
+    "figure_dir": "/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_execution_schedule",
+    "heatmap_table": "/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule/execution_schedule_heatmap_prop_vs_client_member_nationality_foreign.parquet"
+  },
+  "run_execution_schedule": true,
+  "script": "/home/danieledinosse/repositories/Metaorders_PriceImpact/scripts/metaorder_execution_schedule.py",
+  "timestamp_utc": "2026-04-02T22:46:31.687686+00:00"
+}

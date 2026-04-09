@@ -1,0 +1,42 @@
+2026-04-02 05:56:10,946 - [Intro] Metaorder distributions run started...
+2026-04-02 05:56:10,946 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, MEMBER_NATIONALITY=it, TRADING_HOURS=('09:30:00', '17:30:00'), RUN_METAORDER_DISTRIBUTIONS=True, POWERLAW_FIT_ENABLED=True, POWERLAW_FIT_METHOD=approx, POWERLAW_MIN_TAIL=1000, POWERLAW_NUM_CANDIDATES=500, POWERLAW_REFINE_WINDOW=100, POWERLAW_COMPARE_ENABLED=True, POWERLAW_COMPARE_ALTERNATIVES=('lognormal', 'exponential', 'truncated_power_law'), POWERLAW_FULL_BOOTSTRAP_ENABLED=True, BOOTSTRAP_DISTRIBUTION=('power_law', 'lognormal', 'truncated_power_law'), POWERLAW_FULL_BOOTSTRAP_RUNS=50, POWERLAW_FULL_BOOTSTRAP_ALPHA=0.05, POWERLAW_FULL_BOOTSTRAP_RANDOM_STATE=0, POWERLAW_FULL_BOOTSTRAP_NUM_CANDIDATES=500, POWERLAW_FULL_BOOTSTRAP_REFINE_WINDOW=100, POWERLAW_FIT_MAX_WORKERS=-1, LOAD_ONLY=False
+2026-04-02 05:56:10,946 - [Intro] Paths — 
+  PARQUET_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/data/parquet
+  OUTPUT_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  IMG_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_distributions
+  PROPRIETARY_DICT_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary_member_nationality_it.pkl
+  CLIENT_DICT_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_non_proprietary_member_nationality_it.pkl
+  MEMBERS_NATIONALITY_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/data/members_nationality.parquet
+2026-04-02 06:00:52,461 - [Metaorder distributions] Sample counts — client_metaorders=24,111, proprietary_metaorders=2,093
+2026-04-02 06:00:52,461 - [Metaorder distributions] Building comparison figure and best-fit tail overlays...
+2026-04-02 06:00:52,595 - [Metaorder distributions] Panel 1/10 — group=client, metric=durations_minutes, n=24,111
+2026-04-02 06:00:52,603 - [Metaorder distributions] Panel 2/10 — group=proprietary, metric=durations_minutes, n=2,093
+2026-04-02 06:00:52,605 - [Metaorder distributions] Panel 3/10 — group=client, metric=inter_arrivals_minutes, n=211,746
+2026-04-02 06:00:52,610 - [Metaorder distributions] Panel 4/10 — group=proprietary, metric=inter_arrivals_minutes, n=22,676
+2026-04-02 06:00:52,612 - [Metaorder distributions] Panel 5/10 — group=client, metric=meta_volumes, n=24,111
+2026-04-02 06:00:52,614 - [Metaorder distributions] Panel 6/10 — group=proprietary, metric=meta_volumes, n=2,093
+2026-04-02 06:00:52,616 - [Metaorder distributions] Panel 7/10 — group=client, metric=q_over_v, n=24,111
+2026-04-02 06:00:52,618 - [Metaorder distributions] Panel 8/10 — group=proprietary, metric=q_over_v, n=2,093
+2026-04-02 06:00:52,620 - [Metaorder distributions] Panel 9/10 — group=client, metric=participation_rates, n=24,111
+2026-04-02 06:00:52,622 - [Metaorder distributions] Panel 10/10 — group=proprietary, metric=participation_rates, n=2,093
+2026-04-02 06:00:52,623 - [Metaorder distributions] Parallel tail fits enabled — workers=4, queued_panels=10
+2026-04-02 06:00:52,624 - [Metaorder distributions] Parallel tail fit batch 1/3 — workers=4, queued_panels=4
+2026-04-02 06:03:39,097 - [Metaorder distributions] Panel 7/10 completed in 166.3s (best=truncated_power_law; fit; comparisons=lognormal=lognormal, exponential=power_law, truncated_power_law=truncated_power_law)
+2026-04-02 06:04:47,370 - [Metaorder distributions] Panel 5/10 completed in 234.5s (best=lognormal; fit; comparisons=lognormal=lognormal, exponential=power_law, truncated_power_law=truncated_power_law)
+2026-04-02 06:07:04,715 - [Metaorder distributions] Panel 1/10 completed in 371.9s (best=lognormal; fit; comparisons=lognormal=lognormal, exponential=exponential, truncated_power_law=truncated_power_law)
+2026-04-02 06:33:19,482 - [Metaorder distributions] Panel 3/10 completed in 1946.7s (best=exponential; fit; comparisons=lognormal=lognormal, exponential=exponential, truncated_power_law=truncated_power_law)
+2026-04-02 06:33:19,668 - [Metaorder distributions] Parallel tail fit batch 2/3 — workers=4, queued_panels=4
+2026-04-02 06:34:17,472 - [Metaorder distributions] Panel 2/10 completed in 57.6s (best=exponential; fit; comparisons=lognormal=lognormal, exponential=exponential, truncated_power_law=truncated_power_law)
+2026-04-02 06:34:19,092 - [Metaorder distributions] Panel 6/10 completed in 59.2s (best=lognormal; fit; comparisons=lognormal=lognormal, exponential=power_law, truncated_power_law=truncated_power_law)
+2026-04-02 06:37:48,241 - [Metaorder distributions] Panel 9/10 completed in 268.4s (best=truncated_power_law; fit; comparisons=lognormal=lognormal, exponential=exponential, truncated_power_law=truncated_power_law)
+2026-04-02 06:46:51,068 - [Metaorder distributions] Panel 4/10 completed in 811.2s (best=truncated_power_law; fit; comparisons=lognormal=lognormal, exponential=power_law, truncated_power_law=truncated_power_law)
+2026-04-02 06:46:51,201 - [Metaorder distributions] Parallel tail fit batch 3/3 — workers=2, queued_panels=2
+2026-04-02 06:47:56,902 - [Metaorder distributions] Panel 8/10 completed in 65.6s (best=truncated_power_law; fit; comparisons=lognormal=lognormal, exponential=power_law, truncated_power_law=truncated_power_law)
+2026-04-02 06:48:48,254 - [Metaorder distributions] Panel 10/10 completed in 116.9s (best=truncated_power_law; fit; comparisons=lognormal=lognormal, exponential=power_law, truncated_power_law=truncated_power_law)
+2026-04-02 06:48:48,716 - [Metaorder distributions] Figure assembly completed in 2876.3s
+2026-04-02 06:48:48,731 - [Metaorder distributions] Exporting Plotly figure to HTML/PNG...
+2026-04-02 06:48:48,831 - [Metaorder distributions] Saved comparison figure to HTML=/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_distributions/html/metaorder_distributions_prop_vs_client_member_nationality_it.html PNG=None
+2026-04-02 06:48:48,847 - [Metaorder distributions] Saved fit summary to CSV=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_distributions/metaorder_distribution_fit_summary_prop_vs_client_member_nationality_it.csv PARQUET=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_distributions/metaorder_distribution_fit_summary_prop_vs_client_member_nationality_it.parquet
+2026-04-02 06:48:48,913 - [Metaorder distributions] Saved figure-regeneration plot data to CSV=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_distributions/metaorder_distribution_plot_data_prop_vs_client_member_nationality_it.csv PARQUET=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_distributions/metaorder_distribution_plot_data_prop_vs_client_member_nationality_it.parquet
+2026-04-02 06:48:48,917 - [Metaorder distributions] Saved fit-review outputs to CSV=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_distributions/metaorder_distribution_fit_review_prop_vs_client_member_nationality_it.csv MARKDOWN=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_distributions/metaorder_distribution_fit_review_prop_vs_client_member_nationality_it.md

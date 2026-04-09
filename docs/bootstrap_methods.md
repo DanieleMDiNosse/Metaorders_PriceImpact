@@ -133,12 +133,13 @@ Permutation logic:
 - the high-`eta` label is shuffled only within admissible matching strata
 - the null therefore preserves the same stratum structure used in the matched
   design
+- the same label shuffles feed the bin-by-bin event-time curve effects
 
 The script also applies multiple-testing adjustments after the raw p-values are
 computed:
 
-- Holm adjustment for the primary same-sign tests
-- Benjamini-Hochberg for the opposite-sign secondary tests
+- Benjamini-Hochberg within each curve family `(group, variant, sign relation)`
+  for the bin-level event-time tests
 
 ## 5. `scripts/metaorder_distributions.py`
 

@@ -1,0 +1,10 @@
+Total unique members across all ISINs: 73
+[warn] Could not save PNG for members_per_isin (Plotly static export unavailable).
+Saved HTML to /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/html/members_per_isin.html
+Client/proprietary trade ratio across ISINs [min, max]: [0.61095, 1.28902]
+[warn] Could not save PNG for proprietary_vs_client_trades_per_isin (Plotly static export unavailable).
+Saved HTML to /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/html/proprietary_vs_client_trades_per_isin.html
+[warn] Could not save PNG for member_isin_coverage_per_member (Plotly static export unavailable).
+Saved HTML to /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/html/member_isin_coverage_per_member.html
+[warn] Could not save PNG for member_activity_heatmap (Plotly static export unavailable).
+Saved HTML to /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_statistics/html/member_activity_heatmap.html

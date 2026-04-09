@@ -1,0 +1,76 @@
+[info] started_at=2026-04-01T13:52:14Z
+[info] run_tag=serial_execsched_20260401_135214
+[info] pipeline_log_dir=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214
+[phase] intro_transforms
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/intro_transforms.log
+[done] intro_transforms
+[phase] metaorder_computation_full LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=all
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_member_prop_true_nat_all.log
+[done] metaorder_computation_full LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=all
+[phase] metaorder_computation_side LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=all
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_side_member_prop_true_nat_all.log
+[done] metaorder_computation_side LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=all
+[phase] metaorder_computation_full LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=all
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_member_prop_false_nat_all.log
+[done] metaorder_computation_full LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=all
+[phase] metaorder_computation_side LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=all
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_side_member_prop_false_nat_all.log
+[done] metaorder_computation_side LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=all
+[phase] metaorder_computation_full LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=it
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_member_prop_true_nat_it.log
+[done] metaorder_computation_full LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=it
+[phase] metaorder_computation_side LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=it
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_side_member_prop_true_nat_it.log
+[done] metaorder_computation_side LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=it
+[phase] metaorder_computation_full LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=it
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_member_prop_false_nat_it.log
+[done] metaorder_computation_full LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=it
+[phase] metaorder_computation_side LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=it
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_side_member_prop_false_nat_it.log
+[done] metaorder_computation_side LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=it
+[phase] metaorder_computation_full LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=foreign
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_member_prop_true_nat_foreign.log
+[done] metaorder_computation_full LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=foreign
+[phase] metaorder_computation_side LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=foreign
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_side_member_prop_true_nat_foreign.log
+[done] metaorder_computation_side LEVEL=member PROPRIETARY=true MEMBER_NATIONALITY=foreign
+[phase] metaorder_computation_full LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=foreign
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_member_prop_false_nat_foreign.log
+[done] metaorder_computation_full LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=foreign
+[phase] metaorder_computation_side LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=foreign
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_computation_side_member_prop_false_nat_foreign.log
+[done] metaorder_computation_side LEVEL=member PROPRIETARY=false MEMBER_NATIONALITY=foreign
+[phase] metaorder_distributions MEMBER_NATIONALITY=all
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_distributions_nat_all.log
+[done] metaorder_distributions MEMBER_NATIONALITY=all
+[phase] metaorder_distributions MEMBER_NATIONALITY=it
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_distributions_nat_it.log
+[done] metaorder_distributions MEMBER_NATIONALITY=it
+[phase] metaorder_distributions MEMBER_NATIONALITY=foreign
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_distributions_nat_foreign.log
+[done] metaorder_distributions MEMBER_NATIONALITY=foreign
+[phase] metaorder_summary_statistics MEMBER_NATIONALITY=all
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_summary_statistics_nat_all.log
+[done] metaorder_summary_statistics MEMBER_NATIONALITY=all
+[phase] metaorder_summary_statistics MEMBER_NATIONALITY=it
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_summary_statistics_nat_it.log
+[done] metaorder_summary_statistics MEMBER_NATIONALITY=it
+[phase] metaorder_summary_statistics MEMBER_NATIONALITY=foreign
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_summary_statistics_nat_foreign.log
+[done] metaorder_summary_statistics MEMBER_NATIONALITY=foreign
+[phase] crowding_analysis
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/crowding_analysis.log
+[done] crowding_analysis
+[phase] member_statistics
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/member_statistics.log
+[done] member_statistics
+[phase] metaorder_execution_schedule MEMBER_NATIONALITY=all
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_execution_schedule_nat_all.log
+[done] metaorder_execution_schedule MEMBER_NATIONALITY=all
+[phase] metaorder_execution_schedule MEMBER_NATIONALITY=it
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_execution_schedule_nat_it.log
+[done] metaorder_execution_schedule MEMBER_NATIONALITY=it
+[phase] metaorder_execution_schedule MEMBER_NATIONALITY=foreign
+[phase] log=out_files/ftsemib/logs/pipeline_serial_execsched_20260401_135214/metaorder_execution_schedule_nat_foreign.log
+[done] metaorder_execution_schedule MEMBER_NATIONALITY=foreign
+[done] finished_at=2026-04-02T22:46:32Z

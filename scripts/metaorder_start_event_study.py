@@ -6,8 +6,11 @@ Event-study of metaorder starts around high-participation anchors.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 import datetime as dt
 import json
+import multiprocessing as mp
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -19,6 +22,10 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+try:
+    from numba import njit
+except Exception:  # pragma: no cover
+    njit = None
 try:
     from tqdm.auto import tqdm
 except Exception:  # pragma: no cover
@@ -56,15 +63,9 @@ COL_ETA = "Participation Rate"
 COL_MEMBER = "Member"
 COL_CLIENT = "Client"
 COL_START_TS = "StartTimestamp"
-COL_BUCKET = "clock_bucket_30m"
 MINUTE_NS = np.int64(60 * 1_000_000_000)
-
-SUMMARY_METRIC_SPECS = (
-    ("same_pre_mean_rate", "same_sign", "pre", "greater"),
-    ("same_post_mean_rate", "same_sign", "post", "greater"),
-    ("opp_pre_mean_rate", "opposite_sign", "pre", "two-sided"),
-    ("opp_post_mean_rate", "opposite_sign", "post", "two-sided"),
-)
+VARIANT_ALL_OTHERS = "all_others"
+VARIANT_EXCLUDE_SAME_ACTOR = "exclude_same_actor"
 
 
 @dataclass(frozen=True)
@@ -90,6 +91,35 @@ class BinSpec:
     centers_minutes: np.ndarray
     labels: list[str]
     pre_count: int
+
+
+@dataclass(frozen=True)
+class BootstrapPayload:
+    """Precomputed stratum-level arrays for bootstrap inference."""
+
+    date_codes: np.ndarray
+    n_dates: int
+    n_treated: np.ndarray
+    n_control: np.ndarray
+    treated_sums: np.ndarray
+    control_sums: np.ndarray
+    treated_valid: np.ndarray
+    control_valid: np.ndarray
+
+
+@dataclass(frozen=True)
+class PermutationPayload:
+    """Precomputed within-stratum arrays for permutation inference."""
+
+    values_zero_by_stratum: tuple[np.ndarray, ...]
+    finite_mask_by_stratum: tuple[np.ndarray, ...]
+    treated_mask_by_stratum: tuple[np.ndarray, ...]
+    n_treated_by_stratum: np.ndarray
+    n_metrics: int
+
+
+_BOOTSTRAP_WORKER_PAYLOAD: Optional[BootstrapPayload] = None
+_PERMUTATION_WORKER_PAYLOAD: Optional[PermutationPayload] = None
 
 
 class _NullTqdm:
@@ -350,6 +380,41 @@ def _select_same_actor_col(df: pd.DataFrame, policy: str) -> Optional[str]:
     return None
 
 
+def _safe_bin_label(label: str) -> str:
+    return label.replace("[", "").replace("]", "").replace("(", "").replace(")", "").replace(",", "_")
+
+
+def _resolve_event_study_worker_count(requested_jobs: int, n_tasks: int) -> int:
+    if n_tasks <= 1:
+        return 1
+    requested = int(requested_jobs)
+    if requested < 0:
+        raise ValueError("N_JOBS must be >= 0.")
+    if requested == 0:
+        cpu_count = os.cpu_count() or 1
+        return max(1, min(n_tasks, min(cpu_count, 4)))
+    return max(1, min(n_tasks, requested))
+
+
+def _process_pool_context():
+    if os.name != "posix":
+        return None
+    try:
+        return mp.get_context("fork")
+    except ValueError:  # pragma: no cover - platform-specific fallback
+        return None
+
+
+def _init_bootstrap_worker(payload: BootstrapPayload) -> None:
+    global _BOOTSTRAP_WORKER_PAYLOAD
+    _BOOTSTRAP_WORKER_PAYLOAD = payload
+
+
+def _init_permutation_worker(payload: PermutationPayload) -> None:
+    global _PERMUTATION_WORKER_PAYLOAD
+    _PERMUTATION_WORKER_PAYLOAD = payload
+
+
 def _compute_exposures_minutes(
     start_ns_sorted: np.ndarray,
     session_open_ns: np.int64,
@@ -364,18 +429,260 @@ def _compute_exposures_minutes(
     return exposure_ns.astype(float) / float(MINUTE_NS)
 
 
-def _compute_anchor_metrics_for_group(
+def _assign_event_bin_indices(
+    delta_ns: np.ndarray,
+    *,
+    window_ns: int,
+    bin_ns: int,
+    pre_count: int,
+) -> np.ndarray:
+    bin_idx = np.empty(delta_ns.size, dtype=np.int64)
+    neg_mask = delta_ns < 0
+    if np.any(neg_mask):
+        bin_idx[neg_mask] = (delta_ns[neg_mask] + window_ns) // bin_ns
+    pos_mask = ~neg_mask
+    if np.any(pos_mask):
+        bin_idx[pos_mask] = pre_count + ((delta_ns[pos_mask] - 1) // bin_ns)
+    return bin_idx
+
+
+def _materialize_variant_metrics_frame(
+    base_df: pd.DataFrame,
+    *,
+    bin_spec: BinSpec,
+    same_rates_sorted: np.ndarray,
+    opp_rates_sorted: np.ndarray,
+    exact_zero_same_sorted: np.ndarray,
+    exact_zero_opp_sorted: np.ndarray,
+    truncated_pre_sorted: np.ndarray,
+    truncated_post_sorted: np.ndarray,
+    inverse: np.ndarray,
+) -> pd.DataFrame:
+    out = base_df.reset_index(drop=True).copy()
+    same_rates = same_rates_sorted[inverse]
+    opp_rates = opp_rates_sorted[inverse]
+    for idx, label in enumerate(bin_spec.labels):
+        safe_label = _safe_bin_label(label)
+        out[f"same_rate_{safe_label}"] = same_rates[:, idx]
+        out[f"opp_rate_{safe_label}"] = opp_rates[:, idx]
+    out["same_exact_zero_count"] = exact_zero_same_sorted[inverse]
+    out["opp_exact_zero_count"] = exact_zero_opp_sorted[inverse]
+    out["truncated_pre_bins"] = truncated_pre_sorted[inverse]
+    out["truncated_post_bins"] = truncated_post_sorted[inverse]
+    return out
+
+
+def _count_event_neighbors_python(
+    start_ns_sorted: np.ndarray,
+    dir_sorted: np.ndarray,
+    actor_codes: np.ndarray,
+    left_idx: np.ndarray,
+    right_idx: np.ndarray,
+    *,
+    window_ns: int,
+    bin_ns: int,
+    pre_count: int,
+    n_bins: int,
+    use_same_actor_exclusion: bool,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    n_rows = int(start_ns_sorted.shape[0])
+    counts_same_all_sorted = np.zeros((n_rows, n_bins), dtype=float)
+    counts_opp_all_sorted = np.zeros((n_rows, n_bins), dtype=float)
+    exact_zero_same_all_sorted = np.zeros(n_rows, dtype=float)
+    exact_zero_opp_all_sorted = np.zeros(n_rows, dtype=float)
+    counts_same_excl_sorted = np.zeros((n_rows, n_bins), dtype=float)
+    counts_opp_excl_sorted = np.zeros((n_rows, n_bins), dtype=float)
+    exact_zero_same_excl_sorted = np.zeros(n_rows, dtype=float)
+    exact_zero_opp_excl_sorted = np.zeros(n_rows, dtype=float)
+
+    for row_idx in range(n_rows):
+        left = int(left_idx[row_idx])
+        right = int(right_idx[row_idx])
+        if right - left <= 1:
+            continue
+
+        row_start = int(start_ns_sorted[row_idx])
+        row_dir = int(dir_sorted[row_idx])
+        row_actor = int(actor_codes[row_idx]) if use_same_actor_exclusion else -1
+
+        for other_idx in range(left, right):
+            if other_idx == row_idx:
+                continue
+
+            delta_ns = int(start_ns_sorted[other_idx]) - row_start
+            same_sign = int(dir_sorted[other_idx]) == row_dir
+
+            excluded = False
+            if use_same_actor_exclusion and row_actor >= 0:
+                other_actor = int(actor_codes[other_idx])
+                excluded = other_actor >= 0 and other_actor == row_actor
+
+            if delta_ns == 0:
+                if same_sign:
+                    exact_zero_same_all_sorted[row_idx] += 1.0
+                    if use_same_actor_exclusion and not excluded:
+                        exact_zero_same_excl_sorted[row_idx] += 1.0
+                else:
+                    exact_zero_opp_all_sorted[row_idx] += 1.0
+                    if use_same_actor_exclusion and not excluded:
+                        exact_zero_opp_excl_sorted[row_idx] += 1.0
+                continue
+
+            if delta_ns < 0:
+                bin_idx = (delta_ns + window_ns) // bin_ns
+            else:
+                bin_idx = pre_count + ((delta_ns - 1) // bin_ns)
+            if bin_idx < 0 or bin_idx >= n_bins:
+                continue
+
+            if same_sign:
+                counts_same_all_sorted[row_idx, bin_idx] += 1.0
+                if use_same_actor_exclusion and not excluded:
+                    counts_same_excl_sorted[row_idx, bin_idx] += 1.0
+            else:
+                counts_opp_all_sorted[row_idx, bin_idx] += 1.0
+                if use_same_actor_exclusion and not excluded:
+                    counts_opp_excl_sorted[row_idx, bin_idx] += 1.0
+
+    return (
+        counts_same_all_sorted,
+        counts_opp_all_sorted,
+        exact_zero_same_all_sorted,
+        exact_zero_opp_all_sorted,
+        counts_same_excl_sorted,
+        counts_opp_excl_sorted,
+        exact_zero_same_excl_sorted,
+        exact_zero_opp_excl_sorted,
+    )
+
+
+if njit is not None:
+
+    @njit(cache=True)
+    def _count_event_neighbors_numba(
+        start_ns_sorted: np.ndarray,
+        dir_sorted: np.ndarray,
+        actor_codes: np.ndarray,
+        left_idx: np.ndarray,
+        right_idx: np.ndarray,
+        window_ns: int,
+        bin_ns: int,
+        pre_count: int,
+        n_bins: int,
+        use_same_actor_exclusion: bool,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        n_rows = start_ns_sorted.shape[0]
+        counts_same_all_sorted = np.zeros((n_rows, n_bins), dtype=np.float64)
+        counts_opp_all_sorted = np.zeros((n_rows, n_bins), dtype=np.float64)
+        exact_zero_same_all_sorted = np.zeros(n_rows, dtype=np.float64)
+        exact_zero_opp_all_sorted = np.zeros(n_rows, dtype=np.float64)
+        counts_same_excl_sorted = np.zeros((n_rows, n_bins), dtype=np.float64)
+        counts_opp_excl_sorted = np.zeros((n_rows, n_bins), dtype=np.float64)
+        exact_zero_same_excl_sorted = np.zeros(n_rows, dtype=np.float64)
+        exact_zero_opp_excl_sorted = np.zeros(n_rows, dtype=np.float64)
+
+        for row_idx in range(n_rows):
+            left = left_idx[row_idx]
+            right = right_idx[row_idx]
+            if right - left <= 1:
+                continue
+
+            row_start = start_ns_sorted[row_idx]
+            row_dir = dir_sorted[row_idx]
+            row_actor = actor_codes[row_idx] if use_same_actor_exclusion else -1
+
+            for other_idx in range(left, right):
+                if other_idx == row_idx:
+                    continue
+
+                delta_ns = start_ns_sorted[other_idx] - row_start
+                same_sign = dir_sorted[other_idx] == row_dir
+
+                excluded = False
+                if use_same_actor_exclusion and row_actor >= 0:
+                    other_actor = actor_codes[other_idx]
+                    excluded = other_actor >= 0 and other_actor == row_actor
+
+                if delta_ns == 0:
+                    if same_sign:
+                        exact_zero_same_all_sorted[row_idx] += 1.0
+                        if use_same_actor_exclusion and not excluded:
+                            exact_zero_same_excl_sorted[row_idx] += 1.0
+                    else:
+                        exact_zero_opp_all_sorted[row_idx] += 1.0
+                        if use_same_actor_exclusion and not excluded:
+                            exact_zero_opp_excl_sorted[row_idx] += 1.0
+                    continue
+
+                if delta_ns < 0:
+                    bin_idx = (delta_ns + window_ns) // bin_ns
+                else:
+                    bin_idx = pre_count + ((delta_ns - 1) // bin_ns)
+
+                if 0 <= bin_idx < n_bins:
+                    if same_sign:
+                        counts_same_all_sorted[row_idx, bin_idx] += 1.0
+                        if use_same_actor_exclusion and not excluded:
+                            counts_same_excl_sorted[row_idx, bin_idx] += 1.0
+                    else:
+                        counts_opp_all_sorted[row_idx, bin_idx] += 1.0
+                        if use_same_actor_exclusion and not excluded:
+                            counts_opp_excl_sorted[row_idx, bin_idx] += 1.0
+
+        return (
+            counts_same_all_sorted,
+            counts_opp_all_sorted,
+            exact_zero_same_all_sorted,
+            exact_zero_opp_all_sorted,
+            counts_same_excl_sorted,
+            counts_opp_excl_sorted,
+            exact_zero_same_excl_sorted,
+            exact_zero_opp_excl_sorted,
+        )
+
+else:  # pragma: no cover
+    _count_event_neighbors_numba = None
+
+
+def _compute_anchor_metrics_for_group_variants(
     group_df: pd.DataFrame,
     *,
     bin_spec: BinSpec,
     session_start_time: time,
     session_end_time: time,
     same_actor_col: Optional[str],
-    exclude_same_actor: bool,
-) -> pd.DataFrame:
+    compute_exclude_same_actor: bool,
+) -> dict[str, pd.DataFrame]:
+    required = [COL_ISIN, COL_DATE, COL_START_TS, COL_DIR, COL_ETA]
+    missing = [col for col in required if col not in group_df.columns]
+    if missing:
+        raise KeyError(f"Group frame missing required columns: {missing}")
+
+    base_cols = [COL_ISIN, COL_DATE, COL_START_TS, COL_ETA]
+    base_df = group_df[base_cols].reset_index(drop=True).copy()
     n_rows = len(group_df)
+    n_bins = len(bin_spec.labels)
+
     if n_rows == 0:
-        return group_df.copy()
+        empty_rates = np.empty((0, n_bins), dtype=float)
+        empty_counts = np.empty(0, dtype=float)
+        empty_inverse = np.empty(0, dtype=int)
+        results = {
+            VARIANT_ALL_OTHERS: _materialize_variant_metrics_frame(
+                base_df,
+                bin_spec=bin_spec,
+                same_rates_sorted=empty_rates,
+                opp_rates_sorted=empty_rates,
+                exact_zero_same_sorted=empty_counts,
+                exact_zero_opp_sorted=empty_counts,
+                truncated_pre_sorted=empty_counts,
+                truncated_post_sorted=empty_counts,
+                inverse=empty_inverse,
+            )
+        }
+        if compute_exclude_same_actor:
+            results[VARIANT_EXCLUDE_SAME_ACTOR] = results[VARIANT_ALL_OTHERS].copy()
+        return results
 
     date_value = pd.Timestamp(group_df[COL_DATE].iloc[0]).normalize()
     session_open_ns = np.int64(pd.Timestamp.combine(date_value.date(), session_start_time).value)
@@ -386,24 +693,16 @@ def _compute_anchor_metrics_for_group(
     inverse[order] = np.arange(n_rows)
 
     sorted_df = group_df.iloc[order].reset_index(drop=True)
-    start_ns_sorted = sorted_df[COL_START_TS].to_numpy(dtype="datetime64[ns]").astype(np.int64)
-    dir_sorted = pd.to_numeric(sorted_df[COL_DIR], errors="coerce").to_numpy(dtype=float)
+    start_ns_sorted = sorted_df[COL_START_TS].to_numpy(dtype="datetime64[ns]").astype(np.int64, copy=False)
+    dir_sorted = pd.to_numeric(sorted_df[COL_DIR], errors="coerce").to_numpy(dtype=np.int8, copy=False)
 
-    tau_ns = start_ns_sorted[None, :] - start_ns_sorted[:, None]
-    offdiag = ~np.eye(n_rows, dtype=bool)
-    same_sign = dir_sorted[None, :] == dir_sorted[:, None]
-    opposite_sign = ~same_sign
-    valid = offdiag.copy()
-
-    if exclude_same_actor and same_actor_col is not None and same_actor_col in sorted_df.columns:
-        actor = sorted_df[same_actor_col].to_numpy(dtype=object)
-        actor_valid = pd.notna(actor)
-        same_actor = (actor[None, :] == actor[:, None]) & actor_valid[None, :] & actor_valid[:, None]
-        valid &= ~same_actor
-
-    exact_zero = tau_ns == 0
-    exact_zero_same = np.sum(valid & exact_zero & same_sign, axis=1).astype(float)
-    exact_zero_opp = np.sum(valid & exact_zero & opposite_sign, axis=1).astype(float)
+    use_same_actor_exclusion = bool(
+        compute_exclude_same_actor and same_actor_col is not None and same_actor_col in sorted_df.columns
+    )
+    actor_codes: Optional[np.ndarray] = None
+    if use_same_actor_exclusion:
+        actor_codes, _ = pd.factorize(sorted_df[same_actor_col], sort=False, use_na_sentinel=True)
+        actor_codes = actor_codes.astype(np.int64, copy=False)
 
     exposures_sorted = _compute_exposures_minutes(
         start_ns_sorted,
@@ -411,63 +710,124 @@ def _compute_anchor_metrics_for_group(
         session_close_ns=session_close_ns,
         bin_spec=bin_spec,
     )
-    counts_same_sorted = np.zeros((n_rows, len(bin_spec.labels)), dtype=float)
-    counts_opp_sorted = np.zeros((n_rows, len(bin_spec.labels)), dtype=float)
-
-    for idx, (left_ns, right_ns) in enumerate(zip(bin_spec.left_ns, bin_spec.right_ns)):
-        if right_ns <= 0:
-            in_bin = (tau_ns >= left_ns) & (tau_ns < right_ns)
-        else:
-            in_bin = (tau_ns > left_ns) & (tau_ns <= right_ns)
-        counts_same_sorted[:, idx] = np.sum(valid & same_sign & in_bin, axis=1, dtype=float)
-        counts_opp_sorted[:, idx] = np.sum(valid & opposite_sign & in_bin, axis=1, dtype=float)
-
-    nan_template = np.full(exposures_sorted.shape, np.nan, dtype=float)
-    same_rates_sorted = np.divide(
-        counts_same_sorted,
-        exposures_sorted,
-        out=nan_template.copy(),
-        where=exposures_sorted > 0,
-    )
-    opp_rates_sorted = np.divide(
-        counts_opp_sorted,
-        exposures_sorted,
-        out=nan_template.copy(),
-        where=exposures_sorted > 0,
-    )
-
-    counts_same = counts_same_sorted[inverse]
-    counts_opp = counts_opp_sorted[inverse]
-    exposures = exposures_sorted[inverse]
-    same_rates = same_rates_sorted[inverse]
-    opp_rates = opp_rates_sorted[inverse]
-    exact_zero_same = exact_zero_same[inverse]
-    exact_zero_opp = exact_zero_opp[inverse]
-
-    out = group_df.reset_index(drop=True).copy()
+    bin_width_minutes = float(bin_spec.right_minutes[0] - bin_spec.left_minutes[0])
     pre_slice = slice(0, bin_spec.pre_count)
     post_slice = slice(bin_spec.pre_count, len(bin_spec.labels))
+    truncated_pre_sorted = np.sum(exposures_sorted[:, pre_slice] < bin_width_minutes, axis=1)
+    truncated_post_sorted = np.sum(exposures_sorted[:, post_slice] < bin_width_minutes, axis=1)
 
-    for idx, label in enumerate(bin_spec.labels):
-        safe_label = label.replace("[", "").replace("]", "").replace("(", "").replace(")", "").replace(",", "_")
-        out[f"same_count_{safe_label}"] = counts_same[:, idx]
-        out[f"opp_count_{safe_label}"] = counts_opp[:, idx]
-        out[f"exposure_{safe_label}"] = exposures[:, idx]
-        out[f"same_rate_{safe_label}"] = same_rates[:, idx]
-        out[f"opp_rate_{safe_label}"] = opp_rates[:, idx]
+    window_ns = int(-bin_spec.left_ns[0])
+    bin_ns = int(bin_spec.right_ns[0] - bin_spec.left_ns[0])
+    left_idx = np.searchsorted(start_ns_sorted, start_ns_sorted - window_ns, side="left").astype(np.int64, copy=False)
+    right_idx = np.searchsorted(start_ns_sorted, start_ns_sorted + window_ns, side="right").astype(np.int64, copy=False)
+    actor_codes_array = (
+        np.ascontiguousarray(actor_codes, dtype=np.int64)
+        if actor_codes is not None
+        else np.full(n_rows, -1, dtype=np.int64)
+    )
+    count_impl = _count_event_neighbors_numba if _count_event_neighbors_numba is not None else _count_event_neighbors_python
+    (
+        counts_same_all_sorted,
+        counts_opp_all_sorted,
+        exact_zero_same_all_sorted,
+        exact_zero_opp_all_sorted,
+        counts_same_excl_sorted,
+        counts_opp_excl_sorted,
+        exact_zero_same_excl_sorted,
+        exact_zero_opp_excl_sorted,
+    ) = count_impl(
+        np.ascontiguousarray(start_ns_sorted, dtype=np.int64),
+        np.ascontiguousarray(dir_sorted, dtype=np.int8),
+        actor_codes_array,
+        np.ascontiguousarray(left_idx, dtype=np.int64),
+        np.ascontiguousarray(right_idx, dtype=np.int64),
+        window_ns,
+        bin_ns,
+        bin_spec.pre_count,
+        n_bins,
+        use_same_actor_exclusion,
+    )
 
-    out["same_pre_mean_rate"] = np.nanmean(same_rates[:, pre_slice], axis=1)
-    out["same_post_mean_rate"] = np.nanmean(same_rates[:, post_slice], axis=1)
-    out["opp_pre_mean_rate"] = np.nanmean(opp_rates[:, pre_slice], axis=1)
-    out["opp_post_mean_rate"] = np.nanmean(opp_rates[:, post_slice], axis=1)
-    out["same_exact_zero_count"] = exact_zero_same
-    out["opp_exact_zero_count"] = exact_zero_opp
-    out["truncated_pre_bins"] = np.sum(exposures[:, pre_slice] < (bin_spec.right_minutes[0] - bin_spec.left_minutes[0]), axis=1)
-    out["truncated_post_bins"] = np.sum(exposures[:, post_slice] < (bin_spec.right_minutes[0] - bin_spec.left_minutes[0]), axis=1)
-    return out
+    nan_template = np.full(exposures_sorted.shape, np.nan, dtype=float)
+    same_rates_all_sorted = np.divide(
+        counts_same_all_sorted,
+        exposures_sorted,
+        out=nan_template.copy(),
+        where=exposures_sorted > 0,
+    )
+    opp_rates_all_sorted = np.divide(
+        counts_opp_all_sorted,
+        exposures_sorted,
+        out=nan_template.copy(),
+        where=exposures_sorted > 0,
+    )
+
+    results = {
+        VARIANT_ALL_OTHERS: _materialize_variant_metrics_frame(
+            base_df,
+            bin_spec=bin_spec,
+            same_rates_sorted=same_rates_all_sorted,
+            opp_rates_sorted=opp_rates_all_sorted,
+            exact_zero_same_sorted=exact_zero_same_all_sorted,
+            exact_zero_opp_sorted=exact_zero_opp_all_sorted,
+            truncated_pre_sorted=truncated_pre_sorted,
+            truncated_post_sorted=truncated_post_sorted,
+            inverse=inverse,
+        )
+    }
+
+    if use_same_actor_exclusion:
+        same_rates_excl_sorted = np.divide(
+            counts_same_excl_sorted,
+            exposures_sorted,
+            out=nan_template.copy(),
+            where=exposures_sorted > 0,
+        )
+        opp_rates_excl_sorted = np.divide(
+            counts_opp_excl_sorted,
+            exposures_sorted,
+            out=nan_template.copy(),
+            where=exposures_sorted > 0,
+        )
+        results[VARIANT_EXCLUDE_SAME_ACTOR] = _materialize_variant_metrics_frame(
+            base_df,
+            bin_spec=bin_spec,
+            same_rates_sorted=same_rates_excl_sorted,
+            opp_rates_sorted=opp_rates_excl_sorted,
+            exact_zero_same_sorted=exact_zero_same_excl_sorted if exact_zero_same_excl_sorted is not None else exact_zero_same_all_sorted,
+            exact_zero_opp_sorted=exact_zero_opp_excl_sorted if exact_zero_opp_excl_sorted is not None else exact_zero_opp_all_sorted,
+            truncated_pre_sorted=truncated_pre_sorted,
+            truncated_post_sorted=truncated_post_sorted,
+            inverse=inverse,
+        )
+
+    return results
 
 
-def _prepare_group_metrics(
+def _compute_group_metrics_task(
+    *,
+    task_idx: int,
+    group_df: pd.DataFrame,
+    bin_spec: BinSpec,
+    session_start_time: time,
+    session_end_time: time,
+    same_actor_col: Optional[str],
+    compute_exclude_same_actor: bool,
+) -> tuple[int, dict[str, pd.DataFrame]]:
+    return (
+        task_idx,
+        _compute_anchor_metrics_for_group_variants(
+            group_df,
+            bin_spec=bin_spec,
+            session_start_time=session_start_time,
+            session_end_time=session_end_time,
+            same_actor_col=same_actor_col,
+            compute_exclude_same_actor=compute_exclude_same_actor,
+        ),
+    )
+
+
+def _prepare_group_metrics_variants(
     df: pd.DataFrame,
     *,
     label: str,
@@ -475,10 +835,11 @@ def _prepare_group_metrics(
     session_start_time: time,
     session_end_time: time,
     same_actor_col: Optional[str],
-    exclude_same_actor: bool,
+    compute_exclude_same_actor: bool,
+    n_jobs: int,
     show_progress: bool = False,
     progress_desc: Optional[str] = None,
-) -> pd.DataFrame:
+) -> dict[str, pd.DataFrame]:
     required = [COL_ISIN, COL_DIR, COL_ETA, COL_PERIOD]
     missing = [col for col in required if col not in df.columns]
     if missing:
@@ -497,33 +858,98 @@ def _prepare_group_metrics(
         & out[COL_DATE].notna()
     ].reset_index(drop=True)
 
-    minute_of_day = out[COL_START_TS].dt.hour * 60 + out[COL_START_TS].dt.minute
-    out[COL_BUCKET] = (minute_of_day // 30).astype(int)
+    keep_cols = [COL_ISIN, COL_DATE, COL_START_TS, COL_ETA, COL_DIR]
+    if same_actor_col is not None and same_actor_col in out.columns and same_actor_col not in keep_cols:
+        keep_cols.append(same_actor_col)
+    out = out[keep_cols].copy()
 
-    chunks: list[pd.DataFrame] = []
-    grouped = out.groupby([COL_ISIN, COL_DATE], sort=False, dropna=False)
+    grouped_items = [
+        (task_idx, group_key, grp.reset_index(drop=True))
+        for task_idx, (group_key, grp) in enumerate(out.groupby([COL_ISIN, COL_DATE], sort=False, dropna=False))
+    ]
+
+    base_empty = out[[COL_ISIN, COL_DATE, COL_START_TS, COL_ETA]].iloc[0:0].copy()
+    empty_variant_results = _compute_anchor_metrics_for_group_variants(
+        base_empty.assign(**{COL_DIR: np.empty(0, dtype=float)}),
+        bin_spec=bin_spec,
+        session_start_time=session_start_time,
+        session_end_time=session_end_time,
+        same_actor_col=same_actor_col,
+        compute_exclude_same_actor=compute_exclude_same_actor,
+    )
+    if not grouped_items:
+        return empty_variant_results
+
+    worker_count = _resolve_event_study_worker_count(n_jobs, len(grouped_items))
+    if worker_count > 1 and show_progress:
+        print(f"[{label}] Parallel event-window groups enabled — workers={worker_count}, groups={len(grouped_items)}")
+
+    ordered_results: list[tuple[int, dict[str, pd.DataFrame]]] = []
     with _make_tqdm(
-        total=int(grouped.ngroups),
+        total=len(grouped_items),
         desc=progress_desc or f"[{label}] event windows",
         disable=not show_progress,
         leave=False,
         unit="group",
     ) as pbar:
-        for _, grp in grouped:
-            chunks.append(
-                _compute_anchor_metrics_for_group(
-                    grp,
-                    bin_spec=bin_spec,
-                    session_start_time=session_start_time,
-                    session_end_time=session_end_time,
-                    same_actor_col=same_actor_col,
-                    exclude_same_actor=exclude_same_actor,
+        if worker_count <= 1:
+            for task_idx, _, grp in grouped_items:
+                ordered_results.append(
+                    _compute_group_metrics_task(
+                        task_idx=task_idx,
+                        group_df=grp,
+                        bin_spec=bin_spec,
+                        session_start_time=session_start_time,
+                        session_end_time=session_end_time,
+                        same_actor_col=same_actor_col,
+                        compute_exclude_same_actor=compute_exclude_same_actor,
+                    )
                 )
-            )
-            pbar.update(1)
-    if not chunks:
-        return out.iloc[0:0].copy()
-    return pd.concat(chunks, ignore_index=True)
+                pbar.update(1)
+        else:
+            with ProcessPoolExecutor(max_workers=worker_count) as executor:
+                future_to_group = {
+                    executor.submit(
+                        _compute_group_metrics_task,
+                        task_idx=task_idx,
+                        group_df=grp,
+                        bin_spec=bin_spec,
+                        session_start_time=session_start_time,
+                        session_end_time=session_end_time,
+                        same_actor_col=same_actor_col,
+                        compute_exclude_same_actor=compute_exclude_same_actor,
+                    ): group_key
+                    for task_idx, group_key, grp in grouped_items
+                }
+                for future in as_completed(future_to_group):
+                    group_key = future_to_group[future]
+                    try:
+                        ordered_results.append(future.result())
+                    except Exception as exc:  # pragma: no cover - defensive path
+                        raise RuntimeError(f"[{label}] Failed event-window computation for group {group_key!r}") from exc
+                    pbar.update(1)
+
+    ordered_results.sort(key=lambda item: item[0])
+    variant_chunks: dict[str, list[pd.DataFrame]] = {VARIANT_ALL_OTHERS: []}
+    if compute_exclude_same_actor:
+        variant_chunks[VARIANT_EXCLUDE_SAME_ACTOR] = []
+
+    for _, result_by_variant in ordered_results:
+        variant_chunks[VARIANT_ALL_OTHERS].append(result_by_variant[VARIANT_ALL_OTHERS])
+        if compute_exclude_same_actor and VARIANT_EXCLUDE_SAME_ACTOR in result_by_variant:
+            variant_chunks[VARIANT_EXCLUDE_SAME_ACTOR].append(result_by_variant[VARIANT_EXCLUDE_SAME_ACTOR])
+
+    final_results = {
+        VARIANT_ALL_OTHERS: pd.concat(variant_chunks[VARIANT_ALL_OTHERS], ignore_index=True)
+        if variant_chunks[VARIANT_ALL_OTHERS]
+        else empty_variant_results[VARIANT_ALL_OTHERS].copy()
+    }
+    if compute_exclude_same_actor and variant_chunks.get(VARIANT_EXCLUDE_SAME_ACTOR):
+        final_results[VARIANT_EXCLUDE_SAME_ACTOR] = pd.concat(
+            variant_chunks[VARIANT_EXCLUDE_SAME_ACTOR],
+            ignore_index=True,
+        )
+    return final_results
 
 
 def _annotate_high_eta_and_strata(
@@ -557,18 +983,32 @@ def _annotate_high_eta_and_strata(
 def _rate_columns(bin_spec: BinSpec, prefix: str) -> list[str]:
     cols: list[str] = []
     for label in bin_spec.labels:
-        safe_label = label.replace("[", "").replace("]", "").replace("(", "").replace(")", "").replace(",", "_")
+        safe_label = _safe_bin_label(label)
         cols.append(f"{prefix}_{safe_label}")
     return cols
 
 
-def _build_stratum_summaries(
+def _build_bootstrap_payload(
     metrics_df: pd.DataFrame,
     *,
     curve_metric_cols: Sequence[str],
-    summary_metric_cols: Sequence[str],
-) -> pd.DataFrame:
-    all_metric_cols = list(curve_metric_cols) + list(summary_metric_cols)
+) -> BootstrapPayload:
+    n_metrics = len(curve_metric_cols)
+    if metrics_df.empty:
+        empty_vec = np.empty(0, dtype=float)
+        empty_mat = np.empty((0, n_metrics), dtype=float)
+        return BootstrapPayload(
+            date_codes=np.empty(0, dtype=np.int64),
+            n_dates=0,
+            n_treated=empty_vec,
+            n_control=empty_vec,
+            treated_sums=empty_mat,
+            control_sums=empty_mat,
+            treated_valid=empty_mat,
+            control_valid=empty_mat,
+        )
+
+    all_metric_cols = list(curve_metric_cols)
     tmp = metrics_df[[COL_DATE, "stratum_key", "high_eta"] + all_metric_cols].copy()
     tmp["high_eta"] = tmp["high_eta"].astype(int)
 
@@ -585,164 +1025,224 @@ def _build_stratum_summaries(
     treated_grp = treated_frame.groupby(group_cols, sort=False, dropna=False)
     control_grp = control_frame.groupby(group_cols, sort=False, dropna=False)
 
-    # Keep per-metric valid counts so boundary-truncated bins are excluded from
-    # the relevant denominator instead of propagating NaNs through the whole
-    # matched aggregate.
     treated_sums = treated_grp[all_metric_cols].sum(min_count=1).reindex(summary_index).fillna(0.0)
     control_sums = control_grp[all_metric_cols].sum(min_count=1).reindex(summary_index).fillna(0.0)
     treated_counts = treated_grp[all_metric_cols].count().reindex(summary_index).fillna(0.0)
     control_counts = control_grp[all_metric_cols].count().reindex(summary_index).fillna(0.0)
 
-    metric_payload: dict[str, np.ndarray] = {}
-    for col in all_metric_cols:
-        metric_payload[f"sum_treated__{col}"] = treated_sums[col].to_numpy(dtype=float)
-        metric_payload[f"sum_control__{col}"] = control_sums[col].to_numpy(dtype=float)
-        metric_payload[f"n_treated_valid__{col}"] = treated_counts[col].to_numpy(dtype=float)
-        metric_payload[f"n_control_valid__{col}"] = control_counts[col].to_numpy(dtype=float)
-
-    metric_frame = pd.DataFrame(metric_payload, index=summary_index)
-    return pd.concat([summary, metric_frame], axis=1).reset_index()
-
-
-def _weighted_stat_from_strata(
-    strata: pd.DataFrame,
-    *,
-    metric_cols: Sequence[str],
-    weights: Optional[np.ndarray] = None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
-    if strata.empty:
-        n_metrics = len(metric_cols)
-        nan_vec = np.full(n_metrics, np.nan, dtype=float)
-        return nan_vec, nan_vec, nan_vec, 0.0
-
-    valid = strata["n_treated"].to_numpy(dtype=float) > 0
-    valid &= strata["n_control"].to_numpy(dtype=float) > 0
-    if not np.any(valid):
-        n_metrics = len(metric_cols)
-        nan_vec = np.full(n_metrics, np.nan, dtype=float)
-        return nan_vec, nan_vec, nan_vec, 0.0
-
-    strata_valid = strata.loc[valid].reset_index(drop=True)
-    if weights is None:
-        row_weight = np.ones(len(strata_valid), dtype=float)
-    else:
-        row_weight = np.asarray(weights, dtype=float)[valid]
-
-    n_treated = strata_valid["n_treated"].to_numpy(dtype=float)
-    n_control = strata_valid["n_control"].to_numpy(dtype=float)
-    matched_treated_weight = row_weight * n_treated
-    total_treated = float(np.sum(matched_treated_weight))
-    if total_treated <= 0:
-        n_metrics = len(metric_cols)
-        nan_vec = np.full(n_metrics, np.nan, dtype=float)
-        return nan_vec, nan_vec, nan_vec, 0.0
-
-    treated_vals = []
-    control_vals = []
-    excess_vals = []
-    for col in metric_cols:
-        treated_sum = strata_valid[f"sum_treated__{col}"].to_numpy(dtype=float)
-        control_sum = strata_valid[f"sum_control__{col}"].to_numpy(dtype=float)
-
-        treated_count_col = f"n_treated_valid__{col}"
-        control_count_col = f"n_control_valid__{col}"
-        if treated_count_col in strata_valid.columns:
-            n_treated_valid = strata_valid[treated_count_col].to_numpy(dtype=float)
-        else:
-            n_treated_valid = np.where(np.isfinite(treated_sum), n_treated, 0.0)
-        if control_count_col in strata_valid.columns:
-            n_control_valid = strata_valid[control_count_col].to_numpy(dtype=float)
-        else:
-            n_control_valid = np.where(np.isfinite(control_sum), n_control, 0.0)
-
-        metric_valid = (n_treated_valid > 0) & (n_control_valid > 0)
-        if not np.any(metric_valid):
-            treated_vals.append(float("nan"))
-            control_vals.append(float("nan"))
-            excess_vals.append(float("nan"))
-            continue
-
-        metric_row_weight = row_weight[metric_valid]
-        metric_treated_sum = treated_sum[metric_valid]
-        metric_control_sum = control_sum[metric_valid]
-        metric_treated_counts = n_treated_valid[metric_valid]
-        metric_control_counts = n_control_valid[metric_valid]
-        metric_treated_weight = metric_row_weight * metric_treated_counts
-        total_metric_treated = float(np.sum(metric_treated_weight))
-        if total_metric_treated <= 0:
-            treated_vals.append(float("nan"))
-            control_vals.append(float("nan"))
-            excess_vals.append(float("nan"))
-            continue
-
-        treated_mean = float(np.sum(metric_row_weight * metric_treated_sum) / total_metric_treated)
-        control_mean = float(
-            np.sum(metric_treated_weight * (metric_control_sum / metric_control_counts)) / total_metric_treated
-        )
-        treated_vals.append(treated_mean)
-        control_vals.append(control_mean)
-        excess_vals.append(treated_mean - control_mean)
-    return (
-        np.asarray(treated_vals, dtype=float),
-        np.asarray(control_vals, dtype=float),
-        np.asarray(excess_vals, dtype=float),
-        total_treated,
+    date_index = summary_index.get_level_values(COL_DATE)
+    unique_dates = pd.Index(pd.unique(date_index))
+    date_codes = unique_dates.get_indexer(date_index)
+    return BootstrapPayload(
+        date_codes=np.ascontiguousarray(date_codes, dtype=np.int64),
+        n_dates=int(len(unique_dates)),
+        n_treated=np.ascontiguousarray(summary["n_treated"].to_numpy(dtype=float)),
+        n_control=np.ascontiguousarray(summary["n_control"].to_numpy(dtype=float)),
+        treated_sums=np.ascontiguousarray(treated_sums.to_numpy(dtype=float)),
+        control_sums=np.ascontiguousarray(control_sums.to_numpy(dtype=float)),
+        treated_valid=np.ascontiguousarray(treated_counts.to_numpy(dtype=float)),
+        control_valid=np.ascontiguousarray(control_counts.to_numpy(dtype=float)),
     )
 
 
-def _bootstrap_stats_by_date(
-    strata: pd.DataFrame,
+def _weighted_stat_from_bootstrap_payload(
+    payload: BootstrapPayload,
     *,
-    curve_metric_cols: Sequence[str],
-    summary_metric_cols: Sequence[str],
-    n_runs: int,
+    weights: Optional[np.ndarray] = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+    n_metrics = int(payload.treated_sums.shape[1]) if payload.treated_sums.ndim == 2 else 0
+    nan_vec = np.full(n_metrics, np.nan, dtype=float)
+    if payload.n_treated.size == 0 or n_metrics == 0:
+        return nan_vec, nan_vec, nan_vec, 0.0
+
+    valid_rows = (payload.n_treated > 0) & (payload.n_control > 0)
+    if not np.any(valid_rows):
+        return nan_vec, nan_vec, nan_vec, 0.0
+
+    if weights is None:
+        row_weight = np.ones(int(np.sum(valid_rows)), dtype=float)
+    else:
+        row_weight = np.asarray(weights, dtype=float)[valid_rows]
+
+    n_treated = payload.n_treated[valid_rows]
+    total_treated = float(np.sum(row_weight * n_treated))
+    if total_treated <= 0:
+        return nan_vec, nan_vec, nan_vec, 0.0
+
+    treated_sums = payload.treated_sums[valid_rows]
+    control_sums = payload.control_sums[valid_rows]
+    treated_valid = payload.treated_valid[valid_rows]
+    control_valid = payload.control_valid[valid_rows]
+
+    metric_valid = (treated_valid > 0) & (control_valid > 0)
+    metric_row_weight = row_weight[:, None] * metric_valid
+    metric_treated_weight = metric_row_weight * treated_valid
+    total_metric_treated = np.sum(metric_treated_weight, axis=0, dtype=float)
+
+    treated_mean = np.full(n_metrics, np.nan, dtype=float)
+    control_mean = np.full(n_metrics, np.nan, dtype=float)
+    excess_mean = np.full(n_metrics, np.nan, dtype=float)
+    if not np.any(total_metric_treated > 0):
+        return treated_mean, control_mean, excess_mean, total_treated
+
+    control_mean_by_stratum = np.divide(
+        control_sums,
+        control_valid,
+        out=np.zeros_like(control_sums, dtype=float),
+        where=control_valid > 0,
+    )
+    treated_num = np.sum(metric_row_weight * treated_sums, axis=0, dtype=float)
+    control_num = np.sum(metric_treated_weight * control_mean_by_stratum, axis=0, dtype=float)
+    valid_metric = total_metric_treated > 0
+    treated_mean[valid_metric] = treated_num[valid_metric] / total_metric_treated[valid_metric]
+    control_mean[valid_metric] = control_num[valid_metric] / total_metric_treated[valid_metric]
+    excess_mean[valid_metric] = treated_mean[valid_metric] - control_mean[valid_metric]
+    return treated_mean, control_mean, excess_mean, total_treated
+
+
+def _split_replicate_batches(total_runs: int, worker_count: int, *, batches_per_worker: int = 8) -> list[int]:
+    if total_runs <= 0:
+        return []
+    n_batches = min(total_runs, max(1, worker_count * batches_per_worker))
+    base = total_runs // n_batches
+    remainder = total_runs % n_batches
+    return [base + (1 if idx < remainder else 0) for idx in range(n_batches) if base + (1 if idx < remainder else 0) > 0]
+
+
+def _run_parallel_replicate_batches(
+    *,
+    total_runs: int,
+    n_cols: int,
+    requested_jobs: int,
     seed: int,
-    show_progress: bool = False,
-    progress_desc: Optional[str] = None,
-) -> tuple[np.ndarray, np.ndarray]:
-    if n_runs <= 0 or strata.empty:
-        return (
-            np.empty((0, len(curve_metric_cols)), dtype=float),
-            np.empty((0, len(summary_metric_cols)), dtype=float),
+    show_progress: bool,
+    progress_desc: Optional[str],
+    phase_label: str,
+    serial_worker_fn,
+    process_worker_fn=None,
+    process_initializer=None,
+    process_initargs: tuple[Any, ...] = (),
+) -> np.ndarray:
+    if total_runs <= 0:
+        return np.empty((0, n_cols), dtype=float)
+
+    worker_count = _resolve_event_study_worker_count(requested_jobs, total_runs)
+    base_rng = np.random.default_rng(seed)
+    replicate_seeds = base_rng.integers(0, np.iinfo(np.uint64).max, size=total_runs, dtype=np.uint64)
+    if worker_count <= 1 or total_runs == 1:
+        return serial_worker_fn(replicate_seeds)
+
+    batch_sizes = _split_replicate_batches(total_runs, worker_count)
+    seed_batches: list[np.ndarray] = []
+    cursor = 0
+    for batch_size in batch_sizes:
+        seed_batches.append(replicate_seeds[cursor : cursor + batch_size].copy())
+        cursor += batch_size
+
+    process_ctx = _process_pool_context() if process_worker_fn is not None else None
+    use_process_pool = process_worker_fn is not None
+    if use_process_pool and process_ctx is None:
+        use_process_pool = False
+        if show_progress:
+            print(f"[{phase_label}] Process-based batches unavailable on this platform; falling back to threads.")
+    if show_progress:
+        executor_label = "process" if use_process_pool else "thread"
+        print(
+            f"[{phase_label}] Parallel replicate batches enabled — workers={worker_count}, "
+            f"batches={len(batch_sizes)}, executor={executor_label}"
         )
 
-    unique_dates = pd.Index(pd.unique(strata[COL_DATE]))
-    if unique_dates.empty:
-        return (
-            np.empty((0, len(curve_metric_cols)), dtype=float),
-            np.empty((0, len(summary_metric_cols)), dtype=float),
-        )
-
-    date_codes = unique_dates.get_indexer(strata[COL_DATE])
-    rng = np.random.default_rng(seed)
-    curve_reps = np.full((n_runs, len(curve_metric_cols)), np.nan, dtype=float)
-    summary_reps = np.full((n_runs, len(summary_metric_cols)), np.nan, dtype=float)
-
+    ordered_results: list[Optional[np.ndarray]] = [None] * len(batch_sizes)
     with _make_tqdm(
-        total=n_runs,
-        desc=progress_desc or "Bootstrap",
+        total=total_runs,
+        desc=progress_desc or phase_label,
         disable=not show_progress,
         leave=False,
         unit="rep",
     ) as pbar:
-        for run_idx in range(n_runs):
-            sampled = rng.integers(0, len(unique_dates), size=len(unique_dates))
-            date_weights = np.bincount(sampled, minlength=len(unique_dates)).astype(float)
-            row_weights = date_weights[date_codes]
-            _, _, curve_excess, _ = _weighted_stat_from_strata(
-                strata,
-                metric_cols=curve_metric_cols,
-                weights=row_weights,
-            )
-            _, _, summary_excess, _ = _weighted_stat_from_strata(
-                strata,
-                metric_cols=summary_metric_cols,
-                weights=row_weights,
-            )
-            curve_reps[run_idx, :] = curve_excess
-            summary_reps[run_idx, :] = summary_excess
-            pbar.update(1)
-    return curve_reps, summary_reps
+        if use_process_pool:
+            executor_kwargs: dict[str, Any] = {"max_workers": worker_count}
+            if process_ctx is not None:
+                executor_kwargs["mp_context"] = process_ctx
+            if process_initializer is not None:
+                executor_kwargs["initializer"] = process_initializer
+                executor_kwargs["initargs"] = process_initargs
+            with ProcessPoolExecutor(**executor_kwargs) as executor:
+                future_to_idx = {
+                    executor.submit(process_worker_fn, seed_batch): batch_idx
+                    for batch_idx, seed_batch in enumerate(seed_batches)
+                }
+                for future in as_completed(future_to_idx):
+                    batch_idx = future_to_idx[future]
+                    ordered_results[batch_idx] = future.result()
+                    pbar.update(batch_sizes[batch_idx])
+        else:
+            with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                future_to_idx = {
+                    executor.submit(serial_worker_fn, seed_batch): batch_idx
+                    for batch_idx, seed_batch in enumerate(seed_batches)
+                }
+                for future in as_completed(future_to_idx):
+                    batch_idx = future_to_idx[future]
+                    ordered_results[batch_idx] = future.result()
+                    pbar.update(batch_sizes[batch_idx])
+
+    materialized = [result for result in ordered_results if result is not None]
+    if not materialized:
+        return np.empty((0, n_cols), dtype=float)
+    return np.vstack(materialized)
+
+
+def _bootstrap_batch(
+    payload: BootstrapPayload,
+    *,
+    replicate_seeds: np.ndarray,
+) -> np.ndarray:
+    n_runs = int(len(replicate_seeds))
+    n_metrics = int(payload.treated_sums.shape[1]) if payload.treated_sums.ndim == 2 else 0
+    if n_runs <= 0 or payload.n_dates <= 0 or n_metrics == 0:
+        return np.empty((0, n_metrics), dtype=float)
+
+    reps = np.full((n_runs, n_metrics), np.nan, dtype=float)
+    for run_idx, rep_seed in enumerate(replicate_seeds):
+        rng = np.random.default_rng(int(rep_seed))
+        sampled = rng.integers(0, payload.n_dates, size=payload.n_dates)
+        date_weights = np.bincount(sampled, minlength=payload.n_dates).astype(float, copy=False)
+        row_weights = date_weights[payload.date_codes]
+        _, _, excess, _ = _weighted_stat_from_bootstrap_payload(payload, weights=row_weights)
+        reps[run_idx, :] = excess
+    return reps
+
+
+def _bootstrap_batch_from_worker_payload(replicate_seeds: np.ndarray) -> np.ndarray:
+    if _BOOTSTRAP_WORKER_PAYLOAD is None:  # pragma: no cover - defensive path
+        raise RuntimeError("Bootstrap worker payload is not initialized.")
+    return _bootstrap_batch(_BOOTSTRAP_WORKER_PAYLOAD, replicate_seeds=replicate_seeds)
+
+
+def _bootstrap_stats_by_date(
+    payload: BootstrapPayload,
+    *,
+    n_runs: int,
+    seed: int,
+    n_jobs: int,
+    show_progress: bool = False,
+    progress_desc: Optional[str] = None,
+) -> np.ndarray:
+    n_metrics = int(payload.treated_sums.shape[1]) if payload.treated_sums.ndim == 2 else 0
+    return _run_parallel_replicate_batches(
+        total_runs=n_runs,
+        n_cols=n_metrics,
+        requested_jobs=n_jobs,
+        seed=seed,
+        show_progress=show_progress,
+        progress_desc=progress_desc,
+        phase_label="bootstrap",
+        serial_worker_fn=lambda seed_batch: _bootstrap_batch(payload, replicate_seeds=seed_batch),
+        process_worker_fn=_bootstrap_batch_from_worker_payload,
+        process_initializer=_init_bootstrap_worker,
+        process_initargs=(payload,),
+    )
 
 
 def _ci_from_reps(reps: np.ndarray, alpha: float) -> tuple[np.ndarray, np.ndarray]:
@@ -754,94 +1254,167 @@ def _ci_from_reps(reps: np.ndarray, alpha: float) -> tuple[np.ndarray, np.ndarra
     return np.asarray(lo, dtype=float), np.asarray(hi, dtype=float)
 
 
-def _permutation_summary_stats(
+def _build_permutation_payload(
     metrics_df: pd.DataFrame,
     *,
-    summary_metric_cols: Sequence[str],
-    n_runs: int,
-    seed: int,
-    show_progress: bool = False,
-    progress_desc: Optional[str] = None,
-) -> tuple[np.ndarray, np.ndarray]:
-    observed = np.full(len(summary_metric_cols), np.nan, dtype=float)
-    if metrics_df.empty:
-        return observed, np.empty((0, len(summary_metric_cols)), dtype=float)
-
-    observed_metrics, _ = _stratum_metric_arrays(metrics_df, summary_metric_cols)
-    observed = _summary_effect_from_metric_arrays(observed_metrics)
-    if n_runs <= 0:
-        return observed, np.empty((0, len(summary_metric_cols)), dtype=float)
-
-    rng = np.random.default_rng(seed)
-    permuted = np.full((n_runs, len(summary_metric_cols)), np.nan, dtype=float)
-    with _make_tqdm(
-        total=n_runs,
-        desc=progress_desc or "Permutation",
-        disable=not show_progress,
-        leave=False,
-        unit="rep",
-    ) as pbar:
-        for run_idx in range(n_runs):
-            permuted_metrics, _ = _stratum_metric_arrays(metrics_df, summary_metric_cols, rng=rng)
-            permuted[run_idx, :] = _summary_effect_from_metric_arrays(permuted_metrics)
-            pbar.update(1)
-    return observed, permuted
-
-
-def _stratum_metric_arrays(
-    metrics_df: pd.DataFrame,
     metric_cols: Sequence[str],
-    *,
-    rng: Optional[np.random.Generator] = None,
-) -> tuple[list[tuple[np.ndarray, np.ndarray]], int]:
-    arrays: list[tuple[np.ndarray, np.ndarray]] = []
-    treated_total = 0
+) -> PermutationPayload:
+    n_metrics = len(metric_cols)
+    if metrics_df.empty:
+        return PermutationPayload(
+            values_zero_by_stratum=tuple(),
+            finite_mask_by_stratum=tuple(),
+            treated_mask_by_stratum=tuple(),
+            n_treated_by_stratum=np.empty(0, dtype=np.int64),
+            n_metrics=n_metrics,
+        )
+
+    values_zero_by_stratum: list[np.ndarray] = []
+    finite_mask_by_stratum: list[np.ndarray] = []
+    treated_mask_by_stratum: list[np.ndarray] = []
+    n_treated_by_stratum: list[int] = []
+    metric_names = list(metric_cols)
+
     for _, frame in metrics_df.groupby("stratum_key", sort=False):
-        values = frame[list(metric_cols)].to_numpy(dtype=float)
-        n_total = len(values)
-        n_treated = int(frame["high_eta"].sum())
+        values = np.ascontiguousarray(frame[metric_names].to_numpy(dtype=float))
+        treated_mask = np.ascontiguousarray(frame["high_eta"].to_numpy(dtype=bool))
+        n_total = int(values.shape[0])
+        n_treated = int(np.sum(treated_mask))
         if n_treated <= 0 or n_treated >= n_total:
             continue
-        if rng is None:
-            treated_mask = frame["high_eta"].to_numpy(dtype=bool)
-        else:
+        finite_mask = np.ascontiguousarray(np.isfinite(values))
+        values_zero = np.ascontiguousarray(np.where(finite_mask, values, 0.0))
+        values_zero_by_stratum.append(values_zero)
+        finite_mask_by_stratum.append(finite_mask)
+        treated_mask_by_stratum.append(treated_mask)
+        n_treated_by_stratum.append(n_treated)
+
+    return PermutationPayload(
+        values_zero_by_stratum=tuple(values_zero_by_stratum),
+        finite_mask_by_stratum=tuple(finite_mask_by_stratum),
+        treated_mask_by_stratum=tuple(treated_mask_by_stratum),
+        n_treated_by_stratum=np.asarray(n_treated_by_stratum, dtype=np.int64),
+        n_metrics=n_metrics,
+    )
+
+
+def _accumulate_effect_from_treated_mask(
+    values_zero: np.ndarray,
+    finite_mask: np.ndarray,
+    treated_mask: np.ndarray,
+    *,
+    diff_sum: np.ndarray,
+    total_treated_valid: np.ndarray,
+) -> None:
+    treated_mask_2d = treated_mask[:, None]
+    control_mask_2d = ~treated_mask_2d
+    n_treated_valid = np.sum(finite_mask & treated_mask_2d, axis=0, dtype=float)
+    n_control_valid = np.sum(finite_mask & control_mask_2d, axis=0, dtype=float)
+    metric_valid = (n_treated_valid > 0) & (n_control_valid > 0)
+    if not np.any(metric_valid):
+        return
+
+    treated_sum = np.sum(values_zero * treated_mask_2d, axis=0, dtype=float)
+    control_sum = np.sum(values_zero * control_mask_2d, axis=0, dtype=float)
+    control_mean = np.divide(control_sum, n_control_valid, out=np.zeros_like(control_sum), where=n_control_valid > 0)
+    diff_sum[metric_valid] += treated_sum[metric_valid] - n_treated_valid[metric_valid] * control_mean[metric_valid]
+    total_treated_valid[metric_valid] += n_treated_valid[metric_valid]
+
+
+def _summary_effect_from_permutation_payload(
+    payload: PermutationPayload,
+    *,
+    treated_masks: Optional[Sequence[np.ndarray]] = None,
+) -> np.ndarray:
+    out = np.full(payload.n_metrics, np.nan, dtype=float)
+    if payload.n_metrics <= 0 or not payload.values_zero_by_stratum:
+        return out
+
+    total_treated_valid = np.zeros(payload.n_metrics, dtype=float)
+    diff_sum = np.zeros(payload.n_metrics, dtype=float)
+    for stratum_idx, values_zero in enumerate(payload.values_zero_by_stratum):
+        treated_mask = (
+            payload.treated_mask_by_stratum[stratum_idx]
+            if treated_masks is None
+            else np.asarray(treated_masks[stratum_idx], dtype=bool)
+        )
+        _accumulate_effect_from_treated_mask(
+            values_zero,
+            payload.finite_mask_by_stratum[stratum_idx],
+            treated_mask,
+            diff_sum=diff_sum,
+            total_treated_valid=total_treated_valid,
+        )
+
+    valid = total_treated_valid > 0
+    if np.any(valid):
+        out[valid] = diff_sum[valid] / total_treated_valid[valid]
+    return out
+
+
+def _permutation_batch(
+    payload: PermutationPayload,
+    *,
+    replicate_seeds: np.ndarray,
+) -> np.ndarray:
+    n_runs = int(len(replicate_seeds))
+    if n_runs <= 0 or payload.n_metrics <= 0 or not payload.values_zero_by_stratum:
+        return np.empty((0, payload.n_metrics), dtype=float)
+
+    reps = np.full((n_runs, payload.n_metrics), np.nan, dtype=float)
+    for run_idx, rep_seed in enumerate(replicate_seeds):
+        rng = np.random.default_rng(int(rep_seed))
+        total_treated_valid = np.zeros(payload.n_metrics, dtype=float)
+        diff_sum = np.zeros(payload.n_metrics, dtype=float)
+        for stratum_idx, values_zero in enumerate(payload.values_zero_by_stratum):
+            n_total = int(values_zero.shape[0])
+            n_treated = int(payload.n_treated_by_stratum[stratum_idx])
             treated_mask = np.zeros(n_total, dtype=bool)
             treated_idx = rng.choice(n_total, size=n_treated, replace=False)
             treated_mask[treated_idx] = True
-        arrays.append((values[treated_mask], values[~treated_mask]))
-        treated_total += n_treated
-    return arrays, treated_total
+            _accumulate_effect_from_treated_mask(
+                values_zero,
+                payload.finite_mask_by_stratum[stratum_idx],
+                treated_mask,
+                diff_sum=diff_sum,
+                total_treated_valid=total_treated_valid,
+            )
+        valid = total_treated_valid > 0
+        if np.any(valid):
+            reps[run_idx, valid] = diff_sum[valid] / total_treated_valid[valid]
+    return reps
 
 
-def _summary_effect_from_metric_arrays(stratum_arrays: list[tuple[np.ndarray, np.ndarray]]) -> np.ndarray:
-    if not stratum_arrays:
-        return np.full(len(SUMMARY_METRIC_SPECS), np.nan, dtype=float)
+def _permutation_batch_from_worker_payload(replicate_seeds: np.ndarray) -> np.ndarray:
+    if _PERMUTATION_WORKER_PAYLOAD is None:  # pragma: no cover - defensive path
+        raise RuntimeError("Permutation worker payload is not initialized.")
+    return _permutation_batch(_PERMUTATION_WORKER_PAYLOAD, replicate_seeds=replicate_seeds)
 
-    n_metrics = stratum_arrays[0][0].shape[1] if stratum_arrays[0][0].ndim == 2 else len(SUMMARY_METRIC_SPECS)
-    total_treated_valid = np.zeros(n_metrics, dtype=float)
-    diff_sum = np.zeros(n_metrics, dtype=float)
 
-    for treated_values, control_values in stratum_arrays:
-        if treated_values.size == 0 or control_values.size == 0:
-            continue
-
-        n_treated_valid = np.sum(np.isfinite(treated_values), axis=0, dtype=float)
-        n_control_valid = np.sum(np.isfinite(control_values), axis=0, dtype=float)
-        metric_valid = (n_treated_valid > 0) & (n_control_valid > 0)
-        if not np.any(metric_valid):
-            continue
-
-        treated_sum = np.nansum(treated_values[:, metric_valid], axis=0)
-        control_mean = np.nanmean(control_values[:, metric_valid], axis=0)
-        diff_sum[metric_valid] += treated_sum - n_treated_valid[metric_valid] * control_mean
-        total_treated_valid[metric_valid] += n_treated_valid[metric_valid]
-
-    out = np.full(n_metrics, np.nan, dtype=float)
-    valid = total_treated_valid > 0
-    if not np.any(valid):
-        return out
-    out[valid] = diff_sum[valid] / total_treated_valid[valid]
-    return out
+def _permutation_effect_stats(
+    payload: PermutationPayload,
+    *,
+    n_runs: int,
+    seed: int,
+    n_jobs: int,
+    show_progress: bool = False,
+    progress_desc: Optional[str] = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    observed = _summary_effect_from_permutation_payload(payload)
+    permuted = _run_parallel_replicate_batches(
+        total_runs=n_runs,
+        n_cols=payload.n_metrics,
+        requested_jobs=n_jobs,
+        seed=seed,
+        show_progress=show_progress,
+        progress_desc=progress_desc,
+        phase_label="permutation",
+        serial_worker_fn=lambda seed_batch: _permutation_batch(payload, replicate_seeds=seed_batch),
+        process_worker_fn=_permutation_batch_from_worker_payload,
+        process_initializer=_init_permutation_worker,
+        process_initargs=(payload,),
+    )
+    return observed, permuted
 
 
 def _raw_p_value(observed: float, draws: np.ndarray, *, alternative: str) -> float:
@@ -854,22 +1427,6 @@ def _raw_p_value(observed: float, draws: np.ndarray, *, alternative: str) -> flo
     if alternative == "less":
         return float((1.0 + np.sum(finite <= observed)) / (finite.size + 1.0))
     return float((1.0 + np.sum(np.abs(finite) >= abs(observed))) / (finite.size + 1.0))
-
-
-def _holm_adjust(p_values: np.ndarray) -> np.ndarray:
-    p = np.asarray(p_values, dtype=float)
-    out = np.full_like(p, np.nan, dtype=float)
-    finite_idx = np.flatnonzero(np.isfinite(p))
-    if finite_idx.size == 0:
-        return out
-    order = finite_idx[np.argsort(p[finite_idx])]
-    m = len(order)
-    running = 0.0
-    for rank, idx in enumerate(order):
-        adjusted = min((m - rank) * p[idx], 1.0)
-        running = max(running, adjusted)
-        out[idx] = running
-    return out
 
 
 def _bh_adjust(p_values: np.ndarray) -> np.ndarray:
@@ -888,56 +1445,6 @@ def _bh_adjust(p_values: np.ndarray) -> np.ndarray:
     return out
 
 
-def _build_summary_rows(
-    *,
-    group_name: str,
-    variant: str,
-    eta_threshold: float,
-    strata: pd.DataFrame,
-    summary_metric_cols: Sequence[str],
-    summary_observed_treated: np.ndarray,
-    summary_observed_control: np.ndarray,
-    summary_observed_excess: np.ndarray,
-    summary_ci_lo: np.ndarray,
-    summary_ci_hi: np.ndarray,
-    perm_observed: np.ndarray,
-    perm_draws: np.ndarray,
-    total_treated_all: int,
-    total_treated_matched: int,
-    total_control_matched: int,
-) -> pd.DataFrame:
-    rows: list[dict[str, object]] = []
-    dropped_treated = total_treated_all - total_treated_matched
-    for idx, (metric_name, sign_relation, window_side, alternative) in enumerate(SUMMARY_METRIC_SPECS):
-        raw_p = _raw_p_value(perm_observed[idx], perm_draws[:, idx], alternative=alternative) if perm_draws.size else float("nan")
-        rows.append(
-            {
-                "group": group_name,
-                "variant": variant,
-                "metric_name": metric_name,
-                "sign_relation": sign_relation,
-                "window_side": window_side,
-                "test_alternative": alternative,
-                "eta_threshold": eta_threshold,
-                "treated_rate": summary_observed_treated[idx],
-                "control_rate": summary_observed_control[idx],
-                "excess_rate": summary_observed_excess[idx],
-                "ci_excess_lo": summary_ci_lo[idx],
-                "ci_excess_hi": summary_ci_hi[idx],
-                "p_raw": raw_p,
-                "n_treated_total": total_treated_all,
-                "n_treated_matched": total_treated_matched,
-                "n_control_in_valid_strata": total_control_matched,
-                "n_treated_dropped_no_control": dropped_treated,
-                "share_treated_dropped_no_control": (
-                    float(dropped_treated) / float(total_treated_all) if total_treated_all > 0 else float("nan")
-                ),
-                "n_valid_strata": int(np.sum((strata["n_treated"] > 0) & (strata["n_control"] > 0))),
-            }
-        )
-    return pd.DataFrame(rows)
-
-
 def _build_curve_rows(
     *,
     group_name: str,
@@ -949,27 +1456,39 @@ def _build_curve_rows(
     observed_excess_curve: np.ndarray,
     curve_ci_lo: np.ndarray,
     curve_ci_hi: np.ndarray,
+    perm_observed: np.ndarray,
+    perm_draws: np.ndarray,
     total_treated_matched: int,
 ) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     for idx, metric_name in enumerate(curve_metric_cols):
         sign_relation = "same_sign" if metric_name.startswith("same_rate_") else "opposite_sign"
+        bin_idx = idx % len(bin_spec.labels)
+        window_side = "pre" if float(bin_spec.right_minutes[bin_idx]) <= 0.0 else "post"
+        raw_p = (
+            _raw_p_value(perm_observed[idx], perm_draws[:, idx], alternative="two-sided")
+            if perm_draws.size
+            else float("nan")
+        )
         rows.append(
             {
                 "group": group_name,
                 "variant": variant,
                 "metric_name": metric_name,
                 "sign_relation": sign_relation,
+                "window_side": window_side,
+                "test_alternative": "two-sided",
                 "bin_index": idx if sign_relation == "same_sign" else idx - len(bin_spec.labels),
-                "bin_label": bin_spec.labels[idx % len(bin_spec.labels)],
-                "bin_left_min": float(bin_spec.left_minutes[idx % len(bin_spec.labels)]),
-                "bin_right_min": float(bin_spec.right_minutes[idx % len(bin_spec.labels)]),
-                "bin_center_min": float(bin_spec.centers_minutes[idx % len(bin_spec.labels)]),
+                "bin_label": bin_spec.labels[bin_idx],
+                "bin_left_min": float(bin_spec.left_minutes[bin_idx]),
+                "bin_right_min": float(bin_spec.right_minutes[bin_idx]),
+                "bin_center_min": float(bin_spec.centers_minutes[bin_idx]),
                 "treated_rate": observed_treated_curve[idx],
                 "control_rate": observed_control_curve[idx],
                 "excess_rate": observed_excess_curve[idx],
                 "ci_excess_lo": curve_ci_lo[idx],
                 "ci_excess_hi": curve_ci_hi[idx],
+                "p_raw": raw_p,
                 "n_treated_matched": total_treated_matched,
             }
         )
@@ -1051,6 +1570,7 @@ def _plot_group_variant_curves(
     group_name: str,
     variant: str,
     dirs: PlotOutputDirs,
+    alpha: Optional[float] = None,
 ) -> None:
     if curve_df.empty:
         return
@@ -1068,10 +1588,12 @@ def _plot_group_variant_curves(
     for col_idx, sign_relation in enumerate(["same_sign", "opposite_sign"], start=1):
         sub = curve_df.loc[curve_df["sign_relation"].eq(sign_relation)].sort_values("bin_center_min")
         x = sub["bin_center_min"].to_numpy(dtype=float)
+        y_treated = sub["treated_rate"].to_numpy(dtype=float)
+        y_control = sub["control_rate"].to_numpy(dtype=float)
         fig.add_trace(
             go.Scatter(
                 x=x,
-                y=sub["treated_rate"].to_numpy(dtype=float),
+                y=y_treated,
                 mode="lines+markers",
                 line=dict(color=group_color, width=2),
                 name=f"{group_label} high-eta",
@@ -1084,7 +1606,7 @@ def _plot_group_variant_curves(
         fig.add_trace(
             go.Scatter(
                 x=x,
-                y=sub["control_rate"].to_numpy(dtype=float),
+                y=y_control,
                 mode="lines+markers",
                 line=dict(color=control_color, width=2, dash="dash"),
                 name="Matched controls",
@@ -1094,6 +1616,30 @@ def _plot_group_variant_curves(
             row=1,
             col=col_idx,
         )
+        if alpha is not None and "p_adjusted" in sub.columns:
+            sig_mask = sub["p_adjusted"].lt(alpha).fillna(False).to_numpy(dtype=bool)
+            if np.any(sig_mask):
+                y_panel = np.concatenate([y_treated, y_control])
+                y_panel = y_panel[np.isfinite(y_panel)]
+                if y_panel.size:
+                    y_top = float(np.max(y_panel))
+                    y_bottom = float(np.min(y_panel))
+                    y_span = y_top - y_bottom
+                    pad = 0.08 * y_span if y_span > 0 else max(0.01, 0.08 * max(abs(y_top), 1.0))
+                    y_sig = np.full(np.sum(sig_mask), y_top + pad, dtype=float)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x[sig_mask],
+                            y=y_sig,
+                            mode="markers",
+                            marker=dict(symbol="star", size=11, color="#111827"),
+                            name=f"Adj. perm. p < {alpha:.2g}",
+                            showlegend=(col_idx == 1),
+                            hovertemplate="tau=%{x:.1f} min<br>adj. perm. p < alpha<extra></extra>",
+                        ),
+                        row=1,
+                        col=col_idx,
+                    )
         fig.add_vline(x=0.0, line=dict(color="#9CA3AF", dash="dot"), row=1, col=col_idx)
         fig.update_xaxes(title_text="Event time (minutes)", row=1, col=col_idx)
     fig.update_yaxes(title_text="Start intensity (per minute)", row=1, col=1)
@@ -1118,9 +1664,10 @@ def _run_group_variant(
     bootstrap_runs: int,
     permutation_runs: int,
     seed: int,
+    n_jobs: int,
     same_actor_col: Optional[str],
     show_progress: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     metrics_annotated, eta_threshold = _annotate_high_eta_and_strata(
         metrics_df,
         high_eta_quantile=high_eta_quantile,
@@ -1130,64 +1677,37 @@ def _run_group_variant(
     same_curve_cols = _rate_columns(bin_spec, "same_rate")
     opp_curve_cols = _rate_columns(bin_spec, "opp_rate")
     curve_metric_cols = same_curve_cols + opp_curve_cols
-    summary_metric_cols = [name for name, _, _, _ in SUMMARY_METRIC_SPECS]
 
-    strata = _build_stratum_summaries(
+    bootstrap_payload = _build_bootstrap_payload(
         metrics_annotated,
         curve_metric_cols=curve_metric_cols,
-        summary_metric_cols=summary_metric_cols,
     )
-
-    treated_curve, control_curve, excess_curve, total_treated_matched = _weighted_stat_from_strata(
-        strata,
+    permutation_payload = _build_permutation_payload(
+        metrics_annotated,
         metric_cols=curve_metric_cols,
     )
-    treated_summary, control_summary, excess_summary, _ = _weighted_stat_from_strata(
-        strata,
-        metric_cols=summary_metric_cols,
-    )
-    total_treated_all = int(metrics_annotated["high_eta"].sum())
-    total_control_matched = int(
-        strata.loc[(strata["n_treated"] > 0) & (strata["n_control"] > 0), "n_control"].sum()
+
+    treated_curve, control_curve, excess_curve, total_treated_matched = _weighted_stat_from_bootstrap_payload(
+        bootstrap_payload,
     )
 
-    curve_reps, summary_reps = _bootstrap_stats_by_date(
-        strata,
-        curve_metric_cols=curve_metric_cols,
-        summary_metric_cols=summary_metric_cols,
+    curve_reps = _bootstrap_stats_by_date(
+        bootstrap_payload,
         n_runs=bootstrap_runs,
         seed=seed,
+        n_jobs=n_jobs,
         show_progress=show_progress,
         progress_desc=f"[{group_name}:{variant}] bootstrap",
     )
     curve_ci_lo, curve_ci_hi = _ci_from_reps(curve_reps, alpha)
-    summary_ci_lo, summary_ci_hi = _ci_from_reps(summary_reps, alpha)
 
-    perm_observed, perm_draws = _permutation_summary_stats(
-        metrics_annotated,
-        summary_metric_cols=summary_metric_cols,
+    curve_perm_observed, curve_perm_draws = _permutation_effect_stats(
+        permutation_payload,
         n_runs=permutation_runs,
         seed=seed + 101,
+        n_jobs=n_jobs,
         show_progress=show_progress,
         progress_desc=f"[{group_name}:{variant}] permutation",
-    )
-
-    summary_df = _build_summary_rows(
-        group_name=group_name,
-        variant=variant,
-        eta_threshold=eta_threshold,
-        strata=strata,
-        summary_metric_cols=summary_metric_cols,
-        summary_observed_treated=treated_summary,
-        summary_observed_control=control_summary,
-        summary_observed_excess=excess_summary,
-        summary_ci_lo=summary_ci_lo,
-        summary_ci_hi=summary_ci_hi,
-        perm_observed=perm_observed,
-        perm_draws=perm_draws,
-        total_treated_all=total_treated_all,
-        total_treated_matched=int(total_treated_matched),
-        total_control_matched=total_control_matched,
     )
     curve_df = _build_curve_rows(
         group_name=group_name,
@@ -1199,8 +1719,11 @@ def _run_group_variant(
         observed_excess_curve=excess_curve,
         curve_ci_lo=curve_ci_lo,
         curve_ci_hi=curve_ci_hi,
+        perm_observed=curve_perm_observed,
+        perm_draws=curve_perm_draws,
         total_treated_matched=int(total_treated_matched),
     )
+    curve_df = _apply_curve_pvalue_adjustments(curve_df)
     diagnostics_df = _build_diagnostics_rows(
         metrics_df=metrics_annotated,
         group_name=group_name,
@@ -1209,29 +1732,22 @@ def _run_group_variant(
         same_actor_col=same_actor_col,
         total_treated_matched=int(total_treated_matched),
     )
-    return summary_df, curve_df, diagnostics_df
+    return curve_df, diagnostics_df
 
 
-def _apply_pvalue_adjustments(summary_df: pd.DataFrame) -> pd.DataFrame:
-    out = summary_df.copy()
+def _apply_curve_pvalue_adjustments(curve_df: pd.DataFrame) -> pd.DataFrame:
+    out = curve_df.copy()
     out["p_adjusted"] = np.nan
     out["p_adjustment_method"] = ""
+    if out.empty or "p_raw" not in out.columns:
+        return out
 
-    primary_mask = (
-        out["variant"].eq("all_others")
-        & out["sign_relation"].eq("same_sign")
-        & out["window_side"].isin(["pre", "post"])
-    )
-    if primary_mask.any():
-        adjusted = _holm_adjust(out.loc[primary_mask, "p_raw"].to_numpy(dtype=float))
-        out.loc[primary_mask, "p_adjusted"] = adjusted
-        out.loc[primary_mask, "p_adjustment_method"] = "holm_primary"
-
-    secondary_mask = out["variant"].eq("all_others") & out["sign_relation"].eq("opposite_sign")
-    if secondary_mask.any():
-        adjusted = _bh_adjust(out.loc[secondary_mask, "p_raw"].to_numpy(dtype=float))
-        out.loc[secondary_mask, "p_adjusted"] = adjusted
-        out.loc[secondary_mask, "p_adjustment_method"] = "bh_secondary"
+    grouped = out.groupby(["group", "variant", "sign_relation"], sort=False, dropna=False)
+    for _, idx in grouped.groups.items():
+        indexer = list(idx)
+        adjusted = _bh_adjust(out.loc[indexer, "p_raw"].to_numpy(dtype=float))
+        out.loc[indexer, "p_adjusted"] = adjusted
+        out.loc[indexer, "p_adjustment_method"] = "bh_curve_by_sign"
     return out
 
 
@@ -1279,6 +1795,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--high-eta-quantile", type=float, default=None, help="High-eta quantile within group.")
     parser.add_argument("--bootstrap-runs", type=int, default=None, help="Date-cluster bootstrap replicates.")
     parser.add_argument("--permutation-runs", type=int, default=None, help="Within-stratum permutation replicates.")
+    parser.add_argument(
+        "--n-jobs",
+        type=int,
+        default=None,
+        help="Parallel worker count for event-window and resampling phases. Use 0 for auto.",
+    )
     parser.add_argument("--alpha", type=float, default=None, help="Confidence level alpha.")
     parser.add_argument("--seed", type=int, default=None, help="RNG seed.")
     parser.add_argument("--same-actor-key", type=str, default=None, help='Actor key for robustness: auto|member|client|none.')
@@ -1336,8 +1858,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     1. loads the filtered proprietary and client metaorder tables,
     2. computes per-anchor event-time start rates on the same ISIN and day,
     3. compares high-eta anchors to matched controls within `(ISIN, Date, clock bucket)`,
-    4. reports bootstrap confidence intervals and within-stratum permutation p-values,
-    5. writes tables, figures, and a reproducibility manifest.
+    4. reports bootstrap confidence intervals and within-stratum permutation p-values for each event bin,
+    5. writes curve tables, diagnostics, figures, and a reproducibility manifest.
 
     Examples
     --------
@@ -1351,7 +1873,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     paths = _resolve_paths(cfg, args)
 
-    event_window_minutes = int(args.event_window_minutes if args.event_window_minutes is not None else cfg.get("EVENT_WINDOW_MINUTES", 30))
+    event_window_minutes = int(args.event_window_minutes if args.event_window_minutes is not None else cfg.get("EVENT_WINDOW_MINUTES", 20))
     bin_minutes = int(args.bin_minutes if args.bin_minutes is not None else cfg.get("BIN_MINUTES", 5))
     matching_bucket_minutes = int(
         args.matching_bucket_minutes if args.matching_bucket_minutes is not None else cfg.get("MATCHING_BUCKET_MINUTES", 30)
@@ -1363,6 +1885,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     permutation_runs = int(
         args.permutation_runs if args.permutation_runs is not None else cfg.get("PERMUTATION_RUNS", 1000)
     )
+    n_jobs = int(args.n_jobs if args.n_jobs is not None else cfg.get("N_JOBS", 0))
     alpha = float(args.alpha if args.alpha is not None else cfg.get("ALPHA", 0.05))
     seed = int(args.seed if args.seed is not None else cfg.get("SEED", 0))
     same_actor_key = str(args.same_actor_key or cfg.get("SAME_ACTOR_KEY", "auto"))
@@ -1402,6 +1925,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "high_eta_quantile": high_eta_quantile,
         "bootstrap_runs": bootstrap_runs,
         "permutation_runs": permutation_runs,
+        "n_jobs": n_jobs,
         "alpha": alpha,
         "seed": seed,
         "same_actor_key": same_actor_key,
@@ -1410,6 +1934,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "write_parquet": write_parquet,
         "show_progress": show_progress,
         "trading_hours": [str(trading_hours_raw[0]), str(trading_hours_raw[1])],
+        "numba_enabled": bool(njit is not None),
     }
 
     if args.dry_run:
@@ -1428,7 +1953,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     load_cols = [COL_ISIN, COL_DATE, COL_PERIOD, COL_DIR, COL_ETA, COL_MEMBER, COL_CLIENT]
     estimated_total_steps = 1 + 2 * 2 + 1
     if run_same_actor_robustness and str(same_actor_key).strip().lower() not in {"none", "off"}:
-        estimated_total_steps += 2 * 2
+        estimated_total_steps += 2
 
     with _make_tqdm(
         total=estimated_total_steps,
@@ -1442,7 +1967,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         client_raw = _read_parquet_with_fallback(paths.client_path, columns=load_cols)
         overall_pbar.update(1)
 
-        all_summaries: list[pd.DataFrame] = []
         all_curves: list[pd.DataFrame] = []
         all_diagnostics: list[pd.DataFrame] = []
 
@@ -1453,25 +1977,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         for group_idx, (group_name, raw_df, _) in enumerate(group_specs):
             same_actor_col = _select_same_actor_col(raw_df, same_actor_key)
+            compute_exclude_same_actor = bool(run_same_actor_robustness and same_actor_col is not None)
             overall_pbar.set_postfix_str(f"{group_name}: build anchor windows")
-            metrics_all = _prepare_group_metrics(
+            metrics_by_variant = _prepare_group_metrics_variants(
                 raw_df,
                 label=group_name,
                 bin_spec=bin_spec,
                 session_start_time=session_start_time,
                 session_end_time=session_end_time,
                 same_actor_col=same_actor_col,
-                exclude_same_actor=False,
+                compute_exclude_same_actor=compute_exclude_same_actor,
+                n_jobs=n_jobs,
                 show_progress=show_progress,
-                progress_desc=f"[{group_name}:all_others] event windows",
+                progress_desc=f"[{group_name}] event windows",
             )
             overall_pbar.update(1)
 
             overall_pbar.set_postfix_str(f"{group_name}: matched analysis")
-            summary_df, curve_df, diagnostics_df = _run_group_variant(
-                metrics_all,
+            curve_df, diagnostics_df = _run_group_variant(
+                metrics_by_variant[VARIANT_ALL_OTHERS],
                 group_name=group_name,
-                variant="all_others",
+                variant=VARIANT_ALL_OTHERS,
                 bin_spec=bin_spec,
                 high_eta_quantile=high_eta_quantile,
                 matching_bucket_minutes=matching_bucket_minutes,
@@ -1479,36 +2005,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 bootstrap_runs=bootstrap_runs,
                 permutation_runs=permutation_runs,
                 seed=seed + group_idx * 1000,
+                n_jobs=n_jobs,
                 same_actor_col=same_actor_col,
                 show_progress=show_progress,
             )
-            all_summaries.append(summary_df)
             all_curves.append(curve_df)
             all_diagnostics.append(diagnostics_df)
             if plots_enabled:
-                _plot_group_variant_curves(curve_df, group_name=group_name, variant="all_others", dirs=img_dirs)
+                _plot_group_variant_curves(
+                    curve_df,
+                    group_name=group_name,
+                    variant=VARIANT_ALL_OTHERS,
+                    dirs=img_dirs,
+                    alpha=alpha,
+                )
             overall_pbar.update(1)
 
-            if run_same_actor_robustness and same_actor_col is not None:
-                overall_pbar.set_postfix_str(f"{group_name}: exclude same actor")
-                metrics_excl = _prepare_group_metrics(
-                    raw_df,
-                    label=f"{group_name}_exclude_same_actor",
-                    bin_spec=bin_spec,
-                    session_start_time=session_start_time,
-                    session_end_time=session_end_time,
-                    same_actor_col=same_actor_col,
-                    exclude_same_actor=True,
-                    show_progress=show_progress,
-                    progress_desc=f"[{group_name}:exclude_same_actor] event windows",
-                )
-                overall_pbar.update(1)
-
+            if compute_exclude_same_actor and VARIANT_EXCLUDE_SAME_ACTOR in metrics_by_variant:
                 overall_pbar.set_postfix_str(f"{group_name}: robustness analysis")
-                summary_excl, curve_excl, diagnostics_excl = _run_group_variant(
-                    metrics_excl,
+                curve_excl, diagnostics_excl = _run_group_variant(
+                    metrics_by_variant[VARIANT_EXCLUDE_SAME_ACTOR],
                     group_name=group_name,
-                    variant="exclude_same_actor",
+                    variant=VARIANT_EXCLUDE_SAME_ACTOR,
                     bin_spec=bin_spec,
                     high_eta_quantile=high_eta_quantile,
                     matching_bucket_minutes=matching_bucket_minutes,
@@ -1516,35 +2034,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     bootstrap_runs=bootstrap_runs,
                     permutation_runs=permutation_runs,
                     seed=seed + 500 + group_idx * 1000,
+                    n_jobs=n_jobs,
                     same_actor_col=same_actor_col,
                     show_progress=show_progress,
                 )
-                all_summaries.append(summary_excl)
                 all_curves.append(curve_excl)
                 all_diagnostics.append(diagnostics_excl)
                 if plots_enabled:
-                    _plot_group_variant_curves(curve_excl, group_name=group_name, variant="exclude_same_actor", dirs=img_dirs)
+                    _plot_group_variant_curves(
+                        curve_excl,
+                        group_name=group_name,
+                        variant=VARIANT_EXCLUDE_SAME_ACTOR,
+                        dirs=img_dirs,
+                        alpha=alpha,
+                    )
                 overall_pbar.update(1)
 
         overall_pbar.set_postfix_str("write outputs")
-        summary_all = _apply_pvalue_adjustments(pd.concat(all_summaries, ignore_index=True))
         curves_all = pd.concat(all_curves, ignore_index=True)
         diagnostics_all = pd.concat(all_diagnostics, ignore_index=True)
 
-        summary_all.to_csv(paths.out_dir / "event_study_summary.csv", index=False)
         curves_all.to_csv(paths.out_dir / "event_study_curves.csv", index=False)
         diagnostics_all.to_csv(paths.out_dir / "event_study_diagnostics.csv", index=False)
 
-        robustness_summary = summary_all.loc[summary_all["variant"].eq("exclude_same_actor")].copy()
-        if not robustness_summary.empty:
-            robustness_summary.to_csv(paths.out_dir / "robustness_same_actor_exclusion_summary.csv", index=False)
-
         if write_parquet:
-            summary_all.to_parquet(paths.out_dir / "event_study_summary.parquet", index=False)
             curves_all.to_parquet(paths.out_dir / "event_study_curves.parquet", index=False)
             diagnostics_all.to_parquet(paths.out_dir / "event_study_diagnostics.parquet", index=False)
-            if not robustness_summary.empty:
-                robustness_summary.to_parquet(paths.out_dir / "robustness_same_actor_exclusion_summary.parquet", index=False)
         overall_pbar.update(1)
 
     print(f"[event-study] Wrote tables to {paths.out_dir}")

@@ -25,9 +25,9 @@ ANALYSIS_TAG: metaorder_start_event_study
 TRADING_HOURS: ["09:30:00", "17:30:00"]
 
 # Event-study design
-EVENT_WINDOW_MINUTES: 30
+EVENT_WINDOW_MINUTES: 20
 BIN_MINUTES: 5
-MATCHING_BUCKET_MINUTES: 30
+MATCHING_BUCKET_MINUTES: 20
 HIGH_ETA_QUANTILE: 0.5
 
 # Inference
@@ -35,6 +35,9 @@ ALPHA: 0.05
 BOOTSTRAP_RUNS: 1000
 PERMUTATION_RUNS: 1000
 SEED: 0
+
+# Performance
+N_JOBS: 0  # 0 -> auto (currently capped conservatively inside the script)
 
 # Robustness
 RUN_SAME_ACTOR_ROBUSTNESS: true

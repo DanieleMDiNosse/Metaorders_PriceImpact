@@ -1,0 +1,16 @@
+2026-04-02 22:44:50,373 - [Intro] Metaorder execution-schedule run started...
+2026-04-02 22:44:50,373 - [Intro] Parameters — 
+  DATASET=ftsemib, LEVEL=member, MEMBER_NATIONALITY=foreign,
+  RUN_EXECUTION_SCHEDULE=True, N_TIME_GRID=200, N_HEATMAP_BINS_Y=150
+2026-04-02 22:44:50,373 - [Intro] Paths — 
+  OUTPUT_ROOT=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib
+  SUMMARY_OUTPUT_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule
+  IMG_DIR=/home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_execution_schedule
+  PROPRIETARY_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary_member_nationality_foreign.parquet
+  CLIENT_PATH=/home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary_member_nationality_foreign.parquet
+2026-04-02 22:46:31,047 - [Execution schedule] Proprietary valid metaorders: 586291/586291
+2026-04-02 22:46:31,048 - [Execution schedule] Client valid metaorders: 231682/231682
+2026-04-02 22:46:31,888 - [Execution schedule] Saved cumulative schedule table to /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule/cumulative_execution_schedule_prop_vs_client_member_nationality_foreign.parquet
+2026-04-02 22:46:31,888 - [Execution schedule] Saved heatmap table to /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule/execution_schedule_heatmap_prop_vs_client_member_nationality_foreign.parquet
+2026-04-02 22:46:31,888 - [Execution schedule] Saved run manifest to /home/danieledinosse/repositories/Metaorders_PriceImpact/out_files/ftsemib/member_metaorder_execution_schedule/run_manifest.json
+2026-04-02 22:46:31,888 - [Execution schedule] Saved figures under /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_metaorder_execution_schedule
