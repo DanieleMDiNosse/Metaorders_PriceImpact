@@ -71,11 +71,10 @@ from moimpact.config import (
 )
 from moimpact.logging_utils import PrintTee, setup_file_logger
 from moimpact.plot_style import (
-    THEME_BG_COLOR,
     THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
+    plotly_legend_layout,
 )
 from moimpact.plotting import (
     COLOR_BAND_CLIENT,
@@ -125,23 +124,12 @@ def _resolve_opt_repo_path(value: Optional[str | Path], default: Path) -> Path:
     return resolve_opt_repo_path(_REPO_ROOT, value, default)
 
 
-# Sizes tuned for print-friendly plots (loaded from YAML)
-TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
-LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
-TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
-LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
-ANNOTATION_FONT_SIZE = int(_CFG.get("ANNOTATION_FONT_SIZE", 14))
-
-apply_plotly_style(
-    tick_font_size=TICK_FONT_SIZE,
-    label_font_size=LABEL_FONT_SIZE,
-    title_font_size=TITLE_FONT_SIZE,
-    legend_font_size=LEGEND_FONT_SIZE,
-    theme_colorway=THEME_COLORWAY,
-    theme_grid_color=THEME_GRID_COLOR,
-    theme_bg_color=THEME_BG_COLOR,
-    theme_font_family=THEME_FONT_FAMILY,
-)
+PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
+TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
+LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
+TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
+LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
+ANNOTATION_FONT_SIZE = PLOT_STYLE.annotation_font_size
 
 
 def save_plotly_figure(fig, *args, **kwargs):
@@ -1439,7 +1427,7 @@ def plot_daily_crowding(
         title=title,
         xaxis_title="Date",
         yaxis_title="Daily correlation",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=plotly_legend_layout(PLOT_STYLE),
     )
     _, out_path1 = save_plotly_figure(
         fig_daily,
@@ -1489,7 +1477,7 @@ def plot_daily_crowding(
         title=smoothed_title or f"{smoothing_days}-day rolling crowding correlation",
         xaxis_title="Date",
         yaxis_title=f"{smoothing_days}-day rolling correlation",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=plotly_legend_layout(PLOT_STYLE),
     )
     _, out_path2 = save_plotly_figure(
         fig_roll,
@@ -2066,7 +2054,7 @@ def run_member_level_prop_client_crowding_analysis(
             fig.update_layout(
                 title="Per-member prop/client crowding correlation",
                 xaxis_title="Member",
-                yaxis_title=r"$\mathrm{Corr}(\epsilon_i, \mathrm{imb}_{m, d_i})$",
+                yaxis_title="Corr(ε_i, member client imbalance)",
                 xaxis=dict(tickangle=90),
                 uniformtext_minsize=8,
                 uniformtext_mode="show",
@@ -2199,7 +2187,7 @@ def run_member_level_prop_client_crowding_analysis(
                         zmin=-1.0,
                         zmax=1.0,
                         zmid=0.0,
-                        colorbar=dict(title=r"$\mathrm{Corr}(\epsilon_i, \mathrm{imb}_{m, d_i})$"),
+                        colorbar=dict(title="Corr(ε_i, member client imbalance)"),
                         hovertemplate="Window=%{y}<br>Member=%{x}<br>corr=%{z:.3f}<extra></extra>",
                     )
                 )
@@ -2661,7 +2649,7 @@ def plot_imbalance_vs_daily_return(
         title="Imbalance vs daily return",
         xaxis_title="Imbalance (others on same ISIN/day)",
         yaxis_title="Daily log return (close-to-close)",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=plotly_legend_layout(PLOT_STYLE),
     )
     _, out_path_saved = save_plotly_figure(
         fig,
@@ -2864,7 +2852,7 @@ def plot_imbalance_distributions(
     fig.update_yaxes(title_text="Density", row=1, col=2)
     fig.update_layout(
         title="Imbalance distributions",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=plotly_legend_layout(PLOT_STYLE),
         height=900,
     )
     if added_within or added_cross:

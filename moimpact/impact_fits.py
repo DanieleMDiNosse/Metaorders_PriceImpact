@@ -11,8 +11,14 @@ import pandas as pd
 import plotly.graph_objects as go
 from scipy.optimize import curve_fit
 
-from moimpact.plot_style import THEME_COLORWAY
+from moimpact.plot_style import THEME_COLORWAY, load_plot_style, plotly_legend_layout
 from moimpact.plotting import COLOR_NEUTRAL
+
+
+_PLOT_STYLE = load_plot_style()
+_DEFAULT_TICK_FONT_SIZE = _PLOT_STYLE.tick_font_size
+_DEFAULT_LABEL_FONT_SIZE = _PLOT_STYLE.label_font_size
+_DEFAULT_LEGEND_FONT_SIZE = _PLOT_STYLE.legend_font_size
 
 
 def weights_from_sigma(sigma: np.ndarray) -> np.ndarray:
@@ -490,8 +496,9 @@ def plot_fit(
     binned: pd.DataFrame,
     params,
     label_prefix: Optional[str] = None,
-    label_size: int = 16,
-    legend_size: int = 14,
+    tick_size: int = _DEFAULT_TICK_FONT_SIZE,
+    label_size: int = _DEFAULT_LABEL_FONT_SIZE,
+    legend_size: int = _DEFAULT_LEGEND_FONT_SIZE,
     log_params: Optional[Tuple[float, float, float, float, float]] = None,
     series_color: Optional[str] = None,
     log_line_color: Optional[str] = None,
@@ -512,9 +519,11 @@ def plot_fit(
     label_prefix : Optional[str], default=None
         Optional text prepended to legend labels when multiple series are
         overlaid.
-    label_size : int, default=16
-        Axis label and tick font size.
-    legend_size : int, default=14
+    tick_size : int, default=_DEFAULT_TICK_FONT_SIZE
+        Axis tick-label font size.
+    label_size : int, default=_DEFAULT_LABEL_FONT_SIZE
+        Axis-title font size.
+    legend_size : int, default=_DEFAULT_LEGEND_FONT_SIZE
         Legend font size.
     log_params : Optional[tuple], default=None
         Optional logarithmic-fit parameter bundle from
@@ -555,8 +564,8 @@ def plot_fit(
     x_max = float(binned["center_QV"].max())
     x_grid = np.logspace(np.log10(x_min), np.log10(x_max), 300)
 
-    power_law_formula_math = (
-        rf"$I/\sigma = ({y_hat:.3g}\pm{y_err:.2g})(Q/V)^{{{gamma:.3f}\pm{gamma_err:.3f}}}$"
+    power_law_formula_text = (
+        f"I/σ = ({y_hat:.3g}±{y_err:.2g})φ^({gamma:.3f}±{gamma_err:.3f})"
     )
     fig.add_trace(
         go.Scatter(
@@ -564,7 +573,7 @@ def plot_fit(
             y=power_law(x_grid, y_hat, gamma),
             mode="lines",
             line=dict(color=series_color, width=2),
-            name=power_law_formula_math if label_prefix is None else f"{prefix}power-law fit",
+            name=power_law_formula_text if label_prefix is None else f"{prefix}power-law fit",
         )
     )
 
@@ -578,13 +587,18 @@ def plot_fit(
                 mode="lines",
                 line=dict(color=log_color, width=2, dash="dash"),
                 name=(
-                    rf"$I/\sigma = ({a_hat:.3g}\pm{a_se:.2g})\log_{{10}}(1 + ({b_hat:.3g}\pm{b_se:.2g})\,Q/V)$"
+                    f"I/σ = ({a_hat:.3g}±{a_se:.2g})log10(1 + ({b_hat:.3g}±{b_se:.2g}) φ)"
                     if label_prefix is None
                     else f"{prefix}logarithmic fit"
                 ),
             )
         )
 
-    fig.update_xaxes(type="log", title_text="Q/V", title_font=dict(size=label_size), tickfont=dict(size=label_size))
-    fig.update_yaxes(type="log", title_text=r"$I/\sigma$", title_font=dict(size=label_size), tickfont=dict(size=label_size))
-    fig.update_layout(legend=dict(font=dict(size=legend_size)))
+    fig.update_xaxes(type="log", title_text="φ", title_font=dict(size=label_size), tickfont=dict(size=tick_size))
+    fig.update_yaxes(
+        type="log",
+        title_text="I/σ",
+        title_font=dict(size=label_size),
+        tickfont=dict(size=tick_size),
+    )
+    fig.update_layout(legend=plotly_legend_layout(_PLOT_STYLE, font=dict(size=legend_size)))

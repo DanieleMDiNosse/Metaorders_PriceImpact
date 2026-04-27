@@ -32,6 +32,8 @@ Core design choices:
 
 - anchor events are metaorders in the top `HIGH_ETA_QUANTILE` of
   `Participation Rate` within each group
+- optional threshold sweeps can run over `HIGH_ETA_QUANTILES` or
+  `--high-eta-quantiles`
 - neighboring starts are restricted to the same `ISIN` and `Date`
 - controls are matched exactly on:
   - `ISIN`
@@ -95,6 +97,12 @@ windows and the bootstrap/permutation replicate batches when `N_JOBS` is
 greater than 1 or set to `0` for the auto mode. The event-window counting loop
 also uses `numba` when it is available in the active Python environment.
 
+When multiple `high_eta` quantiles are requested, the script reuses the
+materialized event-window metrics and matching strata across thresholds. In
+that sweep mode it switches to outer threshold-level parallelism and keeps the
+per-threshold bootstrap/permutation workers serial to avoid nested executor
+contention.
+
 ## Outputs
 
 Tables are written under:
@@ -110,12 +118,29 @@ Canonical table outputs:
 
 - `event_study_curves.csv`
 - `event_study_diagnostics.csv`
+- `event_study_curves_threshold_sweep.csv` for multi-quantile runs
+- `event_study_diagnostics_threshold_sweep.csv` for multi-quantile runs
 - Parquet versions of those tables when `WRITE_PARQUET=true`
 - `run_manifest.json`
 
 The curve table includes the treated, control, and excess rates for each event
-bin, bootstrap confidence intervals for the excess, and permutation-based
-`p_raw` / `p_adjusted` columns for the bin-level excess tests.
+bin, bootstrap confidence intervals for the excess, permutation-based
+`p_raw` / `p_adjusted` columns for the bin-level excess tests, and per-bin
+effective support columns. It now also carries:
+
+- `high_eta_quantile`
+- `eta_threshold`
+- `n_high_eta`
+
+Per-bin support columns:
+
+- `n_treated_effective`
+- `n_control_effective`
+- `n_valid_strata`
+
+These support columns reflect the number of treated observations, control
+observations, and matching strata that are actually informative for that bin
+after exposure truncation and finite-value filtering.
 
 Canonical figure stems:
 
@@ -123,9 +148,23 @@ Canonical figure stems:
 - `event_curve_client_all_others`
 - `event_curve_prop_exclude_same_actor`
 - `event_curve_client_exclude_same_actor`
+- `event_heatmap_effect_{group}_{variant}_{sign_relation}`
+- `event_heatmap_padj_{group}_{variant}_{sign_relation}`
+- `event_heatmap_support_{group}_{variant}_{sign_relation}`
 
 When plots are enabled, bins with adjusted permutation `p < ALPHA` are marked
 with a star above the corresponding panel.
+
+For multi-quantile runs, the heatmap figures are the primary visual output:
+
+- effect heatmaps show `excess_rate` over `(high-eta quantile, event-time bin)`
+- adjusted-p heatmaps show the within-threshold BH-adjusted p-values
+- support heatmaps show `n_valid_strata`, with hover text exposing the
+  effective treated/control counts
+
+Heatmap families with no finite values are skipped. In particular, when
+`PERMUTATION_RUNS=0`, the adjusted-p heatmaps are omitted rather than exported
+as blank figures.
 
 ## Useful CLI overrides
 
@@ -137,6 +176,7 @@ The script exposes a full CLI. Common overrides include:
 - `--bin-minutes`
 - `--matching-bucket-minutes`
 - `--high-eta-quantile`
+- `--high-eta-quantiles`
 - `--bootstrap-runs`
 - `--permutation-runs`
 - `--n-jobs`
@@ -152,7 +192,7 @@ Example:
 ```bash
 python scripts/metaorder_start_event_study.py \
   --analysis-tag metaorder_start_event_study \
-  --high-eta-quantile 0.9 \
+  --high-eta-quantiles 0.5,0.6,0.7,0.8,0.9 \
   --event-window-minutes 20 \
   --n-jobs 0 \
   --bootstrap-runs 1000 \

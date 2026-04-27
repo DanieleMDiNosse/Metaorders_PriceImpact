@@ -39,11 +39,8 @@ if str(_REPO_ROOT) not in sys.path:
 
 from moimpact.config import format_path_template, load_yaml_mapping, resolve_repo_path
 from moimpact.plot_style import (
-    THEME_BG_COLOR,
-    THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
 )
 from moimpact.plotting import (
     COLOR_CLIENT,
@@ -343,22 +340,46 @@ def _resolve_paths(cfg: Mapping[str, Any], args: argparse.Namespace) -> Resolved
     )
 
 
+def _parse_high_eta_quantiles(raw_value: object) -> list[float]:
+    values: list[float] = []
+    if raw_value is None:
+        return values
+    if isinstance(raw_value, str):
+        candidates: Sequence[object] = [token.strip() for token in raw_value.split(",") if token.strip()]
+    elif isinstance(raw_value, Sequence) and not isinstance(raw_value, (bytes, bytearray)):
+        candidates = raw_value
+    else:
+        candidates = [raw_value]
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        value = float(candidate)
+        if not np.isfinite(value):
+            continue
+        if not 0.0 < value < 1.0:
+            raise ValueError("High-eta quantiles must lie in (0, 1).")
+        values.append(value)
+    if not values:
+        return []
+    return [float(item) for item in np.unique(np.asarray(values, dtype=float))]
+
+
+def _resolve_high_eta_quantiles(cfg: Mapping[str, Any], args: argparse.Namespace) -> list[float]:
+    cli_quantiles = _parse_high_eta_quantiles(getattr(args, "high_eta_quantiles", None))
+    if cli_quantiles:
+        return cli_quantiles
+    if args.high_eta_quantile is not None:
+        return _parse_high_eta_quantiles([args.high_eta_quantile])
+    cfg_quantiles = _parse_high_eta_quantiles(cfg.get("HIGH_ETA_QUANTILES"))
+    if cfg_quantiles:
+        return cfg_quantiles
+    return _parse_high_eta_quantiles([cfg.get("HIGH_ETA_QUANTILE", 0.9)])
+
+
 def _apply_plot_style_from_cfg(cfg: Mapping[str, Any]) -> None:
-    tick_font_size = int(cfg.get("TICK_FONT_SIZE", 12))
-    label_font_size = int(cfg.get("LABEL_FONT_SIZE", 14))
-    title_font_size = int(cfg.get("TITLE_FONT_SIZE", 15))
-    legend_font_size = int(cfg.get("LEGEND_FONT_SIZE", 12))
+    _ = cfg
     try:
-        apply_plotly_style(
-            tick_font_size=tick_font_size,
-            label_font_size=label_font_size,
-            title_font_size=title_font_size,
-            legend_font_size=legend_font_size,
-            theme_colorway=THEME_COLORWAY,
-            theme_grid_color=THEME_GRID_COLOR,
-            theme_bg_color=THEME_BG_COLOR,
-            theme_font_family=THEME_FONT_FAMILY,
-        )
+        apply_shared_plotly_style(load_plot_style())
     except ImportError:
         pass
 
@@ -394,6 +415,15 @@ def _resolve_event_study_worker_count(requested_jobs: int, n_tasks: int) -> int:
         cpu_count = os.cpu_count() or 1
         return max(1, min(n_tasks, min(cpu_count, 4)))
     return max(1, min(n_tasks, requested))
+
+
+def _resolve_threshold_parallel_mode(requested_jobs: int, n_thresholds: int) -> tuple[str, int, int]:
+    if n_thresholds <= 1:
+        return "replicates", 1, requested_jobs
+    threshold_workers = _resolve_event_study_worker_count(requested_jobs, n_thresholds)
+    if threshold_workers <= 1:
+        return "replicates", 1, requested_jobs
+    return "thresholds", threshold_workers, 1
 
 
 def _process_pool_context():
@@ -478,7 +508,6 @@ def _count_event_neighbors_python(
     actor_codes: np.ndarray,
     left_idx: np.ndarray,
     right_idx: np.ndarray,
-    *,
     window_ns: int,
     bin_ns: int,
     pre_count: int,
@@ -952,21 +981,14 @@ def _prepare_group_metrics_variants(
     return final_results
 
 
-def _annotate_high_eta_and_strata(
+def _prepare_matching_frame(
     metrics_df: pd.DataFrame,
     *,
-    high_eta_quantile: float,
     matching_bucket_minutes: int,
-) -> tuple[pd.DataFrame, float]:
-    if not 0.0 < high_eta_quantile < 1.0:
-        raise ValueError("HIGH_ETA_QUANTILE must be in (0, 1).")
+) -> pd.DataFrame:
     if matching_bucket_minutes <= 0:
         raise ValueError("MATCHING_BUCKET_MINUTES must be positive.")
-
     out = metrics_df.copy()
-    eta_threshold = float(np.nanquantile(out[COL_ETA].to_numpy(dtype=float), high_eta_quantile))
-    out["high_eta"] = out[COL_ETA].to_numpy(dtype=float) >= eta_threshold
-
     minute_of_day = out[COL_START_TS].dt.hour * 60 + out[COL_START_TS].dt.minute
     bucket = (minute_of_day // int(matching_bucket_minutes)).astype(int)
     out["clock_bucket_match"] = bucket
@@ -977,6 +999,22 @@ def _annotate_high_eta_and_strata(
         + "|"
         + bucket.astype(str)
     )
+    return out
+
+
+def _annotate_high_eta_and_strata(
+    prepared_matching_df: pd.DataFrame,
+    *,
+    high_eta_quantile: float,
+) -> tuple[pd.DataFrame, float]:
+    if not 0.0 < high_eta_quantile < 1.0:
+        raise ValueError("HIGH_ETA_QUANTILE must be in (0, 1).")
+    if "stratum_key" not in prepared_matching_df.columns:
+        raise KeyError("Prepared matching frame must include 'stratum_key'.")
+    out = prepared_matching_df.copy()
+    eta_values = pd.to_numeric(out[COL_ETA], errors="coerce").to_numpy(dtype=float)
+    eta_threshold = float(np.nanquantile(eta_values, high_eta_quantile))
+    out["high_eta"] = eta_values >= eta_threshold
     return out, eta_threshold
 
 
@@ -1098,6 +1136,29 @@ def _weighted_stat_from_bootstrap_payload(
     control_mean[valid_metric] = control_num[valid_metric] / total_metric_treated[valid_metric]
     excess_mean[valid_metric] = treated_mean[valid_metric] - control_mean[valid_metric]
     return treated_mean, control_mean, excess_mean, total_treated
+
+
+def _metric_support_from_bootstrap_payload(
+    payload: BootstrapPayload,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return bin-level effective treated/control counts and valid-stratum counts."""
+    n_metrics = int(payload.treated_sums.shape[1]) if payload.treated_sums.ndim == 2 else 0
+    zeros = np.zeros(n_metrics, dtype=float)
+    if payload.n_treated.size == 0 or n_metrics == 0:
+        return zeros.copy(), zeros.copy(), zeros.copy()
+
+    valid_rows = (payload.n_treated > 0) & (payload.n_control > 0)
+    if not np.any(valid_rows):
+        return zeros.copy(), zeros.copy(), zeros.copy()
+
+    treated_valid = payload.treated_valid[valid_rows]
+    control_valid = payload.control_valid[valid_rows]
+    metric_valid = (treated_valid > 0) & (control_valid > 0)
+    return (
+        np.sum(treated_valid * metric_valid, axis=0, dtype=float),
+        np.sum(control_valid * metric_valid, axis=0, dtype=float),
+        np.sum(metric_valid, axis=0, dtype=float),
+    )
 
 
 def _split_replicate_batches(total_runs: int, worker_count: int, *, batches_per_worker: int = 8) -> list[int]:
@@ -1449,6 +1510,9 @@ def _build_curve_rows(
     *,
     group_name: str,
     variant: str,
+    high_eta_quantile: float,
+    eta_threshold: float,
+    n_high_eta: int,
     bin_spec: BinSpec,
     curve_metric_cols: Sequence[str],
     observed_treated_curve: np.ndarray,
@@ -1459,6 +1523,9 @@ def _build_curve_rows(
     perm_observed: np.ndarray,
     perm_draws: np.ndarray,
     total_treated_matched: int,
+    treated_effective_counts: np.ndarray,
+    control_effective_counts: np.ndarray,
+    valid_strata_counts: np.ndarray,
 ) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     for idx, metric_name in enumerate(curve_metric_cols):
@@ -1474,6 +1541,9 @@ def _build_curve_rows(
             {
                 "group": group_name,
                 "variant": variant,
+                "high_eta_quantile": float(high_eta_quantile),
+                "eta_threshold": float(eta_threshold),
+                "n_high_eta": int(n_high_eta),
                 "metric_name": metric_name,
                 "sign_relation": sign_relation,
                 "window_side": window_side,
@@ -1490,6 +1560,9 @@ def _build_curve_rows(
                 "ci_excess_hi": curve_ci_hi[idx],
                 "p_raw": raw_p,
                 "n_treated_matched": total_treated_matched,
+                "n_treated_effective": treated_effective_counts[idx],
+                "n_control_effective": control_effective_counts[idx],
+                "n_valid_strata": valid_strata_counts[idx],
             }
         )
     return pd.DataFrame(rows)
@@ -1500,6 +1573,7 @@ def _build_diagnostics_rows(
     metrics_df: pd.DataFrame,
     group_name: str,
     variant: str,
+    high_eta_quantile: float,
     eta_threshold: float,
     same_actor_col: Optional[str],
     total_treated_matched: int,
@@ -1509,54 +1583,80 @@ def _build_diagnostics_rows(
         {
             "group": group_name,
             "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
+            "metric": "high_eta_quantile",
+            "value": float(high_eta_quantile),
+        },
+        {
+            "group": group_name,
+            "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
             "metric": "eta_threshold",
             "value": eta_threshold,
         },
         {
             "group": group_name,
             "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
             "metric": "n_anchors",
             "value": float(len(metrics_df)),
         },
         {
             "group": group_name,
             "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
             "metric": "n_high_eta",
             "value": float(np.sum(high_eta)),
         },
         {
             "group": group_name,
             "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
             "metric": "mean_same_exact_zero_count_high_eta",
             "value": float(np.nanmean(metrics_df.loc[high_eta, "same_exact_zero_count"].to_numpy(dtype=float))),
         },
         {
             "group": group_name,
             "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
             "metric": "mean_opp_exact_zero_count_high_eta",
             "value": float(np.nanmean(metrics_df.loc[high_eta, "opp_exact_zero_count"].to_numpy(dtype=float))),
         },
         {
             "group": group_name,
             "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
             "metric": "mean_truncated_pre_bins_high_eta",
             "value": float(np.nanmean(metrics_df.loc[high_eta, "truncated_pre_bins"].to_numpy(dtype=float))),
         },
         {
             "group": group_name,
             "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
             "metric": "mean_truncated_post_bins_high_eta",
             "value": float(np.nanmean(metrics_df.loc[high_eta, "truncated_post_bins"].to_numpy(dtype=float))),
         },
         {
             "group": group_name,
             "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
             "metric": "n_treated_matched",
             "value": float(total_treated_matched),
         },
         {
             "group": group_name,
             "variant": variant,
+            "high_eta_quantile": float(high_eta_quantile),
+            "eta_threshold": float(eta_threshold),
             "metric": "same_actor_col",
             "value": same_actor_col or "",
         },
@@ -1652,14 +1752,191 @@ def _plot_group_variant_curves(
     save_plotly_figure(fig, stem=stem, dirs=dirs, write_html=True, write_png=True)
 
 
-def _run_group_variant(
-    metrics_df: pd.DataFrame,
+def _build_threshold_heatmap(
+    curve_df: pd.DataFrame,
+    *,
+    value_col: str,
+) -> tuple[list[str], np.ndarray, np.ndarray, list[list[str]]]:
+    ordered = curve_df.sort_values(["high_eta_quantile", "bin_center_min"]).copy()
+    bin_table = ordered[["bin_center_min", "bin_label"]].drop_duplicates().sort_values("bin_center_min")
+    x_labels = bin_table["bin_label"].astype(str).tolist()
+    quantiles = np.sort(ordered["high_eta_quantile"].dropna().unique().astype(float))
+    z = np.full((len(quantiles), len(x_labels)), np.nan, dtype=float)
+    hover_text = [["" for _ in x_labels] for _ in quantiles]
+    lookup = {
+        (float(np.round(row["high_eta_quantile"], 10)), str(row["bin_label"])): row
+        for _, row in ordered.iterrows()
+    }
+    for row_idx, quantile in enumerate(quantiles):
+        quantile_key = float(np.round(quantile, 10))
+        for col_idx, bin_label in enumerate(x_labels):
+            row = lookup.get((quantile_key, bin_label))
+            if row is None:
+                continue
+            value = row.get(value_col)
+            z[row_idx, col_idx] = float(value) if pd.notna(value) else np.nan
+            hover_parts = [
+                f"quantile={quantile:.2f}",
+                f"eta threshold={float(row['eta_threshold']):.4g}",
+                f"bin={bin_label}",
+                f"excess={float(row['excess_rate']):.4g}",
+            ]
+            if pd.notna(row.get("p_adjusted")):
+                hover_parts.append(f"adj. p={float(row['p_adjusted']):.4g}")
+            hover_text[row_idx][col_idx] += (
+                f"<br>treated eff={float(row['n_treated_effective']):.0f}"
+                f"<br>control eff={float(row['n_control_effective']):.0f}"
+                f"<br>valid strata={float(row['n_valid_strata']):.0f}"
+            )
+            hover_text[row_idx][col_idx] = "<br>".join(hover_parts) + hover_text[row_idx][col_idx]
+            if value_col == "p_adjusted" and pd.notna(value):
+                hover_text[row_idx][col_idx] += f"<br>adj. p value={float(value):.4g}"
+            elif value_col == "n_valid_strata" and pd.notna(value):
+                hover_text[row_idx][col_idx] += f"<br>support={float(value):.0f}"
+            elif pd.notna(value):
+                hover_text[row_idx][col_idx] += f"<br>heatmap value={float(value):.4g}"
+    return x_labels, quantiles, z, hover_text
+
+
+def _plot_threshold_sweep_heatmap(
+    curve_df: pd.DataFrame,
+    *,
+    group_name: str,
+    variant: str,
+    sign_relation: str,
+    value_col: str,
+    value_label: str,
+    stem_prefix: str,
+    colorscale: str,
+    dirs: PlotOutputDirs,
+    alpha: Optional[float] = None,
+    zmid: Optional[float] = None,
+    zmin: Optional[float] = None,
+    zmax: Optional[float] = None,
+    add_significance_overlay: bool = False,
+) -> None:
+    sub = curve_df.loc[curve_df["sign_relation"].eq(sign_relation)].copy()
+    if sub.empty or sub["high_eta_quantile"].nunique() <= 1:
+        return
+    x_labels, quantiles, z, hover_text = _build_threshold_heatmap(sub, value_col=value_col)
+    if z.size == 0 or not np.isfinite(z).any():
+        return
+    heatmap_kwargs: dict[str, Any] = {
+        "z": z,
+        "x": x_labels,
+        "y": quantiles,
+        "text": hover_text,
+        "hovertemplate": "%{text}<extra></extra>",
+        "colorscale": colorscale,
+        "colorbar": dict(title=value_label),
+    }
+    if zmid is not None:
+        heatmap_kwargs["zmid"] = zmid
+    if zmin is not None:
+        heatmap_kwargs["zmin"] = zmin
+    if zmax is not None:
+        heatmap_kwargs["zmax"] = zmax
+    fig = go.Figure(data=go.Heatmap(**heatmap_kwargs))
+    if add_significance_overlay and alpha is not None and "p_adjusted" in sub.columns:
+        sig = sub.loc[sub["p_adjusted"].lt(alpha).fillna(False)].copy()
+        if not sig.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=sig["bin_label"],
+                    y=sig["high_eta_quantile"],
+                    mode="markers",
+                    marker=dict(symbol="star", size=10, color="#111827"),
+                    name=f"Adj. p < {alpha:.2g}",
+                    hovertemplate="bin=%{x}<br>quantile=%{y:.2f}<br>adj. p < alpha<extra></extra>",
+                )
+            )
+    group_label = "Proprietary" if group_name == "prop" else "Client"
+    sign_label = "Same-sign" if sign_relation == "same_sign" else "Opposite-sign"
+    fig.update_layout(
+        title=f"{group_label} threshold sweep ({variant}, {sign_label.lower()}, {value_label.lower()})",
+        xaxis_title="Event-time bin",
+        yaxis_title="High-eta quantile",
+        width=900,
+        height=520,
+    )
+    fig.update_xaxes(type="category", tickangle=-35)
+    stem = f"{stem_prefix}_{group_name}_{variant}_{sign_relation}"
+    save_plotly_figure(fig, stem=stem, dirs=dirs, write_html=True, write_png=True)
+
+
+def _plot_group_variant_threshold_sweep(
+    curve_df: pd.DataFrame,
+    *,
+    group_name: str,
+    variant: str,
+    dirs: PlotOutputDirs,
+    alpha: Optional[float] = None,
+) -> None:
+    if curve_df.empty or curve_df["high_eta_quantile"].nunique() <= 1:
+        return
+    for sign_relation in ("same_sign", "opposite_sign"):
+        sub = curve_df.loc[curve_df["sign_relation"].eq(sign_relation)].copy()
+        if sub.empty:
+            continue
+        finite_effect = sub["excess_rate"].to_numpy(dtype=float)
+        finite_effect = finite_effect[np.isfinite(finite_effect)]
+        effect_bound = float(np.nanmax(np.abs(finite_effect))) if finite_effect.size else 0.0
+        if effect_bound <= 0.0:
+            effect_bound = 1e-9
+        _plot_threshold_sweep_heatmap(
+            curve_df,
+            group_name=group_name,
+            variant=variant,
+            sign_relation=sign_relation,
+            value_col="excess_rate",
+            value_label="Excess rate",
+            stem_prefix="event_heatmap_effect",
+            colorscale="RdBu",
+            dirs=dirs,
+            alpha=alpha,
+            zmid=0.0,
+            zmin=-effect_bound,
+            zmax=effect_bound,
+            add_significance_overlay=True,
+        )
+        _plot_threshold_sweep_heatmap(
+            curve_df,
+            group_name=group_name,
+            variant=variant,
+            sign_relation=sign_relation,
+            value_col="p_adjusted",
+            value_label="Adj. p",
+            stem_prefix="event_heatmap_padj",
+            colorscale="Viridis_r",
+            dirs=dirs,
+            zmin=0.0,
+            zmax=1.0,
+        )
+        finite_support = sub["n_valid_strata"].to_numpy(dtype=float)
+        finite_support = finite_support[np.isfinite(finite_support)]
+        support_max = float(np.nanmax(finite_support)) if finite_support.size else None
+        _plot_threshold_sweep_heatmap(
+            curve_df,
+            group_name=group_name,
+            variant=variant,
+            sign_relation=sign_relation,
+            value_col="n_valid_strata",
+            value_label="Valid strata",
+            stem_prefix="event_heatmap_support",
+            colorscale="Blues",
+            dirs=dirs,
+            zmin=0.0,
+            zmax=support_max,
+        )
+
+
+def _run_group_variant_at_threshold(
+    prepared_matching_df: pd.DataFrame,
     *,
     group_name: str,
     variant: str,
     bin_spec: BinSpec,
     high_eta_quantile: float,
-    matching_bucket_minutes: int,
     alpha: float,
     bootstrap_runs: int,
     permutation_runs: int,
@@ -1669,10 +1946,10 @@ def _run_group_variant(
     show_progress: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     metrics_annotated, eta_threshold = _annotate_high_eta_and_strata(
-        metrics_df,
+        prepared_matching_df,
         high_eta_quantile=high_eta_quantile,
-        matching_bucket_minutes=matching_bucket_minutes,
     )
+    n_high_eta = int(np.sum(metrics_annotated["high_eta"].to_numpy(dtype=bool)))
 
     same_curve_cols = _rate_columns(bin_spec, "same_rate")
     opp_curve_cols = _rate_columns(bin_spec, "opp_rate")
@@ -1688,6 +1965,9 @@ def _run_group_variant(
     )
 
     treated_curve, control_curve, excess_curve, total_treated_matched = _weighted_stat_from_bootstrap_payload(
+        bootstrap_payload,
+    )
+    treated_effective_counts, control_effective_counts, valid_strata_counts = _metric_support_from_bootstrap_payload(
         bootstrap_payload,
     )
 
@@ -1712,6 +1992,9 @@ def _run_group_variant(
     curve_df = _build_curve_rows(
         group_name=group_name,
         variant=variant,
+        high_eta_quantile=high_eta_quantile,
+        eta_threshold=eta_threshold,
+        n_high_eta=n_high_eta,
         bin_spec=bin_spec,
         curve_metric_cols=curve_metric_cols,
         observed_treated_curve=treated_curve,
@@ -1722,17 +2005,165 @@ def _run_group_variant(
         perm_observed=curve_perm_observed,
         perm_draws=curve_perm_draws,
         total_treated_matched=int(total_treated_matched),
+        treated_effective_counts=treated_effective_counts,
+        control_effective_counts=control_effective_counts,
+        valid_strata_counts=valid_strata_counts,
     )
     curve_df = _apply_curve_pvalue_adjustments(curve_df)
     diagnostics_df = _build_diagnostics_rows(
         metrics_df=metrics_annotated,
         group_name=group_name,
         variant=variant,
+        high_eta_quantile=high_eta_quantile,
         eta_threshold=eta_threshold,
         same_actor_col=same_actor_col,
         total_treated_matched=int(total_treated_matched),
     )
     return curve_df, diagnostics_df
+
+
+def _run_group_variant(
+    metrics_df: pd.DataFrame,
+    *,
+    group_name: str,
+    variant: str,
+    bin_spec: BinSpec,
+    high_eta_quantile: float,
+    matching_bucket_minutes: int,
+    alpha: float,
+    bootstrap_runs: int,
+    permutation_runs: int,
+    seed: int,
+    n_jobs: int,
+    same_actor_col: Optional[str],
+    show_progress: bool = False,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    prepared_matching_df = _prepare_matching_frame(
+        metrics_df,
+        matching_bucket_minutes=matching_bucket_minutes,
+    )
+    return _run_group_variant_at_threshold(
+        prepared_matching_df,
+        group_name=group_name,
+        variant=variant,
+        bin_spec=bin_spec,
+        high_eta_quantile=high_eta_quantile,
+        alpha=alpha,
+        bootstrap_runs=bootstrap_runs,
+        permutation_runs=permutation_runs,
+        seed=seed,
+        n_jobs=n_jobs,
+        same_actor_col=same_actor_col,
+        show_progress=show_progress,
+    )
+
+
+def _run_group_variant_threshold_grid(
+    metrics_df: pd.DataFrame,
+    *,
+    group_name: str,
+    variant: str,
+    bin_spec: BinSpec,
+    high_eta_quantiles: Sequence[float],
+    matching_bucket_minutes: int,
+    alpha: float,
+    bootstrap_runs: int,
+    permutation_runs: int,
+    seed: int,
+    n_jobs: int,
+    same_actor_col: Optional[str],
+    show_progress: bool = False,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    quantiles = [float(q) for q in high_eta_quantiles]
+    if not quantiles:
+        raise ValueError("At least one high-eta quantile is required.")
+    prepared_matching_df = _prepare_matching_frame(
+        metrics_df,
+        matching_bucket_minutes=matching_bucket_minutes,
+    )
+    if len(quantiles) == 1:
+        return _run_group_variant_at_threshold(
+            prepared_matching_df,
+            group_name=group_name,
+            variant=variant,
+            bin_spec=bin_spec,
+            high_eta_quantile=quantiles[0],
+            alpha=alpha,
+            bootstrap_runs=bootstrap_runs,
+            permutation_runs=permutation_runs,
+            seed=seed,
+            n_jobs=n_jobs,
+            same_actor_col=same_actor_col,
+            show_progress=show_progress,
+        )
+
+    parallel_mode, threshold_workers, inner_n_jobs = _resolve_threshold_parallel_mode(n_jobs, len(quantiles))
+    if show_progress:
+        print(
+            f"[{group_name}:{variant}] Threshold sweep enabled — quantiles={len(quantiles)}, "
+            f"parallel_mode={parallel_mode}, workers={threshold_workers}"
+        )
+
+    ordered_curves: list[Optional[pd.DataFrame]] = [None] * len(quantiles)
+    ordered_diagnostics: list[Optional[pd.DataFrame]] = [None] * len(quantiles)
+    with _make_tqdm(
+        total=len(quantiles),
+        desc=f"[{group_name}:{variant}] thresholds",
+        disable=not show_progress,
+        leave=False,
+        unit="thr",
+    ) as pbar:
+        if parallel_mode == "thresholds" and threshold_workers > 1:
+            with ThreadPoolExecutor(max_workers=threshold_workers) as executor:
+                future_to_idx = {
+                    executor.submit(
+                        _run_group_variant_at_threshold,
+                        prepared_matching_df,
+                        group_name=group_name,
+                        variant=variant,
+                        bin_spec=bin_spec,
+                        high_eta_quantile=quantile,
+                        alpha=alpha,
+                        bootstrap_runs=bootstrap_runs,
+                        permutation_runs=permutation_runs,
+                        seed=seed + 10_000 * idx,
+                        n_jobs=inner_n_jobs,
+                        same_actor_col=same_actor_col,
+                        show_progress=False,
+                    ): idx
+                    for idx, quantile in enumerate(quantiles)
+                }
+                for future in as_completed(future_to_idx):
+                    idx = future_to_idx[future]
+                    curve_df, diagnostics_df = future.result()
+                    ordered_curves[idx] = curve_df
+                    ordered_diagnostics[idx] = diagnostics_df
+                    pbar.update(1)
+        else:
+            for idx, quantile in enumerate(quantiles):
+                curve_df, diagnostics_df = _run_group_variant_at_threshold(
+                    prepared_matching_df,
+                    group_name=group_name,
+                    variant=variant,
+                    bin_spec=bin_spec,
+                    high_eta_quantile=quantile,
+                    alpha=alpha,
+                    bootstrap_runs=bootstrap_runs,
+                    permutation_runs=permutation_runs,
+                    seed=seed + 10_000 * idx,
+                    n_jobs=inner_n_jobs,
+                    same_actor_col=same_actor_col,
+                    show_progress=show_progress,
+                )
+                ordered_curves[idx] = curve_df
+                ordered_diagnostics[idx] = diagnostics_df
+                pbar.update(1)
+
+    curve_chunks = [chunk for chunk in ordered_curves if chunk is not None]
+    diagnostics_chunks = [chunk for chunk in ordered_diagnostics if chunk is not None]
+    if not curve_chunks or not diagnostics_chunks:
+        return pd.DataFrame(), pd.DataFrame()
+    return pd.concat(curve_chunks, ignore_index=True), pd.concat(diagnostics_chunks, ignore_index=True)
 
 
 def _apply_curve_pvalue_adjustments(curve_df: pd.DataFrame) -> pd.DataFrame:
@@ -1742,7 +2173,10 @@ def _apply_curve_pvalue_adjustments(curve_df: pd.DataFrame) -> pd.DataFrame:
     if out.empty or "p_raw" not in out.columns:
         return out
 
-    grouped = out.groupby(["group", "variant", "sign_relation"], sort=False, dropna=False)
+    group_cols = ["group", "variant", "sign_relation"]
+    if "high_eta_quantile" in out.columns:
+        group_cols.insert(2, "high_eta_quantile")
+    grouped = out.groupby(group_cols, sort=False, dropna=False)
     for _, idx in grouped.groups.items():
         indexer = list(idx)
         adjusted = _bh_adjust(out.loc[indexer, "p_raw"].to_numpy(dtype=float))
@@ -1793,6 +2227,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bin-minutes", type=int, default=None, help="Bin width in minutes.")
     parser.add_argument("--matching-bucket-minutes", type=int, default=None, help="Clock-time matching bucket width.")
     parser.add_argument("--high-eta-quantile", type=float, default=None, help="High-eta quantile within group.")
+    parser.add_argument(
+        "--high-eta-quantiles",
+        type=str,
+        default=None,
+        help="Comma-separated high-eta quantile grid (for threshold sweeps). Overrides --high-eta-quantile.",
+    )
     parser.add_argument("--bootstrap-runs", type=int, default=None, help="Date-cluster bootstrap replicates.")
     parser.add_argument("--permutation-runs", type=int, default=None, help="Within-stratum permutation replicates.")
     parser.add_argument(
@@ -1878,9 +2318,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     matching_bucket_minutes = int(
         args.matching_bucket_minutes if args.matching_bucket_minutes is not None else cfg.get("MATCHING_BUCKET_MINUTES", 30)
     )
-    high_eta_quantile = float(
-        args.high_eta_quantile if args.high_eta_quantile is not None else cfg.get("HIGH_ETA_QUANTILE", 0.9)
-    )
+    high_eta_quantiles = _resolve_high_eta_quantiles(cfg, args)
+    threshold_sweep_mode = len(high_eta_quantiles) > 1
+    high_eta_quantile = float(high_eta_quantiles[0])
     bootstrap_runs = int(args.bootstrap_runs if args.bootstrap_runs is not None else cfg.get("BOOTSTRAP_RUNS", 1000))
     permutation_runs = int(
         args.permutation_runs if args.permutation_runs is not None else cfg.get("PERMUTATION_RUNS", 1000)
@@ -1909,6 +2349,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if matching_bucket_minutes <= 0 or 60 % np.gcd(60, matching_bucket_minutes) < 0:
         raise ValueError("MATCHING_BUCKET_MINUTES must be positive.")
     bin_spec = _compute_bin_spec(event_window_minutes, bin_minutes)
+    threshold_parallel_mode, threshold_workers, threshold_inner_jobs = _resolve_threshold_parallel_mode(
+        n_jobs,
+        len(high_eta_quantiles),
+    )
 
     manifest = {
         "run_timestamp": dt.datetime.now().isoformat(),
@@ -1923,9 +2367,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "bin_minutes": bin_minutes,
         "matching_bucket_minutes": matching_bucket_minutes,
         "high_eta_quantile": high_eta_quantile,
+        "high_eta_quantiles": [float(q) for q in high_eta_quantiles],
+        "threshold_mode": "sweep" if threshold_sweep_mode else "single",
         "bootstrap_runs": bootstrap_runs,
         "permutation_runs": permutation_runs,
         "n_jobs": n_jobs,
+        "threshold_parallel_mode": threshold_parallel_mode,
+        "threshold_workers": threshold_workers,
+        "threshold_inner_n_jobs": threshold_inner_jobs,
         "alpha": alpha,
         "seed": seed,
         "same_actor_key": same_actor_key,
@@ -1994,12 +2443,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             overall_pbar.update(1)
 
             overall_pbar.set_postfix_str(f"{group_name}: matched analysis")
-            curve_df, diagnostics_df = _run_group_variant(
+            curve_df, diagnostics_df = _run_group_variant_threshold_grid(
                 metrics_by_variant[VARIANT_ALL_OTHERS],
                 group_name=group_name,
                 variant=VARIANT_ALL_OTHERS,
                 bin_spec=bin_spec,
-                high_eta_quantile=high_eta_quantile,
+                high_eta_quantiles=high_eta_quantiles,
                 matching_bucket_minutes=matching_bucket_minutes,
                 alpha=alpha,
                 bootstrap_runs=bootstrap_runs,
@@ -2012,23 +2461,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             all_curves.append(curve_df)
             all_diagnostics.append(diagnostics_df)
             if plots_enabled:
-                _plot_group_variant_curves(
-                    curve_df,
-                    group_name=group_name,
-                    variant=VARIANT_ALL_OTHERS,
-                    dirs=img_dirs,
-                    alpha=alpha,
-                )
+                if threshold_sweep_mode:
+                    _plot_group_variant_threshold_sweep(
+                        curve_df,
+                        group_name=group_name,
+                        variant=VARIANT_ALL_OTHERS,
+                        dirs=img_dirs,
+                        alpha=alpha,
+                    )
+                else:
+                    _plot_group_variant_curves(
+                        curve_df,
+                        group_name=group_name,
+                        variant=VARIANT_ALL_OTHERS,
+                        dirs=img_dirs,
+                        alpha=alpha,
+                    )
             overall_pbar.update(1)
 
             if compute_exclude_same_actor and VARIANT_EXCLUDE_SAME_ACTOR in metrics_by_variant:
                 overall_pbar.set_postfix_str(f"{group_name}: robustness analysis")
-                curve_excl, diagnostics_excl = _run_group_variant(
+                curve_excl, diagnostics_excl = _run_group_variant_threshold_grid(
                     metrics_by_variant[VARIANT_EXCLUDE_SAME_ACTOR],
                     group_name=group_name,
                     variant=VARIANT_EXCLUDE_SAME_ACTOR,
                     bin_spec=bin_spec,
-                    high_eta_quantile=high_eta_quantile,
+                    high_eta_quantiles=high_eta_quantiles,
                     matching_bucket_minutes=matching_bucket_minutes,
                     alpha=alpha,
                     bootstrap_runs=bootstrap_runs,
@@ -2041,25 +2499,36 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 all_curves.append(curve_excl)
                 all_diagnostics.append(diagnostics_excl)
                 if plots_enabled:
-                    _plot_group_variant_curves(
-                        curve_excl,
-                        group_name=group_name,
-                        variant=VARIANT_EXCLUDE_SAME_ACTOR,
-                        dirs=img_dirs,
-                        alpha=alpha,
-                    )
+                    if threshold_sweep_mode:
+                        _plot_group_variant_threshold_sweep(
+                            curve_excl,
+                            group_name=group_name,
+                            variant=VARIANT_EXCLUDE_SAME_ACTOR,
+                            dirs=img_dirs,
+                            alpha=alpha,
+                        )
+                    else:
+                        _plot_group_variant_curves(
+                            curve_excl,
+                            group_name=group_name,
+                            variant=VARIANT_EXCLUDE_SAME_ACTOR,
+                            dirs=img_dirs,
+                            alpha=alpha,
+                        )
                 overall_pbar.update(1)
 
         overall_pbar.set_postfix_str("write outputs")
         curves_all = pd.concat(all_curves, ignore_index=True)
         diagnostics_all = pd.concat(all_diagnostics, ignore_index=True)
-
-        curves_all.to_csv(paths.out_dir / "event_study_curves.csv", index=False)
-        diagnostics_all.to_csv(paths.out_dir / "event_study_diagnostics.csv", index=False)
-
+        curves_stem = "event_study_curves_threshold_sweep" if threshold_sweep_mode else "event_study_curves"
+        diagnostics_stem = (
+            "event_study_diagnostics_threshold_sweep" if threshold_sweep_mode else "event_study_diagnostics"
+        )
+        curves_all.to_csv(paths.out_dir / f"{curves_stem}.csv", index=False)
+        diagnostics_all.to_csv(paths.out_dir / f"{diagnostics_stem}.csv", index=False)
         if write_parquet:
-            curves_all.to_parquet(paths.out_dir / "event_study_curves.parquet", index=False)
-            diagnostics_all.to_parquet(paths.out_dir / "event_study_diagnostics.parquet", index=False)
+            curves_all.to_parquet(paths.out_dir / f"{curves_stem}.parquet", index=False)
+            diagnostics_all.to_parquet(paths.out_dir / f"{diagnostics_stem}.parquet", index=False)
         overall_pbar.update(1)
 
     print(f"[event-study] Wrote tables to {paths.out_dir}")

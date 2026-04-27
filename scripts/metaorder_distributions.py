@@ -93,11 +93,9 @@ from moimpact.metaorder_distribution_samples import (
 )
 from moimpact.plot_style import (
     PLOTLY_TEMPLATE_NAME,
-    THEME_BG_COLOR,
     THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
 )
 from moimpact.plotting import (
     COLOR_CLIENT,
@@ -173,11 +171,11 @@ class PanelFitResult:
 def _distribution_metric_specs() -> tuple[MetricSpec, ...]:
     """Return the ordered panel definitions used by the combined figure."""
     return (
-        MetricSpec("Metaorder duration", r"$T$", "durations_minutes"),
-        MetricSpec("Inter-arrival times", r"$\Delta t$", "inter_arrivals_minutes"),
-        MetricSpec("Metaorder volumes", r"$Q$", "meta_volumes"),
-        MetricSpec("Relative size", r"$\phi$", "q_over_v"),
-        MetricSpec("Participation rate", r"$\eta$", "participation_rates"),
+        MetricSpec("Metaorder duration", "T", "durations_minutes"),
+        MetricSpec("Inter-arrival times", "Δt", "inter_arrivals_minutes"),
+        MetricSpec("Metaorder volumes", "Q", "meta_volumes"),
+        MetricSpec("Relative size", "φ", "q_over_v"),
+        MetricSpec("Participation rate", "η", "participation_rates"),
     )
 
 
@@ -293,22 +291,12 @@ def save_plotly_figure(fig, *args, **kwargs):
     return _save_plotly_figure(fig, *args, **kwargs)
 
 
-TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
-LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
-TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
-LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
-ANNOTATION_FONT_SIZE = int(_CFG.get("ANNOTATION_FONT_SIZE", 18))
-
-apply_plotly_style(
-    tick_font_size=TICK_FONT_SIZE,
-    label_font_size=LABEL_FONT_SIZE,
-    title_font_size=TITLE_FONT_SIZE,
-    legend_font_size=LEGEND_FONT_SIZE,
-    theme_colorway=THEME_COLORWAY,
-    theme_grid_color=THEME_GRID_COLOR,
-    theme_bg_color=THEME_BG_COLOR,
-    theme_font_family=THEME_FONT_FAMILY,
-)
+PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
+TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
+LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
+TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
+LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
+ANNOTATION_FONT_SIZE = PLOT_STYLE.annotation_font_size
 
 DATASET_NAME = str(_CFG.get("DATASET_NAME") or "ftsemib")
 LEVEL = str(_cfg_require("LEVEL"))
@@ -515,7 +503,7 @@ def _build_distribution_figure_shell() -> go.Figure:
         cols=2,
         shared_yaxes="rows",
         column_titles=["Client", "Proprietary"],
-        vertical_spacing=0.045,
+        vertical_spacing=0.07,
         horizontal_spacing=0.08,
     )
 
@@ -529,6 +517,10 @@ def _build_distribution_figure_shell() -> go.Figure:
                 minexponent=0,
                 row=row_idx,
                 col=col_idx,
+                title_font=dict(size=LABEL_FONT_SIZE),
+                tickfont=dict(size=TICK_FONT_SIZE),
+                title_standoff=14,
+                automargin=True,
             )
             fig.update_yaxes(
                 type="log",
@@ -537,14 +529,26 @@ def _build_distribution_figure_shell() -> go.Figure:
                 minexponent=0,
                 row=row_idx,
                 col=col_idx,
+                title_font=dict(size=LABEL_FONT_SIZE),
+                tickfont=dict(size=TICK_FONT_SIZE),
+                title_standoff=14,
+                automargin=True,
             )
-        fig.update_yaxes(title_text="Density", row=row_idx, col=1)
+        fig.update_yaxes(
+            title_text="Density",
+            title_font=dict(size=LABEL_FONT_SIZE),
+            tickfont=dict(size=TICK_FONT_SIZE),
+            title_standoff=14,
+            automargin=True,
+            row=row_idx,
+            col=1,
+        )
 
     fig.update_layout(
         template=PLOTLY_TEMPLATE_NAME,
-        height=2080,
+        height=2320,
         width=1400,
-        margin=dict(l=85, r=35, t=45, b=50),
+        margin=dict(l=95, r=35, t=50, b=60),
         showlegend=False,
     )
     return fig
@@ -655,38 +659,13 @@ def _annotation_text_from_fit_row(fit_row: Mapping[str, object]) -> str:
     if not bool(fit_row.get("fit_success", False)):
         return "No stable fit"
 
-    def _with_text_color(text: str, color: str) -> str:
-        """Wrap one annotation line in a font tag so Plotly renders it in `color`."""
-        return f"<span style='color:{color}'>{text}</span>"
-
-    best_model = str(fit_row.get("best_fit_model", "unavailable"))
-    ci_label = _bootstrap_ci_label(fit_row)
-    lines = [
-        f"Best fit = {_pretty_model_name(best_model)}",
-        _with_text_color(
-            _format_annotation_interval(
-                label="x_min",
-                estimate=fit_row.get("xmin", np.nan),
-                ci_low=fit_row.get("bootstrap_xmin_ci_low", np.nan),
-                ci_high=fit_row.get("bootstrap_xmin_ci_high", np.nan),
-                format_spec=".4g",
-                ci_label=ci_label,
-            ),
-            POWERLAW_TRACE_COLOR,
-        ),
-        _with_text_color(
-            _format_annotation_interval(
-                label="alpha",
-                estimate=fit_row.get("alpha", np.nan),
-                ci_low=fit_row.get("power_law_alpha_ci_low", np.nan),
-                ci_high=fit_row.get("power_law_alpha_ci_high", np.nan),
-                format_spec=".4f",
-                ci_label=ci_label,
-            ),
-            POWERLAW_TRACE_COLOR,
-        ),
-    ]
-    return "<br>".join(lines)
+    return (
+        "<span style='color:"
+        f"{POWERLAW_TRACE_COLOR}"
+        ";'>α = "
+        f"{_format_annotation_scalar(fit_row.get('alpha', np.nan), format_spec='.4f')}"
+        "</span>"
+    )
 
 
 def _resolve_powerlaw_fit_worker_count(panel_count: int) -> int:

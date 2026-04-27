@@ -1,0 +1,48 @@
+# crowding_impact_analysis.py configuration
+
+DATASET_NAME: ftsemib
+
+# Paths. You may use {DATASET_NAME}.
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+ANALYSIS_TAG: crowding_impact
+
+# Inputs (null -> canonical filtered metaorder parquets).
+PROP_PATH: null
+CLIENT_PATH: null
+
+# Reuse the impact-section defaults from the paper workflow when possible.
+IMPACT_CONFIG_PATH: config_ymls/metaorder_computation.yml
+MIN_QV: null
+N_LOGBINS: null
+MIN_COUNT: null
+ETA_MAX: null
+
+# Main crowding-conditioned impact analysis.
+CROWDING_SCOPE: all  # all | within_group
+N_CROWDING_QUANTILES: 3
+BENCHMARK_PHIS: [1.0e-3, 1.0e-2]
+
+# Day-cluster bootstrap.
+BOOTSTRAP_RUNS: 200
+ALPHA: 0.05
+RANDOM_STATE: 0
+SHOW_PROGRESS: true
+
+# Participation-rate robustness.
+ETA_ROBUSTNESS_BINS: 2
+
+# Bin-level regression on mean impact cells.
+RUN_JOINT_BIN_REGRESSION: true
+JOINT_REG_ETA_BINS: 6
+JOINT_REG_VTV_BINS: 6
+JOINT_REG_ABS_IMB_BINS: 4
+JOINT_REG_MIN_CELL_COUNT: 20
+
+# Pooled cell-level regression on mean signed impact.
+RUN_POOLED_LOG_REGRESSION: true
+POOLED_REGRESSION_IMPACT_MODE: signed_mean
+
+# Figure export.
+WRITE_HTML: true
+WRITE_PNG: true

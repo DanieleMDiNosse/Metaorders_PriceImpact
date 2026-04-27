@@ -39,11 +39,9 @@ from moimpact.impact_fits import (
 from moimpact.logging_utils import PrintTee, setup_file_logger
 from moimpact.metaorder_distribution_samples import parse_member_nationality, with_member_nationality_tag
 from moimpact.plot_style import (
-    THEME_BG_COLOR,
     THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
 )
 from moimpact.plotting import (
     COLOR_CLIENT,
@@ -217,20 +215,11 @@ def save_plotly_figure(fig, *args, **kwargs):
     return _save_plotly_figure(fig, *args, **kwargs)
 
 
-TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
-LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
-TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
-LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
-apply_plotly_style(
-    tick_font_size=TICK_FONT_SIZE,
-    label_font_size=LABEL_FONT_SIZE,
-    title_font_size=TITLE_FONT_SIZE,
-    legend_font_size=LEGEND_FONT_SIZE,
-    theme_colorway=THEME_COLORWAY,
-    theme_grid_color=THEME_GRID_COLOR,
-    theme_bg_color=THEME_BG_COLOR,
-    theme_font_family=THEME_FONT_FAMILY,
-)
+PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
+TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
+LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
+TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
+LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
 
 LEVEL = str(_cfg_require("LEVEL"))
 DATASET_NAME = str(_CFG.get("DATASET_NAME") or "ftsemib")
@@ -375,6 +364,7 @@ def _build_group_fit_figure(
             binned,
             params,
             label_prefix=session_name.capitalize(),
+            tick_size=TICK_FONT_SIZE,
             label_size=LABEL_FONT_SIZE,
             legend_size=LEGEND_FONT_SIZE,
             log_params=fit_payload.get("log_params"),
@@ -387,7 +377,7 @@ def _build_group_fit_figure(
     fig.update_layout(
         title=f"{group_label}: morning vs evening impact fits",
         xaxis_title="Q/V",
-        yaxis_title=r"$I/\sigma$",
+        yaxis_title="I/σ",
     )
     return fig
 

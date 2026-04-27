@@ -9,7 +9,9 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple
 
-from moimpact.plot_style import THEME_COLORWAY
+from moimpact.plot_style import THEME_COLORWAY, load_plot_style
+
+_PLOT_STYLE = load_plot_style()
 
 # Canonical group colors used across scripts.
 COLOR_PROPRIETARY = THEME_COLORWAY[0]
@@ -19,9 +21,9 @@ COLOR_BAND_PROPRIETARY = "rgba(91,143,249,0.20)"
 COLOR_BAND_CLIENT = "rgba(238,102,102,0.20)"
 
 # Canonical static export settings (used for Plotly PNG outputs).
-PLOTLY_EXPORT_WIDTH = 1200
-PLOTLY_EXPORT_HEIGHT = 700
-PLOTLY_EXPORT_SCALE = 2
+PLOTLY_EXPORT_WIDTH = _PLOT_STYLE.export_width
+PLOTLY_EXPORT_HEIGHT = _PLOT_STYLE.export_height
+PLOTLY_EXPORT_SCALE = _PLOT_STYLE.export_scale
 
 
 def _env_flag(name: str, *, default: bool = False) -> bool:
@@ -174,6 +176,7 @@ def save_plotly_figure(
     include_mathjax: str = "cdn",
     write_html: bool = True,
     write_png: bool = True,
+    write_pdf: bool = False,
     strict_png: bool = False,
 ) -> Tuple[Optional[Path], Optional[Path]]:
     """
@@ -204,8 +207,11 @@ def save_plotly_figure(
         Whether to save the interactive HTML file.
     write_png : bool, default=True
         Whether to save the static PNG file.
+    write_pdf : bool, default=False
+        Whether to also save a vector PDF version beside the PNG file. This can
+        also be enabled globally with `PLOTLY_WRITE_PDF=true`.
     strict_png : bool, default=False
-        If True, re-raise PNG export errors (e.g., missing kaleido).
+        If True, re-raise static export errors (for PNG and optional PDF).
 
     Returns
     -------
@@ -215,9 +221,12 @@ def save_plotly_figure(
 
     Notes
     -----
-    PNG export relies on Plotly's static export backend (usually `kaleido`).
-    HTML exports load MathJax by default so saved figures preserve LaTeX
-    formatting used across the research plots.
+    - Static PNG/PDF export relies on Plotly's image export backend (usually
+      `kaleido`).
+    - HTML exports load MathJax by default so saved figures preserve LaTeX
+      formatting used across the research plots.
+    - PDF files are written to the same directory as PNG files so LaTeX can
+      reference extensionless stems and prefer the vector export automatically.
 
     Examples
     --------
@@ -226,6 +235,7 @@ def save_plotly_figure(
     ensure_plot_dirs(dirs)
     html_path: Optional[Path] = None
     png_path: Optional[Path] = None
+    write_pdf = bool(write_pdf or _env_flag("PLOTLY_WRITE_PDF", default=False))
 
     # Pipeline-level control: hide all figure legends when requested.
     if _env_flag("DISABLE_PLOT_LEGENDS", default=False):
@@ -248,5 +258,13 @@ def save_plotly_figure(
             if strict_png:
                 raise
             png_path = None
+
+    if write_pdf:
+        pdf_path = dirs.png_dir / f"{stem}.pdf"
+        try:
+            fig.write_image(str(pdf_path), width=width, height=height)
+        except Exception:
+            if strict_png:
+                raise
 
     return html_path, png_path

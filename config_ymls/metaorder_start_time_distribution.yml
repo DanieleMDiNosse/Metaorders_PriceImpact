@@ -1,0 +1,29 @@
+# metaorder_start_time_distribution.py configuration
+
+# Plot styling is centralized in config_ymls/plot_style.yml.
+
+# Dataset / sample selection
+DATASET_NAME: ftsemib
+LEVEL: member  # "member" or "client"
+MEMBER_NATIONALITY: null  # null|all for no filter, or "it" / "foreign"
+
+# Optional explicit input tables. null -> use the canonical metaorder_computation outputs.
+PROP_PATH: null
+CLIENT_PATH: null
+
+# Output roots
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+ANALYSIS_TAG: metaorder_start_time_distribution
+
+# Intraday binning
+TRADING_HOURS: ["09:30:00", "17:30:00"]
+BIN_MINUTES: 10
+
+# Plot metric: "share", "count", or "mean_daily_count".
+# The output table always contains all three quantities.
+Y_METRIC: share
+
+# Outputs
+PLOTS: true
+WRITE_PARQUET: true

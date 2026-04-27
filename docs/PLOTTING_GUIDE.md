@@ -1,16 +1,21 @@
 # Plotting Guide
 
 The repository uses a Plotly-first workflow with shared helpers in
-`moimpact/plot_style.py` and `moimpact/plotting.py`. This note documents the
-current conventions so new analyses match the existing output tree and styling.
+`moimpact/plot_style.py` and `moimpact/plotting.py`. Plot typography and export
+defaults are now centralized in `config_ymls/plot_style.yml`. This note
+documents the current conventions so new analyses match the existing output tree
+and paper-oriented styling.
 
 ## Shared plotting modules
 
 `moimpact/plot_style.py`
 
+- loads the central style spec from `config_ymls/plot_style.yml`
 - defines the repository theme colors
 - registers the `moimpact_white` Plotly template
-- exposes `apply_plotly_style(...)`
+- exposes `load_plot_style(...)`
+- exposes `apply_shared_plotly_style(...)`
+- exposes `apply_matplotlib_style(...)`
 
 `moimpact/plotting.py`
 
@@ -60,6 +65,7 @@ Important behavior in `save_plotly_figure(...)`:
 - HTML export includes Plotly JS from CDN
 - HTML export includes MathJax from CDN, so LaTeX labels render in saved HTML
 - PNG export uses Plotly's static backend, typically `kaleido`
+- optional PDF export writes `stem.pdf` beside `stem.png`
 - if `strict_png=False`, failed PNG export does not block HTML export
 
 Pipeline-level legend suppression:
@@ -85,26 +91,20 @@ local `save_plotly_figure(...)` wrapper that calls `fig.update_layout(title=None
 
 ## Global style knobs
 
-Most plotting scripts read font sizes from YAML:
+Paper-oriented typography and export defaults now live in:
+
+- `config_ymls/plot_style.yml`
+
+This file is the single source of truth for:
 
 - `TICK_FONT_SIZE`
 - `LABEL_FONT_SIZE`
 - `TITLE_FONT_SIZE`
 - `LEGEND_FONT_SIZE`
-- `ANNOTATION_FONT_SIZE` in scripts that use subplot annotations
+- `ANNOTATION_FONT_SIZE`
+- theme colors, grid/background colors, legend styling, and static export size
 
-These values are passed into `apply_plotly_style(...)`.
-
-Configs that currently expose these keys include:
-
-- `config_ymls/metaorder_computation.yml`
-- `config_ymls/metaorder_distributions.yml`
-- `config_ymls/metaorder_summary_statistics.yml`
-- `config_ymls/crowding_analysis.yml`
-- `config_ymls/metaorder_start_event_study.yml`
-- `config_ymls/metaorder_intraday_analysis.yml`
-- `config_ymls/plot_prop_nonprop_fits.yml`
-- `config_ymls/paper_figures.yml`
+Per-script YAML files no longer own plotting font sizes.
 
 ## Common places to edit plots
 

@@ -52,11 +52,10 @@ if str(_REPO_ROOT) not in sys.path:
 from moimpact.config import cfg_require, format_path_template, load_yaml_mapping, resolve_repo_path
 from moimpact.logging_utils import PrintTee, setup_file_logger
 from moimpact.plot_style import (
-    THEME_BG_COLOR,
     THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
+    plotly_legend_layout,
 )
 from moimpact.plotting import (
     COLOR_CLIENT,
@@ -115,22 +114,12 @@ def _parse_side_filter(value: object) -> Optional[int]:
     raise ValueError("SIDE_FILTER must be one of: all/null, buy, or sell.")
 
 
-TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
-LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
-TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
-LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
-ANNOTATION_FONT_SIZE = int(_CFG.get("ANNOTATION_FONT_SIZE", 14))
-
-apply_plotly_style(
-    tick_font_size=TICK_FONT_SIZE,
-    label_font_size=LABEL_FONT_SIZE,
-    title_font_size=TITLE_FONT_SIZE,
-    legend_font_size=LEGEND_FONT_SIZE,
-    theme_colorway=THEME_COLORWAY,
-    theme_grid_color=THEME_GRID_COLOR,
-    theme_bg_color=THEME_BG_COLOR,
-    theme_font_family=THEME_FONT_FAMILY,
-)
+PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
+TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
+LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
+TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
+LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
+ANNOTATION_FONT_SIZE = PLOT_STYLE.annotation_font_size
 
 DATASET_NAME = str(_CFG.get("DATASET_NAME") or "ftsemib")
 COMPARISON_DIRNAME = str(_CFG.get("COMPARISON_DIRNAME") or "prop_vs_nonprop")
@@ -387,7 +376,7 @@ def _plot_fit(
             y=_power_law(x_grid, Y_hat, gamma_hat),
             mode="lines",
             line=dict(color=color, width=2, dash=fit_dash),
-            name=rf"$R^2 = {r2_log:.2f}$",
+            name=f"R² = {r2_log:.2f}",
         )
     )
 
@@ -424,7 +413,7 @@ def _plot_logarithmic_fit(
             y=_logarithmic_impact(x_grid, a_hat, b_hat),
             mode="lines",
             line=dict(color=color, width=2, dash=fit_dash),
-            name=rf"$R^2 = {r2_lin:.2f}$",
+            name=f"R² = {r2_lin:.2f}",
         )
     )
 
@@ -551,7 +540,9 @@ def _build_retention_bootstrap_figure(
     )
     fig.update_layout(
         barmode="overlay",
-        xaxis_title=rf"$R_{{prop}} - R_{{client}}$ with $R = \bar I({result.tau_end:g}) / \bar I({result.tau_start:g})$",
+        xaxis_title=(
+            f"R(prop) - R(client), with R = mean I({result.tau_end:g}) / mean I({result.tau_start:g})"
+        ),
         yaxis_title="Bootstrap count",
         showlegend=False,
     )
@@ -714,11 +705,22 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                     color=color,
                     fit_dash=fit_dash,
                 )
-            fit_fig.update_xaxes(type="log", title_text="$\phi$", title_font=dict(size=LABEL_FONT_SIZE))
-            fit_fig.update_yaxes(type="log", title_text=r"$I/\sigma$", title_font=dict(size=LABEL_FONT_SIZE))
+            fit_fig.update_xaxes(
+                type="log",
+                title_text="φ",
+                title_font=dict(size=LABEL_FONT_SIZE),
+                tickfont=dict(size=TICK_FONT_SIZE),
+            )
+            fit_fig.update_yaxes(
+                type="log",
+                title_text="I/σ",
+                title_font=dict(size=LABEL_FONT_SIZE),
+                tickfont=dict(size=TICK_FONT_SIZE),
+            )
             fit_fig.update_layout(
                 showlegend=True,
                 title=None,
+                legend=plotly_legend_layout(PLOT_STYLE, font=dict(size=LEGEND_FONT_SIZE)),
             )
             fit_html_path, fit_png_path = save_plotly_figure(
                 fit_fig,
@@ -743,11 +745,22 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                     color=color,
                     fit_dash=fit_dash,
                 )
-            log_fit_fig.update_xaxes(type="log", title_text="$\phi$", title_font=dict(size=LABEL_FONT_SIZE))
-            log_fit_fig.update_yaxes(type="log", title_text=r"$I/\sigma$", title_font=dict(size=LABEL_FONT_SIZE))
+            log_fit_fig.update_xaxes(
+                type="log",
+                title_text="φ",
+                title_font=dict(size=LABEL_FONT_SIZE),
+                tickfont=dict(size=TICK_FONT_SIZE),
+            )
+            log_fit_fig.update_yaxes(
+                type="log",
+                title_text="I/σ",
+                title_font=dict(size=LABEL_FONT_SIZE),
+                tickfont=dict(size=TICK_FONT_SIZE),
+            )
             log_fit_fig.update_layout(
                 showlegend=True,
                 title=None,
+                legend=plotly_legend_layout(PLOT_STYLE, font=dict(size=LEGEND_FONT_SIZE)),
             )
             log_fit_output_stem = _derive_log_fit_output_stem(FIT_OUTPUT_STEM)
             log_fit_html_path, log_fit_png_path = save_plotly_figure(

@@ -95,11 +95,8 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from moimpact.plot_style import (
-    THEME_BG_COLOR,
-    THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
 )
 from moimpact.config import format_path_template, resolve_repo_path
 from moimpact.plotting import (
@@ -148,20 +145,6 @@ def _env_flag(name: str, *, default: bool = False) -> bool:
     return default
 
 
-def _env_int(name: str, *, default: int) -> int:
-    """Parse an integer environment variable, falling back to `default`."""
-    raw = os.environ.get(name)
-    if raw is None:
-        return default
-    text = raw.strip()
-    if text == "":
-        return default
-    try:
-        return int(text)
-    except ValueError:
-        return default
-
-
 # Per-ISIN parquet trade tapes live under `data/parquet/` in this repo.
 DATA_DIR = _REPO_ROOT / "data" / "parquet"
 DATASET_NAME = (os.environ.get("DATASET_NAME") or "ftsemib").strip() or "ftsemib"
@@ -179,22 +162,12 @@ HTML_DIR = PLOT_OUTPUT_DIRS.html_dir
 PNG_DIR = PLOT_OUTPUT_DIRS.png_dir
 TRADING_HOURS = ("09:30:00", "17:30:00")
 AGGRESSIVE_MEMBER_NATIONALITY_COL = "Aggressive Member Nationality"
-TICK_FONT_SIZE = _env_int("TICK_FONT_SIZE_OVERRIDE", default=12)
-LABEL_FONT_SIZE = _env_int("LABEL_FONT_SIZE_OVERRIDE", default=14)
-TITLE_FONT_SIZE = _env_int("TITLE_FONT_SIZE_OVERRIDE", default=15)
-LEGEND_FONT_SIZE = _env_int("LEGEND_FONT_SIZE_OVERRIDE", default=12)
+PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
+TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
+LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
+TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
+LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
 ensure_plot_dirs(PLOT_OUTPUT_DIRS)
-
-apply_plotly_style(
-    tick_font_size=TICK_FONT_SIZE,
-    label_font_size=LABEL_FONT_SIZE,
-    title_font_size=TITLE_FONT_SIZE,
-    legend_font_size=LEGEND_FONT_SIZE,
-    theme_colorway=THEME_COLORWAY,
-    theme_grid_color=THEME_GRID_COLOR,
-    theme_bg_color=THEME_BG_COLOR,
-    theme_font_family=THEME_FONT_FAMILY,
-)
 
 
 def save_plotly_figure(fig, *args, **kwargs):
@@ -635,7 +608,7 @@ def main():
         category_orders={"member_str": coverage_df["member_str"].tolist()},
         color_discrete_map=nationality_color_map,
     )
-    fig_cov.update_layout(xaxis_tickangle=90, xaxis_tickfont=dict(size=7), bargap=0.2)
+    fig_cov.update_layout(xaxis_tickangle=90, xaxis_tickfont=dict(size=max(TICK_FONT_SIZE - 2, 14)), bargap=0.2)
     save_plotly(fig_cov, "member_isin_coverage_per_member")
 
     # ------------------------------------------------------------------

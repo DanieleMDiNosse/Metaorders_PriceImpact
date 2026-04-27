@@ -1,10 +1,6 @@
 # metaorder_start_event_study.py configuration
 
-# Plotting
-TICK_FONT_SIZE: 16
-LABEL_FONT_SIZE: 18
-TITLE_FONT_SIZE: 19
-LEGEND_FONT_SIZE: 16
+# Plot styling is centralized in config_ymls/plot_style.yml.
 
 # Dataset label
 DATASET_NAME: ftsemib
@@ -29,6 +25,7 @@ EVENT_WINDOW_MINUTES: 20
 BIN_MINUTES: 5
 MATCHING_BUCKET_MINUTES: 20
 HIGH_ETA_QUANTILE: 0.5
+HIGH_ETA_QUANTILES: null  # optional threshold sweep, e.g. [0.5, 0.6, 0.7, 0.8, 0.9]
 
 # Inference
 ALPHA: 0.05

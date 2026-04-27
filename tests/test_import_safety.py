@@ -25,5 +25,14 @@ class TestImportSafety(unittest.TestCase):
         importlib.import_module("scripts.metaorder_start_event_study")
         self.assertIs(builtins.print, original_print)
 
+        importlib.import_module("scripts.metaorder_start_time_distribution")
+        self.assertIs(builtins.print, original_print)
+
+        importlib.import_module("scripts.crowding_intraday_profile")
+        self.assertIs(builtins.print, original_print)
+
+        importlib.import_module("scripts.crowding_overlap_analysis")
+        self.assertIs(builtins.print, original_print)
+
         importlib.import_module("scripts.metaorder_computation")
         self.assertIs(builtins.print, original_print)

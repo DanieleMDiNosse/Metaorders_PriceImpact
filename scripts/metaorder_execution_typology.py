@@ -49,11 +49,10 @@ from moimpact.execution_typology import (
 )
 from moimpact.logging_utils import PrintTee, setup_file_logger
 from moimpact.plot_style import (
-    THEME_BG_COLOR,
     THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
+    plotly_legend_layout,
 )
 from moimpact.plotting import (
     COLOR_CLIENT,
@@ -755,7 +754,7 @@ def _plot_group_shares(shares_df: pd.DataFrame, *, dirs: PlotOutputDirs) -> None
             row=1,
             col=2,
         )
-    fig.update_layout(barmode="stack", height=650, width=1500, legend=dict(orientation="h", x=0.0, y=1.15))
+    fig.update_layout(barmode="stack", height=650, width=1500, legend=plotly_legend_layout(_PLOT_STYLE))
     fig.update_yaxes(title_text="Share", row=1, col=1)
     fig.update_yaxes(title_text="Share", row=1, col=2)
     fig.update_xaxes(title_text="Group", row=1, col=1)
@@ -810,7 +809,7 @@ def _plot_pca_scatter(
             )
     pc1_var = 100.0 * float(explained_variance_ratio[0]) if len(explained_variance_ratio) >= 1 else float("nan")
     pc2_var = 100.0 * float(explained_variance_ratio[1]) if len(explained_variance_ratio) >= 2 else float("nan")
-    fig.update_layout(height=800, width=1300, legend=dict(orientation="h", x=0.0, y=1.14))
+    fig.update_layout(height=800, width=1300, legend=plotly_legend_layout(_PLOT_STYLE))
     fig.update_xaxes(title_text=f"PC1 ({pc1_var:.1f}% var)")
     fig.update_yaxes(title_text=f"PC2 ({pc2_var:.1f}% var)")
     save_plotly_figure(fig, stem=_PCA_SCATTER_STEM, dirs=dirs, write_html=True, write_png=True)
@@ -865,7 +864,11 @@ def _plot_impact_profiles(impact_df: pd.DataFrame, *, dirs: PlotOutputDirs) -> N
             )
         fig.update_xaxes(title_text="Impact horizon", row=r, col=c)
     fig.update_yaxes(title_text="Median absolute impact", row=1, col=1)
-    fig.update_layout(height=max(550, 340 * n_rows), width=1450, legend=dict(orientation="h", x=0.0, y=1.08))
+    fig.update_layout(
+        height=max(550, 340 * n_rows),
+        width=1450,
+        legend=plotly_legend_layout(_PLOT_STYLE),
+    )
     save_plotly_figure(fig, stem=_IMPACT_STEM, dirs=dirs, write_html=True, write_png=True)
 
 
@@ -964,7 +967,11 @@ def _plot_schedule_profiles(schedule_df: pd.DataFrame, *, dirs: PlotOutputDirs) 
             )
         fig.update_xaxes(title_text="Normalized execution time", range=[0.0, 1.0], row=r, col=c)
     fig.update_yaxes(title_text="Cumulative volume fraction", range=[0.0, 1.0], row=1, col=1)
-    fig.update_layout(height=max(550, 340 * n_rows), width=1450, legend=dict(orientation="h", x=0.0, y=1.10))
+    fig.update_layout(
+        height=max(550, 340 * n_rows),
+        width=1450,
+        legend=plotly_legend_layout(_PLOT_STYLE),
+    )
     save_plotly_figure(fig, stem=_SCHEDULE_STEM, dirs=dirs, write_html=True, write_png=True)
 
 
@@ -1004,20 +1011,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(list(argv) if argv is not None else None)
     cfg = _load_yaml_defaults(resolve_repo_path(_REPO_ROOT, args.config_path))
 
-    tick_font_size = int(cfg.get("TICK_FONT_SIZE", 12))
-    label_font_size = int(cfg.get("LABEL_FONT_SIZE", 14))
-    title_font_size = int(cfg.get("TITLE_FONT_SIZE", 15))
-    legend_font_size = int(cfg.get("LEGEND_FONT_SIZE", 12))
-    apply_plotly_style(
-        tick_font_size=tick_font_size,
-        label_font_size=label_font_size,
-        title_font_size=title_font_size,
-        legend_font_size=legend_font_size,
-        theme_colorway=THEME_COLORWAY,
-        theme_grid_color=THEME_GRID_COLOR,
-        theme_bg_color=THEME_BG_COLOR,
-        theme_font_family=THEME_FONT_FAMILY,
-    )
+    apply_shared_plotly_style(load_plot_style())
 
     paths = _resolve_paths(cfg, args)
     k_min = int(args.k_min if args.k_min is not None else cfg.get("K_MIN", 2))

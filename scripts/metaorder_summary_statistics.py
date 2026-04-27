@@ -76,9 +76,9 @@ from moimpact.plot_style import (
     PLOTLY_TEMPLATE_NAME,
     THEME_BG_COLOR,
     THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
+    plotly_legend_layout,
 )
 from moimpact.plotting import (
     COLOR_CLIENT,
@@ -229,22 +229,12 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 # ---------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------
-TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
-LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
-TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
-LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
-ANNOTATION_FONT_SIZE = int(_CFG.get("ANNOTATION_FONT_SIZE", 14))
-
-apply_plotly_style(
-    tick_font_size=TICK_FONT_SIZE,
-    label_font_size=LABEL_FONT_SIZE,
-    title_font_size=TITLE_FONT_SIZE,
-    legend_font_size=LEGEND_FONT_SIZE,
-    theme_colorway=THEME_COLORWAY,
-    theme_grid_color=THEME_GRID_COLOR,
-    theme_bg_color=THEME_BG_COLOR,
-    theme_font_family=THEME_FONT_FAMILY,
-)
+PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
+TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
+LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
+TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
+LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
+ANNOTATION_FONT_SIZE = PLOT_STYLE.annotation_font_size
 COLOR_ALL_METAORDERS = "#4a4a4a"
 KNOWN_MEMBER_NATIONALITIES: Tuple[str, str] = ("it", "foreign")
 NATIONALITY_LABELS: Dict[str, str] = {"it": "IT", "foreign": "Foreign"}
@@ -955,7 +945,7 @@ def build_nationality_context_figure(
         template=PLOTLY_TEMPLATE_NAME,
         barmode="group",
         margin=dict(l=70, r=25, t=60, b=60),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1.0),
+        legend=plotly_legend_layout(PLOT_STYLE),
     )
     return fig
 
@@ -1544,14 +1534,34 @@ def build_mean_daily_metaorder_share_figure(
     fig.update_layout(
         template=PLOTLY_TEMPLATE_NAME,
         xaxis_title="ISIN",
-        yaxis_title="Percentage of daily market volume (%)",
+        yaxis_title="% daily market volume",
         barmode="stack" if condition_on_client_proprietary else "group",
         showlegend=condition_on_client_proprietary,
-        xaxis_tickangle=90,
         bargap=0.2,
-        margin=dict(l=60, r=20, t=40, b=60),
+        legend=(
+            plotly_legend_layout(
+                PLOT_STYLE,
+                title=dict(text="Trade Type", font=dict(size=LEGEND_FONT_SIZE)),
+            )
+            if condition_on_client_proprietary
+            else plotly_legend_layout(PLOT_STYLE)
+        ),
+        margin=dict(l=70, r=25, t=40, b=150),
     )
-    fig.update_yaxes(rangemode="tozero")
+    fig.update_xaxes(
+        tickangle=90,
+        title_font=dict(size=LABEL_FONT_SIZE),
+        tickfont=dict(size=TICK_FONT_SIZE),
+        title_standoff=12,
+        automargin=True,
+    )
+    fig.update_yaxes(
+        rangemode="tozero",
+        title_font=dict(size=LABEL_FONT_SIZE),
+        tickfont=dict(size=TICK_FONT_SIZE),
+        title_standoff=12,
+        automargin=True,
+    )
     return fig
 
 
@@ -1732,6 +1742,8 @@ def _build_member_metaorder_profile_figure(
 
     max_child_orders = 0.0
     max_trades = 0.0
+    max_rank = 0.0
+    max_metaorders = 0.0
     rank_panel_has_data = False
     scatter_panel_has_data = False
 
@@ -1739,6 +1751,8 @@ def _build_member_metaorder_profile_figure(
         rank_table = _build_member_metaorder_rank_table(table)
         if not rank_table.empty:
             rank_panel_has_data = True
+            max_rank = max(max_rank, float(rank_table["rank"].max()))
+            max_metaorders = max(max_metaorders, float(rank_table["n_metaorders"].max()))
             fig.add_trace(
                 go.Scatter(
                     x=rank_table["rank"].tolist(),
@@ -1819,6 +1833,11 @@ def _build_member_metaorder_profile_figure(
             showarrow=False,
             font=dict(size=ANNOTATION_FONT_SIZE),
         )
+    else:
+        rank_x_upper = max_rank * 1.05 if max_rank > 1.0 else 1.0
+        rank_y_upper = max_metaorders * 1.05 if max_metaorders > 1.0 else 1.0
+        fig.update_xaxes(range=[0.0, np.log10(rank_x_upper)], row=1, col=1)
+        fig.update_yaxes(range=[0.0, np.log10(rank_y_upper)], row=1, col=1)
 
     if not scatter_panel_has_data:
         subplot = fig.get_subplot(1, 2)
@@ -1851,7 +1870,7 @@ def _build_member_metaorder_profile_figure(
         col=1,
     )
     fig.update_yaxes(
-        title_text=r"$N_m$",
+        title_text="# Metaorders",
         type="log",
         exponentformat="power",
         showexponent="all",
@@ -1865,11 +1884,45 @@ def _build_member_metaorder_profile_figure(
         col=2,
     )
     fig.update_yaxes(title_text="# Trades", row=1, col=2)
+    fig.update_xaxes(
+        title_font=dict(size=LABEL_FONT_SIZE),
+        tickfont=dict(size=TICK_FONT_SIZE),
+        title_standoff=12,
+        automargin=True,
+        minorloglabels="none",
+        row=1,
+        col=1,
+    )
+    fig.update_yaxes(
+        title_font=dict(size=LABEL_FONT_SIZE),
+        tickfont=dict(size=TICK_FONT_SIZE),
+        title_standoff=12,
+        automargin=True,
+        minorloglabels="none",
+        row=1,
+        col=1,
+    )
+    fig.update_xaxes(
+        title_font=dict(size=LABEL_FONT_SIZE),
+        tickfont=dict(size=TICK_FONT_SIZE),
+        title_standoff=12,
+        automargin=True,
+        row=1,
+        col=2,
+    )
+    fig.update_yaxes(
+        title_font=dict(size=LABEL_FONT_SIZE),
+        tickfont=dict(size=TICK_FONT_SIZE),
+        title_standoff=12,
+        automargin=True,
+        row=1,
+        col=2,
+    )
     fig.update_layout(
         template=PLOTLY_TEMPLATE_NAME,
         hovermode="closest",
         showlegend=show_legend,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1.0),
+        legend=plotly_legend_layout(PLOT_STYLE, font=dict(size=LEGEND_FONT_SIZE)),
         margin=dict(l=70, r=25, t=70, b=60),
     )
     return fig

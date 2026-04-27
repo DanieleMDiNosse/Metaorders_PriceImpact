@@ -1,10 +1,6 @@
 # metaorder_execution_schedule.py configuration
 
-# Plotting
-TICK_FONT_SIZE: 16
-LABEL_FONT_SIZE: 18
-TITLE_FONT_SIZE: 19
-LEGEND_FONT_SIZE: 16
+# Plot styling is centralized in config_ymls/plot_style.yml.
 
 # Dataset and paths
 DATASET_NAME: ftsemib
@@ -23,3 +19,14 @@ CLIENT_PATH: null
 RUN_EXECUTION_SCHEDULE: true
 N_TIME_GRID: 200
 N_HEATMAP_BINS_Y: 150
+HEATMAP_COLORSCALE: Turbo
+CURVE_OVERLAY_STAT: mean
+
+# Optional inference
+RUN_EXECUTION_SCHEDULE_INFERENCE: false
+CLUSTER_COL: null
+BOOTSTRAP_RUNS: 1000
+BOOTSTRAP_BATCH_SIZE: 128
+SCALAR_HISTOGRAM_BINS: 1024
+ALPHA: 0.05
+RANDOM_STATE: 0

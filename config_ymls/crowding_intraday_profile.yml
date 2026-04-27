@@ -1,0 +1,31 @@
+# crowding_intraday_profile.py configuration
+
+# Plot styling is centralized in config_ymls/plot_style.yml.
+
+# Dataset / sample selection
+DATASET_NAME: ftsemib
+LEVEL: member  # "member" or "client"
+MEMBER_NATIONALITY: null  # null|all for no filter, or "it" / "foreign"
+
+# Optional explicit input tables. null -> use the canonical metaorder_computation outputs.
+PROP_PATH: null
+CLIENT_PATH: null
+
+# Output roots
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+ANALYSIS_TAG: crowding_intraday_profile
+
+# Intraday window and binning
+TRADING_HOURS: ["09:30:00", "17:30:00"]
+BIN_MINUTES: 10
+
+# Inference
+MIN_N_DAY_BIN: 5
+ALPHA: 0.05
+BOOTSTRAP_RUNS: 1000
+SEED: 0
+
+# Outputs
+PLOTS: true
+WRITE_PARQUET: true

@@ -34,11 +34,9 @@ if str(_REPO_ROOT) not in sys.path:
 from moimpact.config import format_path_template
 from moimpact.plot_style import (
     PLOTLY_TEMPLATE_NAME,
-    THEME_BG_COLOR,
     THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
 )
 from moimpact.plotting import make_plot_output_dirs, save_plotly_figure as _save_plotly_figure
 
@@ -52,21 +50,7 @@ _PCA_REPORT_FILE = "pca_report.json"
 _PCA_SCORES_FILE = "pca_scores.parquet"
 _PCA_FEATURE_SELECTION_SUMMARY_FILE = "pca_feature_selection_summary.csv"
 _PCA_FEATURE_SELECTION_PC_FILE = "pca_feature_selection_per_pc.csv"
-_TICK_FONT_SIZE = 12
-_LABEL_FONT_SIZE = 14
-_TITLE_FONT_SIZE = 15
-_LEGEND_FONT_SIZE = 12
-
-apply_plotly_style(
-    tick_font_size=_TICK_FONT_SIZE,
-    label_font_size=_LABEL_FONT_SIZE,
-    title_font_size=_TITLE_FONT_SIZE,
-    legend_font_size=_LEGEND_FONT_SIZE,
-    theme_colorway=THEME_COLORWAY,
-    theme_grid_color=THEME_GRID_COLOR,
-    theme_bg_color=THEME_BG_COLOR,
-    theme_font_family=THEME_FONT_FAMILY,
-)
+_PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
 
 
 def save_plotly_figure(fig, *args, **kwargs):

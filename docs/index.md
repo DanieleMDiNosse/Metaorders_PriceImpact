@@ -28,8 +28,12 @@ The main scripts are:
   - config: `config_ymls/crowding_analysis.yml`
 - `scripts/crowding_vs_part_rate.py`
   - crowding as a function of participation rate `eta`, with date-cluster
-    bootstrap, optional placebo/permutation tests, regressions, and optional
-    2D `Q/V x eta` heatmaps
+  bootstrap, optional placebo/permutation tests, regressions, and optional
+  2D `Q/V x eta` heatmaps
+- `scripts/crowding_impact_analysis.py`
+  - crowding-conditioned impact curves, benchmark-impact contrasts, and
+    participation-bin robustness for client vs proprietary metaorders
+  - config: `config_ymls/crowding_impact_analysis.yml`
 - `scripts/metaorder_start_event_study.py`
   - matched start-intensity event-study around high-participation anchors
   - config: `config_ymls/metaorder_start_event_study.yml`
@@ -144,6 +148,7 @@ Common figure roots:
 - `images/{DATASET_NAME}/{LEVEL}_metaorder_summary_statistics/`
 - `images/{DATASET_NAME}/prop_vs_nonprop/`
 - `images/{DATASET_NAME}/crowding_vs_part_rate/`
+- `images/{DATASET_NAME}/crowding_impact/`
 - `images/{DATASET_NAME}/metaorder_start_event_study/`
 - `images/{DATASET_NAME}/{LEVEL}_metaorder_intraday_analysis/`
 
@@ -169,6 +174,7 @@ The main config files are:
 - `config_ymls/metaorder_distributions.yml`
 - `config_ymls/metaorder_summary_statistics.yml`
 - `config_ymls/crowding_analysis.yml`
+- `config_ymls/crowding_impact_analysis.yml`
 - `config_ymls/metaorder_start_event_study.yml`
 - `config_ymls/metaorder_execution_typology.yml`
 - `config_ymls/metaorder_intraday_analysis.yml`
@@ -199,6 +205,7 @@ python scripts/generate_paper_figures.py --targets all
 The scripts that create run manifests currently are:
 
 - `scripts/crowding_vs_part_rate.py`
+- `scripts/crowding_impact_analysis.py`
 - `scripts/metaorder_start_event_study.py`
 - `scripts/generate_paper_figures.py`
 
@@ -209,6 +216,8 @@ available the current git hash.
 
 - [`market_impact.md`](market_impact.md)
 - [`imbalance_and_crowding.md`](imbalance_and_crowding.md)
+- [`crowding_impact_analysis.md`](crowding_impact_analysis.md)
+- [`crowding_impact_results_summary.md`](crowding_impact_results_summary.md)
 - [`bootstrap_methods.md`](bootstrap_methods.md)
 - [`metaorder_distributions.md`](metaorder_distributions.md)
 - [`metaorder_summary_statistics.md`](metaorder_summary_statistics.md)

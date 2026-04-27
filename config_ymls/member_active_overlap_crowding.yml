@@ -1,0 +1,38 @@
+# member_active_overlap_crowding.py configuration
+
+DATASET_NAME: ftsemib
+
+# Paths. You may use {DATASET_NAME} and {ANALYSIS_TAG}.
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+ANALYSIS_TAG: member_active_overlap_crowding
+
+# Input. null -> out_files/{DATASET_NAME}/crowding_overlap_analysis/overlap_features.parquet
+INPUT_PATH: null
+
+# Main specifications:
+# - same_isin is the local front-running proxy.
+# - all_isin is a same-member robustness check.
+SCOPES: [same_isin, all_isin]
+LEAD_LAG_BUCKETS: [all_active, preexisting_at_prop_start, starts_during_prop]
+
+# Inference.
+BOOTSTRAP_RUNS: 1000
+ALPHA: 0.05
+RANDOM_STATE: 0
+
+# Member and heatmap thresholds.
+MIN_OBS_PER_MEMBER: 30
+MIN_OBS_PER_MEMBER_WINDOW: 5
+MEMBER_WINDOW_DAYS: 3
+
+# Active-overlap computation is parallelized by (Member, Date). N_JOBS=0 means
+# auto, capped at 4 workers to avoid excessive memory use.
+OVERLAP_BATCH_SIZE: 2048
+N_JOBS: 0
+
+# Outputs.
+PLOTS: true
+WRITE_HTML: true
+WRITE_PNG: true
+WRITE_TARGET_PARQUET: true

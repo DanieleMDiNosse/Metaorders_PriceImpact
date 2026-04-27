@@ -1,11 +1,6 @@
 # plot_prop_nonprop_fits.py configuration
 
-# Plotting
-TICK_FONT_SIZE: 16
-LABEL_FONT_SIZE: 25
-TITLE_FONT_SIZE: 19
-LEGEND_FONT_SIZE: 25
-ANNOTATION_FONT_SIZE: 14
+# Plot styling is centralized in config_ymls/plot_style.yml.
 
 # Dataset and paths
 DATASET_NAME: ftsemib

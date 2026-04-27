@@ -37,11 +37,9 @@ from moimpact.impact_fits import (
 )
 from moimpact.logging_utils import PrintTee, setup_file_logger
 from moimpact.plot_style import (
-    THEME_BG_COLOR,
     THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
 )
 from moimpact.plotting import (
     COLOR_BAND_PROPRIETARY,
@@ -126,25 +124,11 @@ def _with_member_nationality_tag(filename: str) -> str:
         return filename
     stem, ext = os.path.splitext(filename)
     return f"{stem}{MEMBER_NATIONALITY_FILE_TAG}{ext}"
-# Sizes tuned for paper-ready readability (loaded from YAML)
-TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
-LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
-TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
-LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
-try:
-    apply_plotly_style(
-        tick_font_size=TICK_FONT_SIZE,
-        label_font_size=LABEL_FONT_SIZE,
-        title_font_size=TITLE_FONT_SIZE,
-        legend_font_size=LEGEND_FONT_SIZE,
-        theme_colorway=THEME_COLORWAY,
-        theme_grid_color=THEME_GRID_COLOR,
-        theme_bg_color=THEME_BG_COLOR,
-        theme_font_family=THEME_FONT_FAMILY,
-    )
-except ImportError:
-    # Plotly is optional here (used only for interactive HTML exports).
-    pass
+PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
+TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
+LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
+TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
+LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
 
 
 def save_plotly_figure(fig, *args, **kwargs):
@@ -1635,7 +1619,7 @@ def plot_bivariate_fit_surfaces_3d(
                 scene=dict(
                     xaxis_title="F",
                     yaxis_title="η",
-                    zaxis_title=r"I / \sigma",
+                    zaxis_title="I/σ",
                     xaxis=dict(type="log"),
                     yaxis=dict(type="log"),
                     zaxis=dict(type="log"),
@@ -1734,7 +1718,7 @@ def plot_impact_surface_and_heatmap(
                 cmin=cmin,
                 cmax=cmax,
                 colorbar={
-                    "title": r"$I / \sigma$",
+                    "title": "I/σ",
                     "tickmode": "array",
                     "tickvals": tickvals,
                     "ticktext": ticktext,
@@ -1747,7 +1731,7 @@ def plot_impact_surface_and_heatmap(
         scene=dict(
             xaxis_title="Q/V",
             yaxis_title="η",
-            zaxis_title=r"I / \sigma",
+            zaxis_title="I/σ",
             xaxis=dict(type="log"),
             yaxis=dict(type="log"),
             zaxis=dict(type="log"),
@@ -1773,13 +1757,13 @@ def plot_impact_surface_and_heatmap(
                 y=pr_centers,
                 z=impact_for_plot,
                 colorscale="Viridis",
-                colorbar=dict(title=r"$I / \sigma$"),
+                colorbar=dict(title="I/σ"),
                 hovertemplate="Q/V=%{x:.3g}<br>η=%{y:.3g}<br>impact=%{z:.3g}<extra></extra>",
             )
         ]
     )
     fig_heatmap.update_layout(
-        title=r"Impact heatmap: I/ \sigma vs Q/V and η",
+        title="Impact heatmap: I/σ vs Q/V and η",
         xaxis=dict(title="Q/V", type="log"),
         yaxis=dict(title="η", type="log"),
     )
@@ -1977,7 +1961,7 @@ def plot_normalized_impact_path(
     fig.update_layout(
         title=title,
         xaxis_title="Normalized time",
-        yaxis_title=r"\mathbb{E}[I/\sigma]",
+        yaxis_title="E[I/σ]",
     )
 
     stem = Path(out_path).stem
@@ -1994,6 +1978,7 @@ def plot_normalized_impact_path(
 
 def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) -> None:
     """Run aggregated WLS fits + downstream plots; safe to call only when df is non-empty."""
+    tick_size = TICK_FONT_SIZE
     label_size = LABEL_FONT_SIZE
     legend_size = LEGEND_FONT_SIZE
     title_size = TITLE_FONT_SIZE
@@ -2024,6 +2009,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
             fig,
             binned_all,
             params_all,
+            tick_size=tick_size,
             log_params=log_params_all,
             label_size=label_size,
             legend_size=legend_size,
@@ -2080,6 +2066,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
                 params,
                 label_prefix=label,
                 log_params=log_params,
+                tick_size=tick_size,
                 label_size=label_size,
                 legend_size=legend_size,
                 series_color=color,
@@ -2119,7 +2106,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
     pr_col = "Participation Rate"
     if pr_col in df.columns and df[pr_col].notna().sum() >= 2:
         pr_nbins = 2
-        labels = [r"$\eta < \eta_{median}$", r"$\eta ≥ \eta_{median}$"]
+        labels = ["η < median η", "η ≥ median η"]
         if not split_by_side:
             try:
                 df_pr = df.copy()
@@ -2148,12 +2135,13 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
                         binned_sub,
                         params_sub,
                         label_prefix=str(label),
+                        tick_size=tick_size,
                         label_size=label_size,
                         legend_size=legend_size,
                     )
                     fits_by_pr[str(label)] = params_sub
                 fig.update_layout(
-                    title=r"Power-law fits conditioned on $\eta$ (aggregated)",
+                    title="Power-law fits conditioned on η (aggregated)",
                     title_font=dict(size=title_size),
                 )
                 save_plotly_figure(
@@ -2211,6 +2199,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
                         binned_sub,
                         params_sub,
                         label_prefix=str(label),
+                        tick_size=tick_size,
                         label_size=label_size,
                         legend_size=legend_size,
                     )
@@ -2221,7 +2210,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
                     continue
 
                 fig.update_layout(
-                    title=rf"Power-law fits conditioned on $\eta$ ({side_label})",
+                    title=f"Power-law fits conditioned on η ({side_label})",
                     title_font=dict(size=title_size),
                 )
                 save_plotly_figure(

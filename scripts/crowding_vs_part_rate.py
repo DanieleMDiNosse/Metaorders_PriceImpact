@@ -63,11 +63,10 @@ except Exception as exc:  # pragma: no cover
 
 from moimpact.config import format_path_template, resolve_repo_path
 from moimpact.plot_style import (
-    THEME_BG_COLOR,
-    THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_matplotlib_style,
+    apply_shared_plotly_style,
+    load_plot_style,
+    plotly_legend_layout,
 )
 from moimpact.plotting import (
     COLOR_BAND_CLIENT,
@@ -92,11 +91,12 @@ COL_ETA = "Participation Rate"
 COL_QV = "Q/V"
 COL_VTV = "Vt/V"
 COL_DAILY_VOL = "Daily Vol"
-TICK_FONT_SIZE = 12
-LABEL_FONT_SIZE = 14
-TITLE_FONT_SIZE = 15
-LEGEND_FONT_SIZE = 12
 COLOR_NOISE_BAND = "rgba(107,114,128,0.22)"
+PLOT_STYLE = load_plot_style()
+TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
+LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
+TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
+LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
 
 
 def _env_flag(name: str, *, default: bool = False) -> bool:
@@ -133,43 +133,10 @@ def _env_flag(name: str, *, default: bool = False) -> bool:
     return default
 
 
-def _font_size_from_cfg(cfg: Mapping[str, Any], key: str, *, default: int) -> int:
-    """
-    Read one font-size override from YAML or environment, falling back to `default`.
-
-    Environment variables use the pattern `<KEY>_OVERRIDE`, for example
-    `LABEL_FONT_SIZE_OVERRIDE`.
-    """
-    env_raw = os.environ.get(f"{key}_OVERRIDE")
-    if env_raw is not None and env_raw.strip() != "":
-        try:
-            return int(env_raw)
-        except ValueError:
-            pass
-
-    raw = cfg.get(key, default)
-    if raw is None:
-        return int(default)
-    return int(raw)
-
-
 def _apply_plot_style_from_cfg(cfg: Mapping[str, Any]) -> None:
-    """Apply Plotly style using YAML/env font-size overrides."""
-    tick_font_size = _font_size_from_cfg(cfg, "TICK_FONT_SIZE", default=TICK_FONT_SIZE)
-    label_font_size = _font_size_from_cfg(cfg, "LABEL_FONT_SIZE", default=LABEL_FONT_SIZE)
-    title_font_size = _font_size_from_cfg(cfg, "TITLE_FONT_SIZE", default=TITLE_FONT_SIZE)
-    legend_font_size = _font_size_from_cfg(cfg, "LEGEND_FONT_SIZE", default=LEGEND_FONT_SIZE)
+    """Apply the central Plotly style specification."""
     try:
-        apply_plotly_style(
-            tick_font_size=tick_font_size,
-            label_font_size=label_font_size,
-            title_font_size=title_font_size,
-            legend_font_size=legend_font_size,
-            theme_colorway=THEME_COLORWAY,
-            theme_grid_color=THEME_GRID_COLOR,
-            theme_bg_color=THEME_BG_COLOR,
-            theme_font_family=THEME_FONT_FAMILY,
-        )
+        apply_shared_plotly_style(PLOT_STYLE)
     except ImportError:
         pass
 
@@ -177,16 +144,7 @@ def _apply_plot_style_from_cfg(cfg: Mapping[str, Any]) -> None:
 DISABLE_PLOT_LEGENDS = _env_flag("DISABLE_PLOT_LEGENDS", default=False)
 
 try:
-    apply_plotly_style(
-        tick_font_size=TICK_FONT_SIZE,
-        label_font_size=LABEL_FONT_SIZE,
-        title_font_size=TITLE_FONT_SIZE,
-        legend_font_size=LEGEND_FONT_SIZE,
-        theme_colorway=THEME_COLORWAY,
-        theme_grid_color=THEME_GRID_COLOR,
-        theme_bg_color=THEME_BG_COLOR,
-        theme_font_family=THEME_FONT_FAMILY,
-    )
+    apply_shared_plotly_style(PLOT_STYLE)
 except ImportError:
     # Plotly is optional for this script; PNG/HTML exports are guarded elsewhere.
     pass
@@ -1858,7 +1816,7 @@ def _plotly_curve_date_ci(
         title=title,
         height=520,
         width=1200,
-        legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="right", x=1.0),
+        legend=plotly_legend_layout(PLOT_STYLE),
     )
     save_plotly_figure(
         fig,
@@ -1926,13 +1884,14 @@ def _mpl_curve_date_ci(
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    apply_matplotlib_style(PLOT_STYLE)
 
     out_png.parent.mkdir(parents=True, exist_ok=True)
 
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.5), sharey=True)
     plot_cfg = [
-        (axes[0], x_prop, y_prop, lo_prop, hi_prop, noise_lo_prop, noise_hi_prop, "tab:blue", "Proprietary"),
-        (axes[1], x_client, y_client, lo_client, hi_client, noise_lo_client, noise_hi_client, "tab:orange", "Client"),
+        (axes[0], x_prop, y_prop, lo_prop, hi_prop, noise_lo_prop, noise_hi_prop, COLOR_PROPRIETARY, "Proprietary"),
+        (axes[1], x_client, y_client, lo_client, hi_client, noise_lo_client, noise_hi_client, COLOR_CLIENT, "Client"),
     ]
     for ax, x_vals, y_vals, lo_vals, hi_vals, nlo_vals, nhi_vals, color, group_label in plot_cfg:
         order = np.argsort(x_vals)
@@ -1962,18 +1921,25 @@ def _mpl_curve_date_ci(
 
         mask_line = np.isfinite(x_ord) & np.isfinite(y_ord)
         if mask_line.any():
-            ax.plot(x_ord[mask_line], y_ord[mask_line], color=color, marker="o", linewidth=1.6, label=group_label)
+            ax.plot(
+                x_ord[mask_line],
+                y_ord[mask_line],
+                color=color,
+                marker="o",
+                linewidth=PLOT_STYLE.default_line_width,
+                label=group_label,
+            )
 
-        ax.axhline(0.0, color="#4b5563", linestyle=":", linewidth=1.0, alpha=0.9)
+        ax.axhline(0.0, color="#4b5563", linestyle=":", linewidth=PLOT_STYLE.reference_line_width, alpha=0.9)
         ax.set_xlabel(x_label)
-        ax.grid(True, linestyle=":", linewidth=0.5, alpha=0.7)
+        ax.grid(True, linestyle=":", linewidth=0.6, alpha=0.8)
         if not DISABLE_PLOT_LEGENDS:
             ax.legend()
 
     axes[0].set_ylabel(y_label)
 
     fig.tight_layout()
-    fig.savefig(out_png, dpi=180, bbox_inches="tight")
+    fig.savefig(out_png, dpi=PLOT_STYLE.matplotlib_dpi, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -2208,7 +2174,7 @@ def plotly_heatmap_align(
             hovertemplate="eta=%{x:.3g}<br>Q/V=%{y:.3g}<br>mean_align=%{z:.3g}<extra></extra>",
         )
     )
-    fig.update_layout(title=title, xaxis_title=r"$\eta$ ", yaxis_title="Q/V", height=600, width=850)
+    fig.update_layout(title=title, xaxis_title="η", yaxis_title="Q/V", height=600, width=850)
     save_plotly_figure(
         fig,
         stem=out_stem,
@@ -2875,7 +2841,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         hi_client=client_summary[f"ci_date_{metric}_hi"].to_numpy(dtype=float),
                         noise_lo_client=client_noise_lo,
                         noise_hi_client=client_noise_hi,
-                        x_label=r"$\eta$",
+                        x_label="η",
                         y_label=ylab,
                         title=title,
                         out_stem=f"curve_{metric}_vs_eta_{imb_kind}",
@@ -2895,7 +2861,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         hi_client=client_summary[f"ci_date_{metric}_hi"].to_numpy(dtype=float),
                         noise_lo_client=client_noise_lo,
                         noise_hi_client=client_noise_hi,
-                        x_label=r"$\eta$",
+                        x_label="η",
                         y_label=ylab,
                         title=title,
                         out_png=img_output_dirs.png_dir / f"curve_{metric}_vs_eta_{imb_kind}.png",

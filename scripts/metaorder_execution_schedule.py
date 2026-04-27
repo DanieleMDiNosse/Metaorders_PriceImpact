@@ -10,9 +10,11 @@ The script expects the fit-filtered metaorder tables produced by
 
 It builds:
 
-- a cumulative execution-schedule comparison with mean curves, SEM bands, and
-  a TWAP benchmark;
-- a side-by-side heatmap of the cumulative schedule density.
+- a cumulative execution-schedule table with mean curves and SEM bands;
+- a side-by-side heatmap of the conditional cumulative-schedule density with
+  the configured overlay curve and a TWAP benchmark overlaid in each panel;
+- optional cluster-bootstrap inference tables for the prop-vs-client schedule
+  difference.
 """
 
 from __future__ import annotations
@@ -46,15 +48,10 @@ from moimpact.config import (
 from moimpact.logging_utils import PrintTee, setup_file_logger
 from moimpact.metaorder_distribution_samples import parse_member_nationality, with_member_nationality_tag
 from moimpact.plot_style import (
-    THEME_BG_COLOR,
-    THEME_COLORWAY,
-    THEME_FONT_FAMILY,
-    THEME_GRID_COLOR,
-    apply_plotly_style,
+    apply_shared_plotly_style,
+    load_plot_style,
 )
 from moimpact.plotting import (
-    COLOR_BAND_CLIENT,
-    COLOR_BAND_PROPRIETARY,
     COLOR_CLIENT,
     COLOR_NEUTRAL,
     COLOR_PROPRIETARY,
@@ -62,6 +59,10 @@ from moimpact.plotting import (
     ensure_plot_dirs,
     make_plot_output_dirs,
     save_plotly_figure as _save_plotly_figure,
+)
+from moimpact.stats.execution_schedule import (
+    infer_execution_schedule_scalar_summaries,
+    prepare_execution_schedule_sample,
 )
 
 
@@ -124,6 +125,7 @@ class GroupScheduleSummary:
     n_valid_metaorders: int
     tau_grid: np.ndarray
     mean_curve: np.ndarray
+    median_curve: np.ndarray
     sem_curve: np.ndarray
     n_eff_curve: np.ndarray
     heatmap_counts: np.ndarray
@@ -132,20 +134,11 @@ class GroupScheduleSummary:
     skipped_reasons: dict[str, int]
 
 
-TICK_FONT_SIZE = int(_cfg_require("TICK_FONT_SIZE"))
-LABEL_FONT_SIZE = int(_cfg_require("LABEL_FONT_SIZE"))
-TITLE_FONT_SIZE = int(_cfg_require("TITLE_FONT_SIZE"))
-LEGEND_FONT_SIZE = int(_cfg_require("LEGEND_FONT_SIZE"))
-apply_plotly_style(
-    tick_font_size=TICK_FONT_SIZE,
-    label_font_size=LABEL_FONT_SIZE,
-    title_font_size=TITLE_FONT_SIZE,
-    legend_font_size=LEGEND_FONT_SIZE,
-    theme_colorway=THEME_COLORWAY,
-    theme_grid_color=THEME_GRID_COLOR,
-    theme_bg_color=THEME_BG_COLOR,
-    theme_font_family=THEME_FONT_FAMILY,
-)
+PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
+TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
+LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
+TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
+LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
 
 DATASET_NAME = str(_CFG.get("DATASET_NAME") or "ftsemib")
 LEVEL = str(_cfg_require("LEVEL"))
@@ -154,11 +147,40 @@ MEMBER_NATIONALITY_TAG = MEMBER_NATIONALITY or "all"
 RUN_EXECUTION_SCHEDULE = bool(_cfg_require("RUN_EXECUTION_SCHEDULE"))
 N_TIME_GRID = int(_cfg_require("N_TIME_GRID"))
 N_HEATMAP_BINS_Y = int(_cfg_require("N_HEATMAP_BINS_Y"))
+HEATMAP_COLOR_QUANTILE = float(_CFG.get("HEATMAP_COLOR_QUANTILE", 0.995))
+HEATMAP_COLOR_EXCLUDE_ANCHORS = bool(_CFG.get("HEATMAP_COLOR_EXCLUDE_ANCHORS", True))
+HEATMAP_COLORSCALE = str(_CFG.get("HEATMAP_COLORSCALE", "Turbo"))
+CURVE_OVERLAY_STAT = str(_CFG.get("CURVE_OVERLAY_STAT", "mean")).strip().lower()
+RUN_EXECUTION_SCHEDULE_INFERENCE = bool(_CFG.get("RUN_EXECUTION_SCHEDULE_INFERENCE", False))
+INFERENCE_ALPHA = float(_CFG.get("ALPHA", 0.05))
+INFERENCE_BOOTSTRAP_RUNS = int(_CFG.get("BOOTSTRAP_RUNS", 1000))
+_inference_random_state_cfg = _CFG.get("RANDOM_STATE", 0)
+INFERENCE_RANDOM_STATE = (
+    None if _inference_random_state_cfg is None else int(_inference_random_state_cfg)
+)
+INFERENCE_BATCH_SIZE = int(_CFG.get("BOOTSTRAP_BATCH_SIZE", 128))
+SCALAR_HISTOGRAM_BINS = int(_CFG.get("SCALAR_HISTOGRAM_BINS", 1024))
+INFERENCE_CLUSTER_COL = (
+    None if _CFG.get("CLUSTER_COL") in {None, "", "null"} else str(_CFG.get("CLUSTER_COL"))
+)
 
 if N_TIME_GRID < 2:
     raise ValueError("N_TIME_GRID must be at least 2.")
 if N_HEATMAP_BINS_Y < 2:
     raise ValueError("N_HEATMAP_BINS_Y must be at least 2.")
+if not 0.0 < HEATMAP_COLOR_QUANTILE <= 1.0:
+    raise ValueError("HEATMAP_COLOR_QUANTILE must lie in (0, 1].")
+if CURVE_OVERLAY_STAT not in {"mean", "median"}:
+    raise ValueError("CURVE_OVERLAY_STAT must be either 'mean' or 'median'.")
+if RUN_EXECUTION_SCHEDULE_INFERENCE:
+    if not 0.0 < INFERENCE_ALPHA < 1.0:
+        raise ValueError("ALPHA must lie in (0, 1).")
+    if INFERENCE_BOOTSTRAP_RUNS < 1:
+        raise ValueError("BOOTSTRAP_RUNS must be >= 1.")
+    if INFERENCE_BATCH_SIZE < 1:
+        raise ValueError("BOOTSTRAP_BATCH_SIZE must be >= 1.")
+    if SCALAR_HISTOGRAM_BINS < 2:
+        raise ValueError("SCALAR_HISTOGRAM_BINS must be >= 2.")
 
 _PATH_CONTEXT = {
     "DATASET_NAME": DATASET_NAME,
@@ -300,11 +322,23 @@ def _aggregate_group(
     sem_curve = np.full_like(sum_curve, np.nan, dtype=float)
     sem_curve[valid_var] = np.sqrt(variance[valid_var] / count_curve[valid_var])
 
-    heatmap_total = float(heatmap_counts.sum())
-    if heatmap_total > 0.0:
-        heatmap_density = heatmap_counts / heatmap_total
-    else:
-        heatmap_density = np.full_like(heatmap_counts, np.nan, dtype=float)
+    # Normalize each tau-slice separately so the heatmap shows the cross-sectional
+    # dispersion of cumulative schedules at a given execution time. A global
+    # normalization compresses the interior contrast because every metaorder
+    # contributes once to every tau-slice and the boundary columns are degenerate
+    # by construction at (0, 0) and (1, 1).
+    heatmap_column_totals = heatmap_counts.sum(axis=1, keepdims=True)
+    heatmap_density = np.divide(
+        heatmap_counts,
+        heatmap_column_totals,
+        out=np.full_like(heatmap_counts, np.nan, dtype=float),
+        where=heatmap_column_totals > 0.0,
+    )
+    median_curve = _histogram_quantile_curve(
+        heatmap_counts,
+        y_bin_edges,
+        quantile=0.5,
+    )
 
     return GroupScheduleSummary(
         group=group,
@@ -313,6 +347,7 @@ def _aggregate_group(
         n_valid_metaorders=int(n_valid_metaorders),
         tau_grid=np.asarray(tau_grid, dtype=float),
         mean_curve=mean_curve,
+        median_curve=median_curve,
         sem_curve=sem_curve,
         n_eff_curve=count_curve.astype(int),
         heatmap_counts=heatmap_counts.astype(int),
@@ -329,9 +364,6 @@ def _build_curve_table(summary: GroupScheduleSummary) -> pd.DataFrame:
             "tau": summary.tau_grid,
             "mean_cum_volume_fraction": summary.mean_curve,
             "sem_cum_volume_fraction": summary.sem_curve,
-            "n_eff": summary.n_eff_curve,
-            "n_input_rows": int(summary.n_input_rows),
-            "n_valid_metaorders": int(summary.n_valid_metaorders),
         }
     )
 
@@ -356,95 +388,134 @@ def _build_heatmap_table(summary: GroupScheduleSummary) -> pd.DataFrame:
     )
 
 
-def _add_band(
+def _heatmap_color_max(*summaries: GroupScheduleSummary) -> float:
+    """Choose a robust colorscale cap from the interior heatmap mass."""
+    values: list[np.ndarray] = []
+    for summary in summaries:
+        density = np.asarray(summary.heatmap_density, dtype=float)
+        if density.ndim != 2 or density.size == 0:
+            continue
+        if HEATMAP_COLOR_EXCLUDE_ANCHORS and density.shape[0] > 2:
+            density = density[1:-1, :]
+        finite = density[np.isfinite(density) & (density > 0.0)]
+        if finite.size:
+            values.append(finite)
+
+    if not values:
+        return 1.0
+
+    stacked = np.concatenate(values)
+    zmax = float(np.quantile(stacked, HEATMAP_COLOR_QUANTILE))
+    if not np.isfinite(zmax) or zmax <= 0.0:
+        zmax = float(np.nanmax(stacked))
+    if not np.isfinite(zmax) or zmax <= 0.0:
+        zmax = 1.0
+    return zmax
+
+
+def _histogram_quantile_curve(
+    heatmap_counts: np.ndarray,
+    y_bin_edges: np.ndarray,
+    *,
+    quantile: float,
+) -> np.ndarray:
+    """Approximate a quantile curve from the per-tau heatmap histogram."""
+    counts = np.asarray(heatmap_counts, dtype=float)
+    edges = np.asarray(y_bin_edges, dtype=float)
+    if counts.ndim != 2:
+        raise ValueError("heatmap_counts must be a 2D array.")
+    if edges.ndim != 1 or edges.size != counts.shape[1] + 1:
+        raise ValueError("y_bin_edges must have length n_bins + 1.")
+    if not 0.0 <= quantile <= 1.0:
+        raise ValueError("quantile must lie in [0, 1].")
+
+    row_totals = counts.sum(axis=1)
+    cdf = np.cumsum(counts, axis=1)
+    target = quantile * row_totals
+    hit_idx = np.argmax(cdf >= target[:, None], axis=1)
+
+    curve = np.full(counts.shape[0], np.nan, dtype=float)
+    for row_idx, bin_idx in enumerate(hit_idx):
+        total = float(row_totals[row_idx])
+        if total <= 0.0:
+            continue
+        left = float(edges[bin_idx])
+        right = float(edges[bin_idx + 1])
+        prev_mass = float(cdf[row_idx, bin_idx - 1]) if bin_idx > 0 else 0.0
+        bin_mass = float(counts[row_idx, bin_idx])
+        if bin_mass <= 0.0:
+            curve[row_idx] = 0.5 * (left + right)
+            continue
+        frac = (float(target[row_idx]) - prev_mass) / bin_mass
+        frac = float(np.clip(frac, 0.0, 1.0))
+        curve[row_idx] = left + frac * (right - left)
+
+    if curve.size:
+        curve[0] = 0.0
+        curve[-1] = 1.0
+    return curve
+
+
+def _overlay_curve(summary: GroupScheduleSummary) -> np.ndarray:
+    return summary.mean_curve if CURVE_OVERLAY_STAT == "mean" else summary.median_curve
+
+
+def _overlay_curve_label() -> str:
+    return "mean" if CURVE_OVERLAY_STAT == "mean" else "median"
+
+
+def _heatmap_figure_stem() -> str:
+    stem = with_member_nationality_tag("execution_schedule_heatmap_prop_vs_client", MEMBER_NATIONALITY)
+    if CURVE_OVERLAY_STAT != "mean":
+        stem = f"{stem}_{CURVE_OVERLAY_STAT}"
+    return stem
+
+
+def _add_heatmap_overlay(
     fig: go.Figure,
     *,
     x: np.ndarray,
-    mean_curve: np.ndarray,
-    sem_curve: np.ndarray,
+    y: np.ndarray,
+    row: int,
+    col: int,
     line_color: str,
-    band_color: str,
-    name: str,
+    line_dash: str = "solid",
+    line_width: int = 3,
+    hovertemplate: str,
 ) -> None:
-    upper = mean_curve + sem_curve
-    lower = mean_curve - sem_curve
+    """Draw a visible line on top of a heatmap using a light halo."""
     fig.add_trace(
         go.Scatter(
             x=x,
-            y=upper,
+            y=y,
             mode="lines",
-            line=dict(width=0),
+            line=dict(color="rgba(255,255,255,0.95)", width=line_width + 3, dash=line_dash),
             showlegend=False,
             hoverinfo="skip",
-        )
+        ),
+        row=row,
+        col=col,
     )
     fig.add_trace(
         go.Scatter(
             x=x,
-            y=lower,
+            y=y,
             mode="lines",
-            line=dict(width=0),
-            fill="tonexty",
-            fillcolor=band_color,
-            name=f"{name} ± SEM",
-            hovertemplate="tau=%{x:.3f}<br>cum. vol=%{y:.3f}<extra></extra>",
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=mean_curve,
-            mode="lines",
-            line=dict(color=line_color, width=3),
-            name=name,
-            hovertemplate="tau=%{x:.3f}<br>mean cum. vol=%{y:.3f}<extra></extra>",
-        )
+            line=dict(color=line_color, width=line_width, dash=line_dash),
+            showlegend=False,
+            hovertemplate=hovertemplate,
+        ),
+        row=row,
+        col=col,
     )
 
 
-def _plot_cumulative_schedule(
-    proprietary_summary: GroupScheduleSummary,
-    client_summary: GroupScheduleSummary,
-) -> go.Figure:
-    fig = go.Figure()
-    _add_band(
-        fig,
-        x=proprietary_summary.tau_grid,
-        mean_curve=proprietary_summary.mean_curve,
-        sem_curve=proprietary_summary.sem_curve,
-        line_color=COLOR_PROPRIETARY,
-        band_color=COLOR_BAND_PROPRIETARY,
-        name="Proprietary",
-    )
-    _add_band(
-        fig,
-        x=client_summary.tau_grid,
-        mean_curve=client_summary.mean_curve,
-        sem_curve=client_summary.sem_curve,
-        line_color=COLOR_CLIENT,
-        band_color=COLOR_BAND_CLIENT,
-        name="Client",
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=proprietary_summary.tau_grid,
-            y=proprietary_summary.tau_grid,
-            mode="lines",
-            line=dict(color=COLOR_NEUTRAL, width=2, dash="dash"),
-            name="TWAP",
-            hovertemplate="tau=%{x:.3f}<br>TWAP=%{y:.3f}<extra></extra>",
-        )
-    )
-    fig.update_layout(
-        xaxis_title="Normalized execution time",
-        yaxis_title="Cumulative volume fraction",
-        legend=dict(orientation="h", x=0.0, y=1.12),
-        height=700,
-        width=1200,
-    )
-    fig.update_xaxes(range=[0.0, 1.0])
-    fig.update_yaxes(range=[0.0, 1.0])
-    return fig
+def _remove_saved_figure(stem: str, dirs: PlotOutputDirs) -> None:
+    for path in (dirs.html_dir / f"{stem}.html", dirs.png_dir / f"{stem}.png"):
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def _plot_heatmap(
@@ -452,16 +523,8 @@ def _plot_heatmap(
     client_summary: GroupScheduleSummary,
 ) -> go.Figure:
     y_center = 0.5 * (proprietary_summary.y_bin_edges[:-1] + proprietary_summary.y_bin_edges[1:])
-    zmax = float(
-        np.nanmax(
-            [
-                np.nanmax(proprietary_summary.heatmap_density),
-                np.nanmax(client_summary.heatmap_density),
-            ]
-        )
-    )
-    if not np.isfinite(zmax) or zmax <= 0.0:
-        zmax = 1.0
+    zmax = _heatmap_color_max(proprietary_summary, client_summary)
+    overlay_curve_label = _overlay_curve_label()
 
     fig = make_subplots(
         rows=1,
@@ -472,6 +535,7 @@ def _plot_heatmap(
         subplot_titles=("Proprietary", "Client"),
     )
     for col, summary in enumerate((proprietary_summary, client_summary), start=1):
+        line_color = COLOR_PROPRIETARY if col == 1 else COLOR_CLIENT
         fig.add_trace(
             go.Heatmap(
                 x=summary.tau_grid,
@@ -481,35 +545,42 @@ def _plot_heatmap(
                 hovertemplate=(
                     "tau=%{x:.3f}<br>"
                     "cum. vol bin=%{y:.3f}<br>"
-                    "density=%{z:.4f}<extra></extra>"
+                    "cond. density=%{z:.3f}<extra></extra>"
                 ),
                 showscale=(col == 2),
             ),
             row=1,
             col=col,
         )
-        fig.add_trace(
-            go.Scatter(
-                x=summary.tau_grid,
-                y=summary.tau_grid,
-                mode="lines",
-                line=dict(color=COLOR_NEUTRAL, width=2, dash="dash"),
-                name="TWAP" if col == 1 else None,
-                showlegend=(col == 1),
-                hovertemplate="tau=%{x:.3f}<br>TWAP=%{y:.3f}<extra></extra>",
-            ),
+        _add_heatmap_overlay(
+            fig,
+            x=summary.tau_grid,
+            y=_overlay_curve(summary),
             row=1,
             col=col,
+            line_color=line_color,
+            line_width=4,
+            hovertemplate=f"tau=%{{x:.3f}}<br>{overlay_curve_label} cum. vol=%{{y:.3f}}<extra></extra>",
+        )
+        _add_heatmap_overlay(
+            fig,
+            x=summary.tau_grid,
+            y=summary.tau_grid,
+            row=1,
+            col=col,
+            line_color=COLOR_NEUTRAL,
+            line_dash="dash",
+            line_width=2,
+            hovertemplate="tau=%{x:.3f}<br>TWAP=%{y:.3f}<extra></extra>",
         )
 
     fig.update_layout(
         coloraxis=dict(
-            colorscale="Cividis",
+            colorscale=HEATMAP_COLORSCALE,
             cmin=0.0,
             cmax=zmax,
-            colorbar=dict(title="Density"),
+            colorbar=dict(title="Cond. density"),
         ),
-        legend=dict(orientation="h", x=0.0, y=1.12),
         height=700,
         width=1300,
     )
@@ -573,12 +644,61 @@ def _write_tables(
     return curve_path, heatmap_path
 
 
+def _scalar_inference_stem() -> str:
+    return with_member_nationality_tag(
+        "execution_schedule_scalar_inference_prop_vs_client",
+        MEMBER_NATIONALITY,
+    )
+
+
+def _remove_legacy_curve_inference_tables() -> None:
+    base = with_member_nationality_tag(
+        "execution_schedule_curve_inference_prop_vs_client",
+        MEMBER_NATIONALITY,
+    )
+    for stat in ("mean", "median"):
+        for suffix in (".parquet", ".csv"):
+            path = SUMMARY_OUTPUT_DIR / f"{base}_{stat}{suffix}"
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+
+
+def _write_inference_tables(
+    proprietary_df: pd.DataFrame,
+    client_df: pd.DataFrame,
+) -> Path:
+    _remove_legacy_curve_inference_tables()
+    prepared = prepare_execution_schedule_sample(
+        proprietary_df,
+        client_df,
+        n_time_grid=N_TIME_GRID,
+        cluster_col=INFERENCE_CLUSTER_COL,
+    )
+    scalar_table = infer_execution_schedule_scalar_summaries(
+        prepared,
+        alpha=INFERENCE_ALPHA,
+        n_bootstrap=INFERENCE_BOOTSTRAP_RUNS,
+        random_state=INFERENCE_RANDOM_STATE,
+        batch_size=INFERENCE_BATCH_SIZE,
+        n_histogram_bins=SCALAR_HISTOGRAM_BINS,
+    )
+
+    scalar_stem = _scalar_inference_stem()
+    scalar_path = SUMMARY_OUTPUT_DIR / f"{scalar_stem}.parquet"
+    scalar_table.to_parquet(scalar_path, index=False)
+    scalar_table.to_csv(SUMMARY_OUTPUT_DIR / f"{scalar_stem}.csv", index=False)
+    return scalar_path
+
+
 def _write_manifest(
     proprietary_summary: GroupScheduleSummary,
     client_summary: GroupScheduleSummary,
     *,
     curve_table_path: Path,
     heatmap_table_path: Path,
+    scalar_inference_path: Optional[Path] = None,
 ) -> Path:
     manifest = {
         "timestamp_utc": pd.Timestamp.utcnow().isoformat(),
@@ -588,6 +708,15 @@ def _write_manifest(
         "level": LEVEL,
         "member_nationality": MEMBER_NATIONALITY_TAG,
         "run_execution_schedule": bool(RUN_EXECUTION_SCHEDULE),
+        "curve_overlay_stat": CURVE_OVERLAY_STAT,
+        "run_execution_schedule_inference": bool(RUN_EXECUTION_SCHEDULE_INFERENCE),
+        "scalar_summary_stat": "median",
+        "cluster_col": INFERENCE_CLUSTER_COL,
+        "bootstrap_runs": int(INFERENCE_BOOTSTRAP_RUNS),
+        "alpha": float(INFERENCE_ALPHA),
+        "random_state": INFERENCE_RANDOM_STATE,
+        "bootstrap_batch_size": int(INFERENCE_BATCH_SIZE),
+        "scalar_histogram_bins": int(SCALAR_HISTOGRAM_BINS),
         "n_time_grid": int(N_TIME_GRID),
         "n_heatmap_bins_y": int(N_HEATMAP_BINS_Y),
         "input_paths": {
@@ -598,6 +727,9 @@ def _write_manifest(
             "curve_table": str(curve_table_path.resolve()),
             "heatmap_table": str(heatmap_table_path.resolve()),
             "figure_dir": str(IMG_DIR.resolve()),
+            "scalar_inference_table": (
+                None if scalar_inference_path is None else str(scalar_inference_path.resolve())
+            ),
         },
         "groups": {
             "proprietary": {
@@ -628,8 +760,9 @@ def main() -> None:
         print(
             "[Intro] Parameters — \n"
             f"  DATASET={DATASET_NAME}, LEVEL={LEVEL}, MEMBER_NATIONALITY={MEMBER_NATIONALITY_TAG},\n"
-            f"  RUN_EXECUTION_SCHEDULE={RUN_EXECUTION_SCHEDULE}, N_TIME_GRID={N_TIME_GRID}, "
-            f"N_HEATMAP_BINS_Y={N_HEATMAP_BINS_Y}"
+            f"  RUN_EXECUTION_SCHEDULE={RUN_EXECUTION_SCHEDULE}, CURVE_OVERLAY_STAT={CURVE_OVERLAY_STAT}, "
+            f"RUN_EXECUTION_SCHEDULE_INFERENCE={RUN_EXECUTION_SCHEDULE_INFERENCE}, "
+            f"N_TIME_GRID={N_TIME_GRID}, N_HEATMAP_BINS_Y={N_HEATMAP_BINS_Y}"
         )
         print(
             "[Intro] Paths — \n"
@@ -680,32 +813,28 @@ def main() -> None:
             print(f"[Execution schedule] Client skipped rows: {client_summary.skipped_reasons}")
 
         curve_table_path, heatmap_table_path = _write_tables(proprietary_summary, client_summary)
+        scalar_inference_path: Optional[Path] = None
+        if RUN_EXECUTION_SCHEDULE_INFERENCE:
+            scalar_inference_path = _write_inference_tables(
+                proprietary_df,
+                client_df,
+            )
         manifest_path = _write_manifest(
             proprietary_summary,
             client_summary,
             curve_table_path=curve_table_path,
             heatmap_table_path=heatmap_table_path,
+            scalar_inference_path=scalar_inference_path,
         )
 
-        cumulative_fig = _plot_cumulative_schedule(proprietary_summary, client_summary)
         cumulative_stem = with_member_nationality_tag(
             "cumulative_execution_schedule_prop_vs_client",
             MEMBER_NATIONALITY,
         )
-        save_plotly_figure(
-            cumulative_fig,
-            stem=cumulative_stem,
-            dirs=PLOT_OUTPUT_DIRS,
-            write_html=True,
-            write_png=True,
-            strict_png=False,
-        )
+        _remove_saved_figure(cumulative_stem, PLOT_OUTPUT_DIRS)
 
         heatmap_fig = _plot_heatmap(proprietary_summary, client_summary)
-        heatmap_stem = with_member_nationality_tag(
-            "execution_schedule_heatmap_prop_vs_client",
-            MEMBER_NATIONALITY,
-        )
+        heatmap_stem = _heatmap_figure_stem()
         save_plotly_figure(
             heatmap_fig,
             stem=heatmap_stem,
@@ -717,6 +846,8 @@ def main() -> None:
 
         print(f"[Execution schedule] Saved cumulative schedule table to {curve_table_path}")
         print(f"[Execution schedule] Saved heatmap table to {heatmap_table_path}")
+        if scalar_inference_path is not None:
+            print(f"[Execution schedule] Saved scalar inference table to {scalar_inference_path}")
         print(f"[Execution schedule] Saved run manifest to {manifest_path}")
         print(f"[Execution schedule] Saved figures under {IMG_DIR}")
 

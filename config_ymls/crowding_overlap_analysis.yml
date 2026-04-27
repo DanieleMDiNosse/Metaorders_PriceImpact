@@ -1,0 +1,34 @@
+# crowding_overlap_analysis.py configuration
+
+DATASET_NAME: ftsemib
+LEVEL: member
+MEMBER_NATIONALITY: null
+
+# Optional explicit input tables. null -> use canonical metaorder_computation outputs.
+PROP_PATH: null
+CLIENT_PATH: null
+
+OUTPUT_FILE_PATH: out_files/{DATASET_NAME}
+IMG_OUTPUT_PATH: images/{DATASET_NAME}
+ANALYSIS_TAG: crowding_overlap_analysis
+
+TRADING_HOURS: ["09:30:00", "17:30:00"]
+START_BIN_MINUTES: 10
+
+# Overlap computation is parallelized by (ISIN, Date). N_JOBS=0 means auto,
+# capped at 4 workers to avoid excessive memory use while building batches.
+OVERLAP_BATCH_SIZE: 2048
+N_JOBS: 0
+
+RUN_REGRESSIONS: true
+MIN_REGRESSION_N: 1000
+
+# Power-law-style robustness regression:
+# aggregate by group and log(Q/V) bin, then fit log(mean impact) by WLS with
+# weights 1 / Var(log(mean impact)). Extra controls summarize those same cells.
+RUN_WLS_REGRESSIONS: true
+WLS_N_LOGBINS: 30
+WLS_MIN_CELL_N: 20
+
+PLOTS: true
+WRITE_PARQUET: true
