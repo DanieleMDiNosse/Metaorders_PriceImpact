@@ -1,8 +1,8 @@
 # Execution Typology
 
-This document covers `scripts/metaorder_execution_typology.py`, which builds a
+This document covers `scripts/run_analysis.py execution typology`, which builds a
 pooled proprietary-vs-client execution typology from the filtered metaorder
-tables produced by `scripts/metaorder_computation.py`.
+tables produced by `scripts/run_analysis.py metaorders compute`.
 
 ## Goal
 
@@ -18,12 +18,16 @@ resulting types are directly comparable across groups.
 
 ## Inputs
 
+Default config:
+
+- `config_ymls/metaorder_execution_typology.yml`
+
 Default inputs:
 
 - `out_files/{DATASET_NAME}/metaorders_info_sameday_filtered_{LEVEL}_proprietary.parquet`
 - `out_files/{DATASET_NAME}/metaorders_info_sameday_filtered_{LEVEL}_non_proprietary.parquet`
 
-The script expects the filtered per-metaorder tables to contain:
+The workflow expects the filtered per-metaorder tables to contain:
 
 - tabular execution context such as `Q`, `Q/V`, `Participation Rate`, `Vt/V`,
   `N Child`, `Daily Vol`, and `Period`
@@ -73,7 +77,7 @@ The default clustering path is:
 - pooled `MiniBatchKMeans`
 - silhouette-based `k` selection on a stratified sample
 
-The script then computes rule-based label metrics for each cluster and writes:
+The workflow then computes rule-based label metrics for each cluster and writes:
 
 - `type_code`
 - `auto_type_label`
@@ -113,7 +117,7 @@ Canonical figure stems:
 
 ## Performance
 
-The script is designed for the large pooled member-level sample:
+The workflow is designed for the large pooled member-level sample:
 
 - chunked packed-path feature extraction
 - optional process-based parallelization via `N_JOBS`
@@ -126,11 +130,14 @@ The script is designed for the large pooled member-level sample:
 From the repo root:
 
 ```bash
-python scripts/metaorder_execution_typology.py
+source /home/danielemdn/miniconda3/etc/profile.d/conda.sh
+conda activate main
+python scripts/run_analysis.py execution typology
 ```
 
 Useful overrides:
 
+- `--config PATH`
 - `--analysis-tag`
 - `--k-min`
 - `--k-max`
@@ -139,4 +146,3 @@ Useful overrides:
 - `--silhouette-sample-size`
 - `--pca-scatter-sample-size`
 - `--no-progress`
-

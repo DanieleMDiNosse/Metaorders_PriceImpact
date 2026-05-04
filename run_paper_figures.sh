@@ -12,4 +12,4 @@ fi
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate main
 
-python scripts/generate_paper_figures.py "$@"
+python scripts/run_analysis.py paper figures "$@"

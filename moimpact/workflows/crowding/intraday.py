@@ -22,7 +22,7 @@ from plotly.subplots import make_subplots
 
 # Ensure repository-root imports work when running from the repo root.
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 

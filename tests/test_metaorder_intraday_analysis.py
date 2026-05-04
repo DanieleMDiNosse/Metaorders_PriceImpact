@@ -10,7 +10,7 @@ from unittest import mock
 import numpy as np
 import pandas as pd
 
-import scripts.metaorder_intraday_analysis as intraday
+import moimpact.workflows.metaorders.intraday_impact as intraday
 
 
 def _period(start_ts: str, end_ts: str) -> list[int]:

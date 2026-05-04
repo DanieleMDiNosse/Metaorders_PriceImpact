@@ -8,7 +8,7 @@ DATASET_NAME: ftsemib
 # Default figure selection used when neither --targets nor --figures is passed.
 DEFAULT_TARGETS: [all]
 
-# Top-level external-task parallelism used by scripts/generate_paper_figures.py.
+# Top-level external-task parallelism used by scripts/run_analysis.py paper figures.
 # 0 -> conservative auto-selection, 1 -> serial, >1 -> explicit cap.
 MAX_WORKERS: 0
 WRITE_PDF: true

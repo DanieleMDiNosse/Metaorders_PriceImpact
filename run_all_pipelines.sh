@@ -21,10 +21,10 @@
 # Safety:
 # - Never edits `config_ymls/*.yml` in place. Each run uses a temporary YAML copy
 #   passed via environment variables:
-#     - METAORDER_COMP_CONFIG for `scripts/metaorder_computation.py`
-#     - METAORDER_DISTRIBUTIONS_CONFIG for `scripts/metaorder_distributions.py`
-#     - METAORDER_SUMMARY_STATS_CONFIG for `scripts/metaorder_summary_statistics.py`
-#     - CROWDING_CONFIG for `scripts/crowding_analysis.py`
+#     - METAORDER_COMP_CONFIG for `python scripts/run_analysis.py metaorders compute`
+#     - METAORDER_DISTRIBUTIONS_CONFIG for `python scripts/run_analysis.py metaorders distributions`
+#     - METAORDER_SUMMARY_STATS_CONFIG for `python scripts/run_analysis.py metaorders summary`
+#     - CROWDING_CONFIG for `python scripts/run_analysis.py crowding daily`
 # - Runs the CSV->parquet transform step (RUN_INTRO) once, serially, before
 #   launching parallel jobs, because it writes to `data/parquet/`.
 # -----------------------------------------------------------------------------
@@ -281,7 +281,7 @@ run_intro_transforms() (
   set_yaml_bool "$cfg" "RUN_SIGNATURE_PLOTS" "false"
   set_yaml_bool "$cfg" "SPLIT_BY_SIDE" "false"
 
-  METAORDER_COMP_CONFIG="$cfg" python scripts/metaorder_computation.py
+  METAORDER_COMP_CONFIG="$cfg" python scripts/run_analysis.py metaorders compute
 )
 
 metaorder_slice_job() (
@@ -306,7 +306,7 @@ metaorder_slice_job() (
   set_yaml_bool "$cfg" "RUN_SQL_FITS" "true"
   set_yaml_bool "$cfg" "RUN_WLS" "true"
   set_yaml_bool "$cfg" "RUN_IMPACT_PATH_PLOT" "true"
-  METAORDER_COMP_CONFIG="$cfg" python scripts/metaorder_computation.py
+  METAORDER_COMP_CONFIG="$cfg" python scripts/run_analysis.py metaorders compute
 
   # WLS-only pass to produce the buy/sell decomposition figures.
   set_yaml_bool "$cfg" "SPLIT_BY_SIDE" "true"
@@ -314,7 +314,7 @@ metaorder_slice_job() (
   set_yaml_bool "$cfg" "RUN_SQL_FITS" "false"
   set_yaml_bool "$cfg" "RUN_WLS" "true"
   set_yaml_bool "$cfg" "RUN_IMPACT_PATH_PLOT" "true"
-  METAORDER_COMP_CONFIG="$cfg" python scripts/metaorder_computation.py
+  METAORDER_COMP_CONFIG="$cfg" python scripts/run_analysis.py metaorders compute
 )
 
 metaorder_distributions_job() (
@@ -328,7 +328,7 @@ metaorder_distributions_job() (
   apply_img_output_override "$cfg"
   set_yaml_scalar "$cfg" "MEMBER_NATIONALITY" "$member_nationality"
 
-  METAORDER_DISTRIBUTIONS_CONFIG="$cfg" python scripts/metaorder_distributions.py
+  METAORDER_DISTRIBUTIONS_CONFIG="$cfg" python scripts/run_analysis.py metaorders distributions
 )
 
 metaorder_summary_stats_job() (
@@ -342,7 +342,7 @@ metaorder_summary_stats_job() (
   apply_img_output_override "$cfg"
   set_yaml_scalar "$cfg" "MEMBER_NATIONALITY" "$member_nationality"
 
-  METAORDER_SUMMARY_STATS_CONFIG="$cfg" python scripts/metaorder_summary_statistics.py
+  METAORDER_SUMMARY_STATS_CONFIG="$cfg" python scripts/run_analysis.py metaorders summary
 )
 
 crowding_job() (
@@ -354,14 +354,14 @@ crowding_job() (
   cp "$CROWDING_CFG" "$cfg"
   apply_img_output_override "$cfg"
 
-  CROWDING_CONFIG="$cfg" python scripts/crowding_analysis.py
+  CROWDING_CONFIG="$cfg" python scripts/run_analysis.py crowding daily
 )
 
 echo "[phase] Intro transforms (serial)"
 run_intro_transforms >"${PIPELINE_LOG_DIR}/intro_transforms.log" 2>&1
 echo "[info] Intro transforms completed (log: ${PIPELINE_LOG_DIR}/intro_transforms.log)"
 
-echo "[phase] scripts/metaorder_computation.py slices (parallel)"
+echo "[phase] metaorders compute slices (parallel)"
 for member_nationality in all it foreign; do
   for proprietary in true false; do
     label="metaorder_computation (LEVEL=${LEVEL}, PROPRIETARY=${proprietary}, MEMBER_NATIONALITY=${member_nationality})"
@@ -371,7 +371,7 @@ for member_nationality in all it foreign; do
 done
 wait_all_jobs
 
-echo "[phase] scripts/metaorder_distributions.py slices (parallel)"
+echo "[phase] metaorders distributions slices (parallel)"
 for member_nationality in all it foreign; do
   label="metaorder_distributions (MEMBER_NATIONALITY=${member_nationality})"
   log_path="${PIPELINE_LOG_DIR}/metaorder_distributions_nat_${member_nationality}.log"
@@ -379,7 +379,7 @@ for member_nationality in all it foreign; do
 done
 wait_all_jobs
 
-echo "[phase] scripts/metaorder_summary_statistics.py slices (parallel)"
+echo "[phase] metaorders summary slices (parallel)"
 for member_nationality in all it foreign; do
   label="metaorder_summary_statistics (MEMBER_NATIONALITY=${member_nationality})"
   log_path="${PIPELINE_LOG_DIR}/metaorder_summary_statistics_nat_${member_nationality}.log"
@@ -387,12 +387,12 @@ for member_nationality in all it foreign; do
 done
 wait_all_jobs
 
-echo "[phase] scripts/crowding_analysis.py (serial)"
+echo "[phase] crowding daily (serial)"
 crowding_job >"${PIPELINE_LOG_DIR}/crowding_analysis.log" 2>&1
 echo "[info] crowding_analysis completed (log: ${PIPELINE_LOG_DIR}/crowding_analysis.log)"
 
-echo "[phase] scripts/member_statistics.py (serial)"
-python scripts/member_statistics.py >"${PIPELINE_LOG_DIR}/member_statistics.log" 2>&1
+echo "[phase] members stats (serial)"
+python scripts/run_analysis.py members stats >"${PIPELINE_LOG_DIR}/member_statistics.log" 2>&1
 echo "[info] member_statistics completed (log: ${PIPELINE_LOG_DIR}/member_statistics.log)"
 
 echo "[done] Pipeline completed (logs: ${PIPELINE_LOG_DIR})."

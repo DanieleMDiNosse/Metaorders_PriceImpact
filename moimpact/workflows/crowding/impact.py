@@ -34,7 +34,7 @@ How to run
 2) Activate the repository conda environment.
 3) Run:
 
-    python scripts/crowding_impact_analysis.py
+    python scripts/run_analysis.py crowding impact
 
 Outputs
 -------
@@ -62,9 +62,9 @@ from plotly.subplots import make_subplots
 from scipy import stats
 
 # Ensure repository-root imports work when running
-# `python scripts/crowding_impact_analysis.py` from the repo root.
+# `python scripts/run_analysis.py crowding impact` from the repo root.
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -1222,7 +1222,7 @@ def _fit_pooled_log_regression(
 
     with WLS weights given by the delta-method variance of
     ``log(mean_imp_cell)``. This matches the standard fit machinery used in
-    `scripts/metaorder_computation.py`.
+    `scripts/run_analysis.py metaorders compute`.
 
     Examples
     --------

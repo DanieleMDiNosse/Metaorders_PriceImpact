@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.2.26)  27 APR 2026 15:47
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.2.26)  27 APR 2026 18:18
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -909,31 +909,31 @@ in_all_active.png Graphic file (type png)
 <use images/member_active_overlap_crowding/png/per_member_correlations_same_isi
 n_all_active.png>
 Package pdftex.def Info: images/member_active_overlap_crowding/png/per_member_c
-orrelations_same_isin_all_active.png  used on input line 2173.
+orrelations_same_isin_all_active.png  used on input line 2190.
 (pdftex.def)             Requested size: 401.22942pt x 225.664pt.
-<images/member_active_overlap_crowding/png/member_window_heatmap_same_isin_all_
-active.png, id=902, 4818.0pt x 2710.125pt>
-File: images/member_active_overlap_crowding/png/member_window_heatmap_same_isin
-_all_active.png Graphic file (type png)
-<use images/member_active_overlap_crowding/png/member_window_heatmap_same_isin_
-all_active.png>
-Package pdftex.def Info: images/member_active_overlap_crowding/png/member_windo
-w_heatmap_same_isin_all_active.png  used on input line 2179.
+<images/member_active_overlap_crowding/png/member_comovement_same_isin_all_acti
+ve.png, id=902, 4818.0pt x 2710.125pt>
+File: images/member_active_overlap_crowding/png/member_comovement_same_isin_all
+_active.png Graphic file (type png)
+<use images/member_active_overlap_crowding/png/member_comovement_same_isin_all_
+active.png>
+Package pdftex.def Info: images/member_active_overlap_crowding/png/member_comov
+ement_same_isin_all_active.png  used on input line 2196.
 (pdftex.def)             Requested size: 448.42822pt x 252.2127pt.
 
-Overfull \hbox (7.63875pt too wide) in paragraph at lines 2365--2369
+Overfull \hbox (7.63875pt too wide) in paragraph at lines 2383--2387
 []\OT1/cmr/bx/n/10.95 The dy-namic re-sponse also dif-fers across groups. \OT1/
 cmr/m/n/10.95 Af-ter ex-e-cu-tion, pro-pri-etary metaorders
  []
 
-[35] (./tables/appendix_it_metaorder_stats.tex
+[35] [36] (./tables/appendix_it_metaorder_stats.tex
 Overfull \hbox (25.02538pt too wide) in paragraph at lines 9--22
  [][] 
  []
 
-[36]) [37] [38] [39 <./images/member_active_overlap_crowding/png/per_member_cor
-relations_same_isin_all_active.png> <./images/member_active_overlap_crowding/pn
-g/member_window_heatmap_same_isin_all_active.png>] (./main.aux)
+) [37] [38] [39] [40 <./images/member_active_overlap_crowding/png/per_member_co
+rrelations_same_isin_all_active.png> <./images/member_active_overlap_crowding/p
+ng/member_comovement_same_isin_all_active.png>] (./main.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
@@ -946,13 +946,13 @@ Package rerunfilecheck Info: File `main.out' has not changed.
 (rerunfilecheck)             Checksum: 8FD1A3B94519CF6B1AF6347E54E86C67;4750.
  ) 
 Here is how much of TeX's memory you used:
- 16331 strings out of 476106
- 336815 string characters out of 5793933
+ 16332 strings out of 476106
+ 336778 string characters out of 5793933
  1951975 words of memory out of 5000000
  37976 multiletter control sequences out of 15000+600000
  572375 words of font info for 91 fonts, out of 8000000 for 9000
  59 hyphenation exceptions out of 8191
- 75i,16n,80p,1025b,1027s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,16n,80p,1025b,1024s stack positions out of 10000i,1000n,20000p,200000b,200000s
  </home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm109
 5.600pk> </home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/t
 crm0900.600pk> </home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappe
@@ -980,10 +980,10 @@ c/amsfonts/cm/cmti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsf
 onts/cm/cmtt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/c
 m/cmtt9.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/
 msbm10.pfb>
-Output written on main.pdf (39 pages, 3219201 bytes).
+Output written on main.pdf (40 pages, 3143509 bytes).
 PDF statistics:
- 1121 PDF objects out of 1200 (max. 8388607)
- 831 compressed objects within 9 object streams
- 183 named destinations out of 1000 (max. 500000)
+ 1125 PDF objects out of 1200 (max. 8388607)
+ 834 compressed objects within 9 object streams
+ 184 named destinations out of 1000 (max. 500000)
  347 words of extra memory for PDF output out of 10000 (max. 10000000)
 

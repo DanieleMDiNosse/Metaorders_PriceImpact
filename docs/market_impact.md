@@ -2,9 +2,9 @@
 
 This document covers the impact-analysis code paths centered on:
 
-- `scripts/metaorder_computation.py`
-- `scripts/plot_prop_nonprop_fits.py`
-- `scripts/metaorder_intraday_analysis.py`
+- `scripts/run_analysis.py metaorders compute`
+- `scripts/run_analysis.py impact overlay`
+- `scripts/run_analysis.py metaorders intraday-impact`
 - shared fitting helpers in `moimpact/impact_fits.py`
 
 The emphasis here is on the live implementation: how metaorders are built,
@@ -13,7 +13,7 @@ are estimated, and which artifacts are exported.
 
 ## Inputs and main outputs
 
-`scripts/metaorder_computation.py` can start from:
+`scripts/run_analysis.py metaorders compute` can start from:
 
 - raw CSVs in `CSV_LOAD_PATH`
 - per-ISIN trade tapes in `PARQUET_PATH`
@@ -21,7 +21,7 @@ are estimated, and which artifacts are exported.
 Current defaults are defined in
 `config_ymls/metaorder_computation.yml`.
 
-The script writes, under `out_files/{DATASET_NAME}/`:
+The workflow writes, under `out_files/{DATASET_NAME}/`:
 
 - `metaorders_dict_all_{LEVEL}_{group}[ _member_nationality_{it|foreign} ].pkl`
 - `metaorders_info_sameday_{...}.parquet`
@@ -130,7 +130,7 @@ the form
 The overlay is fitted on the same binned statistics through
 `fit_logarithmic_from_binned`.
 
-`scripts/plot_prop_nonprop_fits.py` reloads the filtered proprietary and client
+`scripts/run_analysis.py impact overlay` reloads the filtered proprietary and client
 tables and exports direct overlays into:
 
 - `images/{DATASET_NAME}/prop_vs_nonprop/`
@@ -140,9 +140,9 @@ Its config lives in `config_ymls/plot_prop_nonprop_fits.yml`.
 
 ## Bivariate impact surface
 
-`scripts/metaorder_computation.py` also exports a bivariate surface over
+`scripts/run_analysis.py metaorders compute` also exports a bivariate surface over
 relative size and participation rate. The fitted relation is multiplicative in
-the same variables used by the one-dimensional workflow, and the script writes:
+the same variables used by the one-dimensional workflow, and the workflow writes:
 
 - a static heatmap
 - an interactive 3D Plotly surface
@@ -154,7 +154,7 @@ Key config knobs:
 
 ## Normalized impact paths
 
-When `COMPUTE_IMPACT_PATHS=true`, the script stores the in-execution and
+When `COMPUTE_IMPACT_PATHS=true`, the workflow stores the in-execution and
 aftermath paths needed for normalized impact-path plots.
 
 Important controls:
@@ -166,12 +166,12 @@ Important controls:
 
 These path columns are later reused by:
 
-- `scripts/plot_prop_nonprop_fits.py` for the retention bootstrap
+- `scripts/run_analysis.py impact overlay` for the retention bootstrap
 - `moimpact/stats/impact_paths.py` for the underlying cluster bootstrap logic
 
 ## Intraday split
 
-`scripts/metaorder_intraday_analysis.py` reuses the saved per-metaorder tables
+`scripts/run_analysis.py metaorders intraday-impact` reuses the saved per-metaorder tables
 and splits each metaorder into named intraday sessions using the start and end
 timestamps in `Period`.
 
@@ -180,7 +180,7 @@ Current defaults in `config_ymls/metaorder_intraday_analysis.yml` are:
 - `morning = [09:30:00, 13:30:00)`
 - `evening = [13:30:00, 17:30:00]`
 
-The script writes:
+The workflow writes:
 
 - `out_files/{DATASET_NAME}/{LEVEL}_metaorder_intraday_analysis/`
 - `images/{DATASET_NAME}/{LEVEL}_metaorder_intraday_analysis/`
@@ -198,20 +198,20 @@ Run the main impact pipeline from the repo root:
 ```bash
 source /home/danielemdn/miniconda3/etc/profile.d/conda.sh
 conda activate main
-python scripts/metaorder_computation.py
+python scripts/run_analysis.py metaorders compute
 ```
 
 Common follow-up analyses:
 
 ```bash
-python scripts/plot_prop_nonprop_fits.py
-python scripts/metaorder_intraday_analysis.py
+python scripts/run_analysis.py impact overlay
+python scripts/run_analysis.py metaorders intraday-impact
 ```
 
 To override the default YAML file:
 
 ```bash
-METAORDER_COMP_CONFIG=config_ymls/metaorder_computation.yml python scripts/metaorder_computation.py
+python scripts/run_analysis.py metaorders compute --config config_ymls/metaorder_computation.yml
 ```
 
 ## Related docs

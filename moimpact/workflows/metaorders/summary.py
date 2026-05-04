@@ -22,11 +22,11 @@ How to run
    `METAORDER_SUMMARY_STATS_CONFIG` to an alternate YAML file.
 2) Run:
 
-    python scripts/metaorder_summary_statistics.py
+    python scripts/run_analysis.py metaorders summary
 
    To pool client and proprietary metaorders into one group:
 
-    python scripts/metaorder_summary_statistics.py --condition-on-client-proprietary false
+    python scripts/run_analysis.py metaorders summary --condition-on-client-proprietary false
 
 Outputs
 -------
@@ -55,9 +55,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Ensure repository-root imports (e.g., `moimpact`) work when running
-# `python scripts/metaorder_summary_statistics.py` from the repo root.
+# `python scripts/run_analysis.py metaorders summary` from the repo root.
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 

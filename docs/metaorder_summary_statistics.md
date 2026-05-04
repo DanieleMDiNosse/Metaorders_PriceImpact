@@ -1,12 +1,12 @@
 # Metaorder Summary Statistics
 
-This document covers `scripts/metaorder_summary_statistics.py`, which produces
+This document covers `scripts/run_analysis.py metaorders summary`, which produces
 the non-distribution descriptive outputs built from the proprietary and client
 metaorder dictionaries plus the filtered trade tapes.
 
 ## Scope
 
-The script exports four summary families:
+The workflow exports four summary families:
 
 - aggressive-member nationality share
 - nationality context versus overall traded volume
@@ -22,11 +22,12 @@ Default config:
 
 - `config_ymls/metaorder_summary_statistics.yml`
 
-Environment-variable override:
+Config override:
 
+- `--config PATH`
 - `METAORDER_SUMMARY_STATS_CONFIG`
 
-The script loads:
+The workflow loads:
 
 - proprietary and client metaorder dictionaries
 - per-ISIN trade tapes under `PARQUET_PATH`
@@ -35,12 +36,12 @@ The script loads:
 
 ## Split vs pooled mode
 
-By default the script conditions on the proprietary/client split.
+By default the workflow conditions on the proprietary/client split.
 
 You can pool both groups into one "all metaorders" view with:
 
 ```bash
-python scripts/metaorder_summary_statistics.py \
+python scripts/run_analysis.py metaorders summary \
   --condition-on-client-proprietary false
 ```
 
@@ -52,7 +53,7 @@ This affects:
 
 ## Nationality share
 
-When `LEVEL="member"`, the script infers the aggressive-side member
+When `LEVEL="member"`, the workflow infers the aggressive-side member
 nationality as `it`, `foreign`, `unknown`, or `mixed` using the shared sample
 builder in `moimpact/metaorder_distribution_samples.py`.
 
@@ -91,7 +92,7 @@ Saved figure stems:
 
 ## Member metaorder profiles
 
-When `LEVEL="member"`, the script builds a member-level table with:
+When `LEVEL="member"`, the workflow builds a member-level table with:
 
 - number of detected metaorders
 - total child orders across detected metaorders
@@ -112,7 +113,7 @@ table and in the scatter plot.
 
 ## Mean daily metaorder-volume share by ISIN
 
-For each ISIN-day pair the script computes:
+For each ISIN-day pair the workflow computes:
 
 - total market volume from the filtered tape
 - proprietary metaorder volume
@@ -151,14 +152,20 @@ From the repo root:
 ```bash
 source /home/danielemdn/miniconda3/etc/profile.d/conda.sh
 conda activate main
-python scripts/metaorder_summary_statistics.py
+python scripts/run_analysis.py metaorders summary
 ```
 
 Pooled mode:
 
 ```bash
-python scripts/metaorder_summary_statistics.py \
+python scripts/run_analysis.py metaorders summary \
   --condition-on-client-proprietary false
+```
+
+Alternate YAML:
+
+```bash
+python scripts/run_analysis.py metaorders summary --config config_ymls/metaorder_summary_statistics.yml
 ```
 
 ## Related docs

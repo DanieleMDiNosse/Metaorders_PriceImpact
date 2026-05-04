@@ -14,11 +14,11 @@ Core questions the code supports:
 ### One-command pipeline (recommended)
 - `bash run_all_pipelines.sh`
   - Activates conda env `main`.
-  - Runs `scripts/metaorder_computation.py` twice (`PROPRIETARY=true/false`), then `scripts/metaorder_distributions.py`, `scripts/metaorder_summary_statistics.py`, `scripts/crowding_analysis.py`, and `scripts/member_statistics.py`.
+  - Runs `scripts/run_analysis.py metaorders compute` twice (`PROPRIETARY=true/false`), then `scripts/run_analysis.py metaorders distributions`, `scripts/run_analysis.py metaorders summary`, `scripts/run_analysis.py crowding daily`, and `scripts/run_analysis.py members stats`.
   - Temporarily edits YAML configs under `config_ymls/` and restores them on exit.
 
 ### Core scripts (paper backend)
-- `scripts/metaorder_computation.py`
+- `scripts/run_analysis.py metaorders compute`
   - Inputs: raw trades (`data/csv/*.csv`) and/or derived tapes (`data/parquet/*.parquet`) depending on config.
   - Enriches trade tapes with member nationality when `RUN_INTRO: true` and `data/members_nationality.parquet` is present (adds `Aggressive Member Nationality`).
   - Outputs (under `out_files/{DATASET_NAME}/`): metaorder dictionaries (`*.pkl`) and per‑metaorder tables (`*.parquet`).
@@ -28,36 +28,36 @@ Core questions the code supports:
     - `LEVEL: member|client`, `PROPRIETARY: true|false`
     - `MEMBER_NATIONALITY: null|it|foreign` (optional filter applied on the tape column `Aggressive Member Nationality`)
 
-- `scripts/metaorder_distributions.py` (combined distribution diagnostics + power-law overlays)
+- `scripts/run_analysis.py metaorders distributions` (combined distribution diagnostics + power-law overlays)
   - Inputs: proprietary and client metaorder dictionaries from `out_files/{DATASET_NAME}/...` plus the per-ISIN trade tapes from `data/parquet/`.
   - Outputs: one combined distributions figure under `images/{DATASET_NAME}/{LEVEL}_metaorder_distributions/png/` and `.../html/`, plus fit-summary tables under `out_files/{DATASET_NAME}/{LEVEL}_metaorder_distributions/`.
   - Config: `config_ymls/metaorder_distributions.yml`.
 
-- `scripts/metaorder_summary_statistics.py` (member profile, nationality share, and mean daily metaorder-volume share)
+- `scripts/run_analysis.py metaorders summary` (member profile, nationality share, and mean daily metaorder-volume share)
   - Inputs: proprietary and client metaorder dictionaries from `out_files/{DATASET_NAME}/...` plus the per-ISIN trade tapes from `data/parquet/`.
   - Outputs: combined summary figures under `images/{DATASET_NAME}/{LEVEL}_metaorder_summary_statistics/png/` and `.../html/`.
   - Config: `config_ymls/metaorder_summary_statistics.yml`.
 
-- `scripts/crowding_analysis.py` (canonical “prop vs client” crowding figures)
-  - Inputs: filtered per‑metaorder parquets produced by `scripts/metaorder_computation.py`.
+- `scripts/run_analysis.py crowding daily` (canonical “prop vs client” crowding figures)
+  - Inputs: filtered per‑metaorder parquets produced by `scripts/run_analysis.py metaorders compute`.
   - Outputs: `images/{DATASET_NAME}/prop_vs_nonprop/png/`, `.../html/`, and `crowding_analysis.log`.
   - Config: `config_ymls/crowding_analysis.yml`.
 
-- `scripts/crowding_vs_part_rate.py` (crowding vs participation rate “η”)
+- `scripts/run_analysis.py crowding eta` (crowding vs participation rate “η”)
   - Inputs: same metaorder parquets as crowding analysis.
   - Outputs:
     - tables/logs in `out_files/{DATASET_NAME}/{analysis_tag}/` (default `analysis_tag=crowding_vs_part_rate`)
     - figures in `images/{DATASET_NAME}/{analysis_tag}/png/` and `.../html/`
     - writes `run_manifest.json` in the output folder (use this as the paper traceability template).
 
-- `scripts/metaorder_clustering.py`
+- `scripts/run_analysis.py execution cluster`
   - PCA + k‑means clustering on metaorder features; can run on proprietary, client, or both.
   - Outputs in `out_files/{DATASET_NAME}/kmeans_pca_clustering_{level}_{group}/` and `images/{DATASET_NAME}/kmeans_pca_clustering_{level}_{group}/html/` plus `.../png/`.
 
 ### Utilities / supporting scripts
-- `scripts/member_statistics.py`: member/ISIN descriptive plots; outputs to `images/{DATASET_NAME}/member_statistics/png/` and `.../html/` (reads per-ISIN tapes from `data/parquet/`).
+- `scripts/run_analysis.py members stats`: member/ISIN descriptive plots; outputs to `images/{DATASET_NAME}/member_statistics/png/` and `.../html/` (reads per-ISIN tapes from `data/parquet/`).
   - If `Aggressive Member Nationality` is available in the tapes, the member coverage bars are colored by inferred member nationality (IT vs FOREIGN; UNKNOWN/MIXED when needed).
-- `scripts/plot_prop_nonprop_fits.py`: overlays proprietary vs client impact fits from filtered parquets.
+- `scripts/run_analysis.py impact overlay`: overlays proprietary vs client impact fits from filtered parquets.
 - `utils.py`: schema mapping (`map_trade_codes`), canonical trade view (`build_trades_view`), realized volatility estimators, metaorder detection helpers.
 - `moimpact/`: small shared library used across scripts (YAML config loading, path templating, logging helpers, plot styling, and correlation/bootstrap utilities).
 - `docs/`: method notes aligned with the implementation (start at `docs/index.md`).
@@ -108,7 +108,7 @@ The goal is **traceability**: every figure/table in `paper/` must be reproducibl
    - Copy the exact YAML(s) used for the run into the run output folder (or store an equivalent structured manifest).
 2. **Record provenance**
    - Record: git commit hash, command line, timestamp, dataset name, and key config values.
-   - Prefer the pattern already implemented in `scripts/crowding_vs_part_rate.py` (`run_manifest.json`).
+   - Prefer the pattern already implemented in `scripts/run_analysis.py crowding eta` (`run_manifest.json`).
 3. **Determinism**
    - Any randomness (bootstrap/permutation, k‑means, t‑SNE) must run with an explicit, recorded seed.
 4. **No manual numbers**

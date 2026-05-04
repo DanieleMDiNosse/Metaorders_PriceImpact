@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1777297646.92543 "main.tex" "main.pdf" "main" 1777297650.58497 0
+["pdflatex"] 1777306720.7005 "main.tex" "main.pdf" "main" 1777306724.43787 0
   "/etc/texmf/web2c/texmf.cnf" 1769361868.29643 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0800.600pk" 1769362290.78819 9268 87791122d3f27e491953217389a3fb03 ""
   "/home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk" 1769362290.52355 10448 442ff10d92e20ec81e5ef5c19a9ccf0d ""
@@ -145,8 +145,8 @@
   "images/crowding_vs_part_rate/png/curve_mean_abs_imb_vs_eta_local.pdf" 1776815221.15129 14910 7df6961719637d42e194cdcdaa5c8882 ""
   "images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_cross.pdf" 1776815227.38185 15190 ff0b5fce527ad6c20653af829e6b820f ""
   "images/crowding_vs_part_rate/png/curve_mean_align_vs_eta_local.pdf" 1776815218.5334 14862 6efeb4f6cece9b1d29c43fd930ab9858 ""
-  "images/member_active_overlap_crowding/png/member_window_heatmap_same_isin_all_active.png" 1777296146.32892 1023785 c18e316806e728ea9199ac84594ce67d ""
-  "images/member_active_overlap_crowding/png/per_member_correlations_same_isin_all_active.png" 1777296146.32689 444589 a1b2cf0e95e8239cfef96cc030409e46 ""
+  "images/member_active_overlap_crowding/png/member_comovement_same_isin_all_active.png" 1777306688.68211 910814 d20b6d69748d2289dde036aab110b975 ""
+  "images/member_active_overlap_crowding/png/per_member_correlations_same_isin_all_active.png" 1777302382.67155 444589 a1b2cf0e95e8239cfef96cc030409e46 ""
   "images/member_metaorder_distributions/png/metaorder_distributions_prop_vs_client.pdf" 1776841573.17703 51196 c79e8cef736de54bb2897a4073575123 ""
   "images/member_metaorder_execution_schedule/png/execution_schedule_heatmap_prop_vs_client_median.png" 1775743451.0675 563637 9bce82119e5ed0f9d3c2d6155178fda4 ""
   "images/member_metaorder_summary_statistics/png/member_metaorder_profiles_all_metaorders.pdf" 1776841937.55515 58391 48ca1a9c9a5fae5933bec3ec320f5758 ""
@@ -173,10 +173,10 @@
   "images/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.pdf" 1776815208.72347 17148 e0d975db510e788c4bb631311da01834 ""
   "images/prop_vs_nonprop/png/member_prop_client_crowding_hist.pdf" 1776815205.49557 13869 b7fefa00dd9b11b2ca59341e111a448f ""
   "images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.pdf" 1776843164.41 12725 fca8627154e79b62c4d223a3edb53e29 ""
-  "main.aux" 1777297650.4924 30130 03bb3ffe622125a319bbfef54791c5b2 "pdflatex"
-  "main.out" 1777297650.4954 4750 8fd1a3b94519cf6b1af6347e54e86c67 "pdflatex"
-  "main.tex" 1777297639.94261 134940 1a9dbcb098656102ff1a2c063bbc956a ""
-  "tables/appendix_it_metaorder_stats.tex" 1771856558.27275 1328 1b09b4754cadeb2663c62dde80e17b69 ""
+  "main.aux" 1777306724.33841 30190 0106547d59aad7a54ba2082edfe4ca5d "pdflatex"
+  "main.out" 1777306724.34041 4750 8fd1a3b94519cf6b1af6347e54e86c67 "pdflatex"
+  "main.tex" 1777306405.30778 135916 e561c12b6c5940484b61dae5d4ec62ac ""
+  "tables/appendix_it_metaorder_stats.tex" 1777298736.22615 1323 01934ddbe02dee253050739c1a34bfd8 ""
   (generated)
   "main.aux"
   "main.log"

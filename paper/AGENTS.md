@@ -43,7 +43,7 @@ Every claim, number, and figure in `paper/main.tex` must be traceable to:
 - the generating script + configuration + run provenance (git hash, command line, timestamp).
 
 Minimum provenance to record per figure/table (store in your notes or a small manifest next to the artifact):
-- Source script (e.g., `scripts/crowding_analysis.py`)
+- Source script (e.g., `scripts/run_analysis.py crowding daily`)
 - Input dataset and paths (e.g., which `metaorders_info_sameday_filtered_*.parquet`)
 - Config file(s) and the exact values for key knobs (metaorder definition, normalization mode)
 - Seed and inference settings (bootstrap/permutation runs, clustering unit)

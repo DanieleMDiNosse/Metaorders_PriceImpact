@@ -2,8 +2,11 @@
 
 This document describes the crowding workflows implemented in:
 
-- `scripts/crowding_analysis.py`
-- `scripts/crowding_vs_part_rate.py`
+- `scripts/run_analysis.py crowding daily`
+- `scripts/run_analysis.py crowding eta`
+- `scripts/run_analysis.py crowding intraday`
+- `scripts/run_analysis.py crowding overlap`
+- `scripts/run_analysis.py crowding member-overlap`
 - shared helpers in `moimpact/stats/correlation.py`
 
 The focus is the current code path: what imbalance variables are attached, how
@@ -12,8 +15,8 @@ tables and figures are written.
 
 ## Inputs and outputs
 
-`scripts/crowding_analysis.py` expects the filtered per-metaorder tables
-produced by `scripts/metaorder_computation.py`. By default it loads:
+`scripts/run_analysis.py crowding daily` expects the filtered per-metaorder tables
+produced by `scripts/run_analysis.py metaorders compute`. By default it loads:
 
 - `out_files/{DATASET_NAME}/metaorders_info_sameday_filtered_member_proprietary.parquet`
 - `out_files/{DATASET_NAME}/metaorders_info_sameday_filtered_member_non_proprietary.parquet`
@@ -28,7 +31,7 @@ Main outputs:
 
 Important implementation detail:
 
-- if a required imbalance or return column is missing, the script computes it
+- if a required imbalance or return column is missing, the workflow computes it
   and may rewrite the input parquet files to persist the new columns
 
 ## Core metaorder columns
@@ -80,7 +83,7 @@ imbalance, and vice versa.
 
 ## All-others imbalance
 
-`scripts/crowding_vs_part_rate.py` can also compute an all-others imbalance on
+`scripts/run_analysis.py crowding eta` can also compute an all-others imbalance on
 the concatenated proprietary + client sample, then remove the focal metaorder's
 own contribution.
 
@@ -89,7 +92,7 @@ workflow.
 
 ## Member-level client environment
 
-`scripts/crowding_analysis.py` includes an optional member-level measure that
+`scripts/run_analysis.py crowding daily` includes an optional member-level measure that
 aggregates client flow at `(Member, Date)` and relates it to the proprietary
 directions of the same member.
 
@@ -113,7 +116,7 @@ The repository uses:
 - date-cluster bootstrap confidence intervals
 - permutation p-values in workflows that explicitly request them
 
-For the main crowding script, the important config keys are:
+For the main crowding workflow, the important config keys are:
 
 - `ALPHA`
 - `BOOTSTRAP_RUNS`
@@ -127,7 +130,7 @@ The main analysis reports both:
 
 ## Daily returns and diagnostics
 
-When `ATTACH_DAILY_RETURNS=true`, `scripts/crowding_analysis.py` derives
+When `ATTACH_DAILY_RETURNS=true`, `scripts/run_analysis.py crowding daily` derives
 close-to-close daily log returns from the per-ISIN trade tapes and attaches the
 column named by `DAILY_RETURN_COL`.
 
@@ -141,8 +144,8 @@ Optional diagnostics controlled by the YAML include:
 ## Crowding vs participation rate
 
 The participation-conditioned analysis is implemented in
-`scripts/crowding_vs_part_rate.py`. It can be run directly or triggered from
-`scripts/crowding_analysis.py`.
+`scripts/run_analysis.py crowding eta`. It can be run directly or triggered from
+`scripts/run_analysis.py crowding daily`.
 
 It bins metaorders by `Participation Rate` and estimates bin-level statistics
 such as:
@@ -174,11 +177,28 @@ Important config keys exposed through `crowding_analysis.yml`:
 - `CROWDING_VS_PART_RATE_RUN_REGRESSIONS`
 - `CROWDING_VS_PART_RATE_RUN_2D`
 
-The script writes a `run_manifest.json` for traceability.
+The workflow writes a `run_manifest.json` for traceability.
+
+## Specialized follow-up workflows
+
+The broader crowding family extends the daily and participation-rate analyses
+with three paper-facing variants:
+
+- `scripts/run_analysis.py crowding impact` tests whether impact curves and
+  benchmark-adjusted impact differ across crowding terciles.
+- `scripts/run_analysis.py crowding intraday` profiles all-vs-all crowding by
+  metaorder start-time bucket with date-cluster bootstrap intervals.
+- `scripts/run_analysis.py crowding overlap` builds active interval-overlap
+  features, and `scripts/run_analysis.py crowding member-overlap` then tests
+  same-member proprietary/client active-overlap correlations.
+
+See [`crowding_impact_analysis.md`](crowding_impact_analysis.md) and
+[`member_active_overlap_crowding.md`](member_active_overlap_crowding.md) for the
+detailed interpretation and output inventory.
 
 ## Common artifacts
 
-`scripts/crowding_analysis.py` writes figures such as:
+`scripts/run_analysis.py crowding daily` writes figures such as:
 
 - daily crowding time series
 - rolling crowding curves
@@ -188,7 +208,7 @@ The script writes a `run_manifest.json` for traceability.
 - imbalance-vs-return scatter plots
 - member-level crowding histogram and heatmap
 
-`scripts/crowding_vs_part_rate.py` writes tables such as:
+`scripts/run_analysis.py crowding eta` writes tables such as:
 
 - `bin_summary_prop_{imbalance_kind}.csv`
 - `bin_summary_client_{imbalance_kind}.csv`
@@ -205,18 +225,20 @@ From the repo root:
 ```bash
 source /home/danielemdn/miniconda3/etc/profile.d/conda.sh
 conda activate main
-python scripts/crowding_analysis.py
+python scripts/run_analysis.py crowding daily
 ```
 
 Direct participation-rate workflow:
 
 ```bash
-python scripts/crowding_vs_part_rate.py --analysis-tag crowding_vs_part_rate
+python scripts/run_analysis.py crowding eta --analysis-tag crowding_vs_part_rate
 ```
 
 ## Related docs
 
 - [`bootstrap_methods.md`](bootstrap_methods.md)
+- [`crowding_impact_analysis.md`](crowding_impact_analysis.md)
+- [`member_active_overlap_crowding.md`](member_active_overlap_crowding.md)
 - [`metaorder_start_event_study.md`](metaorder_start_event_study.md)
 - [`market_impact.md`](market_impact.md)
 - [`PLOTTING_GUIDE.md`](PLOTTING_GUIDE.md)

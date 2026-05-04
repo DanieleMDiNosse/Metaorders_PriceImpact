@@ -27,7 +27,7 @@ How to run
 1) Edit `config_ymls/crowding_analysis.yml` (paths and toggles).
 2) Run:
 
-    python scripts/crowding_analysis.py
+    python scripts/run_analysis.py crowding daily
 
 Outputs
 -------
@@ -56,9 +56,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Ensure repository-root imports (e.g., `moimpact`) work when running
-# `python scripts/crowding_analysis.py` from the repo root.
+# `python scripts/run_analysis.py crowding daily` from the repo root.
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -3180,7 +3180,7 @@ def main() -> None:
     Examples
     --------
     >>> # From the repository root:
-    >>> # python scripts/crowding_analysis.py
+    >>> # python scripts/run_analysis.py crowding daily
     """
     log_path = OUTPUT_DIR / "logs" / "crowding_analysis.log"
     logger = setup_file_logger(Path(__file__).stem, log_path, mode="a")

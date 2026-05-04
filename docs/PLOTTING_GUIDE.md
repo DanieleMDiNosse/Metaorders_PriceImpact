@@ -32,7 +32,7 @@ and paper-oriented styling.
 
 ## Default output layout
 
-Most scripts call:
+Most workflow modules call:
 
 ```python
 dirs = make_plot_output_dirs(Path("images/my_analysis"), use_subdirs=True)
@@ -75,19 +75,28 @@ Pipeline-level legend suppression:
 
 ## Title handling
 
-Several scripts wrap the shared save helper and remove top-level titles before
-export so that paper captions carry the final title text. Current wrappers
-exist in:
+Several workflow modules wrap the shared save helper and remove top-level
+titles before export so that paper captions carry the final title text. Current
+wrappers are used by:
 
-- `scripts/metaorder_computation.py`
-- `scripts/metaorder_distributions.py`
-- `scripts/metaorder_summary_statistics.py`
-- `scripts/metaorder_intraday_analysis.py`
-- `scripts/metaorder_start_event_study.py`
-- `scripts/metaorder_clustering.py`
+- `scripts/run_analysis.py metaorders compute`
+- `scripts/run_analysis.py metaorders distributions`
+- `scripts/run_analysis.py metaorders summary`
+- `scripts/run_analysis.py metaorders intraday-impact`
+- `scripts/run_analysis.py metaorders start-event`
+- `scripts/run_analysis.py metaorders start-time`
+- `scripts/run_analysis.py crowding daily`
+- `scripts/run_analysis.py crowding eta`
+- `scripts/run_analysis.py crowding impact`
+- `scripts/run_analysis.py crowding intraday`
+- `scripts/run_analysis.py execution schedule`
+- `scripts/run_analysis.py execution cluster`
+- `scripts/run_analysis.py execution typology`
+- `scripts/run_analysis.py members stats`
 
-If you want the exported file to keep its title, check whether the script uses a
-local `save_plotly_figure(...)` wrapper that calls `fig.update_layout(title=None)`.
+If you want the exported file to keep its title, check whether the workflow
+module uses a local `save_plotly_figure(...)` wrapper that calls
+`fig.update_layout(title=None)`.
 
 ## Global style knobs
 
@@ -104,26 +113,61 @@ This file is the single source of truth for:
 - `ANNOTATION_FONT_SIZE`
 - theme colors, grid/background colors, legend styling, and static export size
 
-Per-script YAML files no longer own plotting font sizes.
+Per-workflow YAML files no longer own plotting font sizes.
 
-## Common places to edit plots
+## Common Places To Edit Plots
 
-- `scripts/metaorder_computation.py`
+- `moimpact/workflows/metaorders/compute.py`
+  (`scripts/run_analysis.py metaorders compute`)
   - one-dimensional fits, surfaces, and impact paths
-- `scripts/metaorder_distributions.py`
+- `moimpact/workflows/metaorders/distributions.py`
+  (`scripts/run_analysis.py metaorders distributions`)
   - multi-panel distribution figure and fit annotations
-- `scripts/metaorder_summary_statistics.py`
+- `moimpact/workflows/metaorders/summary.py`
+  (`scripts/run_analysis.py metaorders summary`)
   - nationality, member profile, and daily-share figures
-- `scripts/crowding_analysis.py`
+- `moimpact/workflows/crowding/daily.py`
+  (`scripts/run_analysis.py crowding daily`)
   - daily crowding, diagnostics, and member-level plots
-- `scripts/crowding_vs_part_rate.py`
+- `moimpact/workflows/crowding/eta.py`
+  (`scripts/run_analysis.py crowding eta`)
   - `eta` curves, noise bands, and optional heatmaps
-- `scripts/metaorder_start_event_study.py`
+- `moimpact/workflows/crowding/impact.py`
+  (`scripts/run_analysis.py crowding impact`)
+  - crowding-conditioned impact curves and regression figures
+- `moimpact/workflows/crowding/intraday.py`
+  (`scripts/run_analysis.py crowding intraday`)
+  - intraday start-bin crowding profiles and heatmaps
+- `moimpact/workflows/crowding/overlap.py`
+  (`scripts/run_analysis.py crowding overlap`)
+  - active-overlap distributions, intraday summaries, and regressions
+- `moimpact/workflows/crowding/member_overlap.py`
+  (`scripts/run_analysis.py crowding member-overlap`)
+  - member-level active-overlap correlation summaries
+- `moimpact/workflows/impact/overlay.py`
+  (`scripts/run_analysis.py impact overlay`)
+  - proprietary-vs-client power-law, log, and retention overlays
+- `moimpact/workflows/metaorders/start_event_study.py`
+  (`scripts/run_analysis.py metaorders start-event`)
   - treated-vs-control event curves
-- `scripts/metaorder_intraday_analysis.py`
+- `moimpact/workflows/metaorders/start_time_distribution.py`
+  (`scripts/run_analysis.py metaorders start-time`)
+  - intraday start-time distribution comparisons
+- `moimpact/workflows/metaorders/intraday_impact.py`
+  (`scripts/run_analysis.py metaorders intraday-impact`)
   - session counts and session fit comparisons
-- `scripts/metaorder_clustering.py`
+- `moimpact/workflows/execution/schedule.py`
+  (`scripts/run_analysis.py execution schedule`)
+  - execution-schedule curves, heatmaps, and scalar summaries
+- `moimpact/workflows/execution/cluster.py`
+  (`scripts/run_analysis.py execution cluster`)
   - PCA, silhouette, composition, and cluster-profile figures
+- `moimpact/workflows/execution/typology.py`
+  (`scripts/run_analysis.py execution typology`)
+  - execution-type heatmaps, shares, PCA, impact, and schedule figures
+- `moimpact/workflows/members/stats.py`
+  (`scripts/run_analysis.py members stats`)
+  - member coverage bars and ISIN/member heatmaps
 
 ## Minimal new-figure pattern
 

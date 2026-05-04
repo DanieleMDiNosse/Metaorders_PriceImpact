@@ -19,7 +19,7 @@ measure of prop-client alignment at the member-stock-day-interval level.
 
 The workflow is implemented in:
 
-- `scripts/member_active_overlap_crowding.py`
+- `scripts/run_analysis.py crowding member-overlap`
 - `moimpact/stats/active_overlap.py`
 - `config_ymls/member_active_overlap_crowding.yml`
 
@@ -198,8 +198,13 @@ The current run used:
 
 ```bash
 conda activate main
-python scripts/member_active_overlap_crowding.py
+python scripts/run_analysis.py crowding overlap
+python scripts/run_analysis.py crowding member-overlap
 ```
+
+The member-overlap command expects the active-overlap target table written by
+`scripts/run_analysis.py crowding overlap` unless `INPUT_PATH` is set
+explicitly.
 
 Input:
 
@@ -211,12 +216,14 @@ Main outputs:
 - `out_files/ftsemib/member_active_overlap_crowding/global_correlations.csv`
 - `out_files/ftsemib/member_active_overlap_crowding/per_member_correlations.csv`
 - `out_files/ftsemib/member_active_overlap_crowding/member_window_correlations.csv`
+- `out_files/ftsemib/member_active_overlap_crowding/member_comovement_series.csv`
 - `out_files/ftsemib/member_active_overlap_crowding/run_manifest.json`
 
 Figures:
 
 - `images/ftsemib/member_active_overlap_crowding/png/global_lead_lag_correlations.png`
 - `images/ftsemib/member_active_overlap_crowding/png/per_member_correlations_same_isin_all_active.png`
+- `images/ftsemib/member_active_overlap_crowding/png/member_comovement_same_isin_all_active.png`
 - `images/ftsemib/member_active_overlap_crowding/png/member_window_heatmap_same_isin_all_active.png`
 
 The run manifest records commit `3713ecde63f7edf72134edf62ace9564750364ab`,
@@ -346,6 +353,17 @@ The same-ISIN means are positive, while the all-ISIN means are close to zero or
 negative. This reinforces the interpretation that any positive alignment signal
 is local to same-stock overlapping activity rather than a broad same-member
 cross-instrument phenomenon.
+
+The paper-facing diagnostic now complements the per-member bar chart with
+window-level co-movement curves for the two members with the strongest positive
+global same-ISIN all-active correlations. The series are non-overlapping
+5-trading-day averages of proprietary target direction and active client
+imbalance, computed on valid target observations without imposing a per-window
+minimum-count filter. This makes the high correlations easier to inspect without
+the sparsity and label problems of the member-window heatmap. Because some
+5-day windows contain few targets, the curves are intended as a descriptive
+co-movement diagnostic; inference is based on the target-level correlations and
+their bootstrap confidence intervals.
 
 ## Interpretation
 

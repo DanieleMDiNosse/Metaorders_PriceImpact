@@ -25,9 +25,9 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import RobustScaler, StandardScaler
 
 # Ensure repository-root imports (e.g., `moimpact`) work when running
-# `python scripts/metaorder_clustering.py` from the repo root.
+# `python scripts/run_analysis.py execution cluster` from the repo root.
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -2084,7 +2084,7 @@ def main() -> None:
     Examples
     --------
     >>> # Minimal run on default dataset/paths
-    >>> # python scripts/metaorder_clustering.py --group both --k-min 2 --k-max 12
+    >>> # python scripts/run_analysis.py execution cluster --group both --k-min 2 --k-max 12
     """
     args = build_arg_parser().parse_args()
 

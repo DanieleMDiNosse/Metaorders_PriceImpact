@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-import scripts.metaorder_start_event_study as event_study
+import moimpact.workflows.metaorders.start_event_study as event_study
 
 
 def _period(start_ts: str, end_ts: str) -> list[int]:

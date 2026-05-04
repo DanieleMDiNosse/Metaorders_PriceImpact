@@ -35,7 +35,7 @@ except Exception as exc:  # pragma: no cover
 
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 
 PAPER_TEX_DEFAULT = _REPO_ROOT / "paper" / "main.tex"
 PAPER_IMAGES_DEFAULT = _REPO_ROOT / "paper" / "images"
@@ -48,6 +48,9 @@ METAORDER_EXECUTION_SCHEDULE_CFG = _REPO_ROOT / "config_ymls" / "metaorder_execu
 METAORDER_START_EVENT_STUDY_CFG = _REPO_ROOT / "config_ymls" / "metaorder_start_event_study.yml"
 PLOT_PROP_NONPROP_CFG = _REPO_ROOT / "config_ymls" / "plot_prop_nonprop_fits.yml"
 CROWDING_CFG = _REPO_ROOT / "config_ymls" / "crowding_analysis.yml"
+CROWDING_IMPACT_CFG = _REPO_ROOT / "config_ymls" / "crowding_impact_analysis.yml"
+CROWDING_OVERLAP_CFG = _REPO_ROOT / "config_ymls" / "crowding_overlap_analysis.yml"
+MEMBER_ACTIVE_OVERLAP_CROWDING_CFG = _REPO_ROOT / "config_ymls" / "member_active_overlap_crowding.yml"
 PAPER_FIGURES_CONFIG_ENV = "PAPER_FIGURES_CONFIG"
 
 INCLUDEGRAPHICS_RE = re.compile(r"\\includegraphics(?:\[[^]]*\])?\{([^}]+)\}")
@@ -71,6 +74,19 @@ CROWDING_VS_ETA_BASENAMES = frozenset(
         "curve_mean_abs_imb_vs_eta_local.png",
         "curve_mean_align_vs_eta_cross.png",
         "curve_mean_abs_imb_vs_eta_cross.png",
+    }
+)
+CROWDING_IMPACT_BASENAMES = frozenset(
+    {
+        "main_crowding_impact_curves.png",
+        "eta_robustness_crowding_impact_curves.png",
+    }
+)
+MEMBER_ACTIVE_OVERLAP_BASENAMES = frozenset(
+    {
+        "per_member_correlations_same_isin_all_active.png",
+        "member_comovement_same_isin_all_active.png",
+        "member_window_heatmap_same_isin_all_active.png",
     }
 )
 IMPACT_OVERLAY_BASENAMES = frozenset(
@@ -100,17 +116,19 @@ IMPACT_IT_BASENAMES = frozenset(
 )
 _CROWDING_ANALYSIS_FIGURE_IDS = frozenset(Path(name).stem for name in CROWDING_ANALYSIS_BASENAMES)
 _CROWDING_VS_ETA_FIGURE_IDS = frozenset(Path(name).stem for name in CROWDING_VS_ETA_BASENAMES)
+_CROWDING_IMPACT_FIGURE_IDS = frozenset(Path(name).stem for name in CROWDING_IMPACT_BASENAMES)
+_MEMBER_ACTIVE_OVERLAP_FIGURE_IDS = frozenset(Path(name).stem for name in MEMBER_ACTIVE_OVERLAP_BASENAMES)
 _IMPACT_OVERLAY_FIGURE_IDS = frozenset(Path(name).stem for name in IMPACT_OVERLAY_BASENAMES)
 _IMPACT_ALL_FIGURE_IDS = frozenset(Path(name).stem for name in IMPACT_ALL_BASENAMES)
 _IMPACT_IT_FIGURE_IDS = frozenset(Path(name).stem for name in IMPACT_IT_BASENAMES)
 
 TARGET_DESCRIPTIONS = {
-    "member_stats": "Member-level descriptive plots from scripts/member_statistics.py.",
+    "member_stats": "Member-level descriptive plots from scripts/run_analysis.py members stats.",
     "summary": "Pooled member-profile figure plus mean daily metaorder-volume share.",
     "distributions": "Combined metaorder-distribution figure with tail-fit annotations.",
     "execution_schedule": "Proprietary-vs-client execution-schedule heatmap and overlay curves.",
     "impact": "Impact overlays plus per-group participation, surface, and path figures.",
-    "crowding": "Within-group, cross-group, all-vs-all, member-level, and eta-conditioned crowding figures.",
+    "crowding": "Within-group, cross-group, all-vs-all, eta-conditioned, overlap, and impact crowding figures.",
     "event_study": "Metaorder-start event-study curves for all-neighbor and same-actor-excluded variants.",
     "appendix_it": "Italian-member appendix normalized impact-path figures.",
     "all_main": "All figures from the main text, excluding the Italian-member appendix figure.",
@@ -318,6 +336,10 @@ def _classify_figure(figure_path: str) -> str:
         return "crowding_analysis"
     if basename in _CROWDING_VS_ETA_FIGURE_IDS and parent == "images/crowding_vs_part_rate/png":
         return "crowding_vs_eta"
+    if basename in _CROWDING_IMPACT_FIGURE_IDS and parent == "images/crowding_impact/png":
+        return "crowding_impact"
+    if basename in _MEMBER_ACTIVE_OVERLAP_FIGURE_IDS and parent == "images/member_active_overlap_crowding/png":
+        return "member_active_overlap"
     if parent == "images/metaorder_start_event_study/png" and basename.startswith("event_curve_"):
         return "start_event_study"
     raise ValueError(f"Unmapped paper figure path: {figure_path}")
@@ -335,7 +357,12 @@ def _build_target_map(all_figures: Sequence[str]) -> dict[str, tuple[str, ...]]:
         "distributions": tuple(by_task["metaorder_distributions"]),
         "execution_schedule": tuple(by_task["execution_schedule"]),
         "impact": tuple(by_task["impact_overlays"] + by_task["impact_main"]),
-        "crowding": tuple(by_task["crowding_analysis"] + by_task["crowding_vs_eta"]),
+        "crowding": tuple(
+            by_task["crowding_analysis"]
+            + by_task["crowding_vs_eta"]
+            + by_task["crowding_impact"]
+            + by_task["member_active_overlap"]
+        ),
         "event_study": tuple(by_task["start_event_study"]),
         "appendix_it": tuple(by_task["impact_it"]),
         "all_main": all_main,
@@ -402,6 +429,8 @@ def _selected_work(
         "impact_overlays",
         "crowding_analysis",
         "crowding_vs_eta",
+        "crowding_impact",
+        "member_active_overlap",
         "execution_schedule",
         "start_event_study",
     } & tasks:
@@ -585,7 +614,7 @@ def _run_metaorder_intro(
     updates.update(style_updates)
     with _temporary_yaml_copy(METAORDER_COMP_CFG, updates) as cfg_path:
         _run_logged_command(
-            [sys.executable, "scripts/metaorder_computation.py"],
+            [sys.executable, "scripts/run_analysis.py", "metaorders", "compute"],
             log_path=log_dir / "metaorder_intro.log",
             env_updates={"METAORDER_COMP_CONFIG": str(cfg_path)},
             dry_run=dry_run,
@@ -629,7 +658,7 @@ def _run_metaorder_stage(
         primary_updates.update(style_updates)
         with _temporary_yaml_copy(METAORDER_COMP_CFG, primary_updates) as cfg_path:
             _run_logged_command(
-                [sys.executable, "scripts/metaorder_computation.py"],
+                [sys.executable, "scripts/run_analysis.py", "metaorders", "compute"],
                 log_path=log_dir / f"metaorder_{nationality_tag}_{proprietary_tag}_primary.log",
                 env_updates={"METAORDER_COMP_CONFIG": str(cfg_path)},
                 dry_run=dry_run,
@@ -648,7 +677,7 @@ def _run_metaorder_stage(
             )
             with _temporary_yaml_copy(METAORDER_COMP_CFG, by_side_updates) as cfg_path:
                 _run_logged_command(
-                    [sys.executable, "scripts/metaorder_computation.py"],
+                    [sys.executable, "scripts/run_analysis.py", "metaorders", "compute"],
                     log_path=log_dir / f"metaorder_{nationality_tag}_{proprietary_tag}_by_side.log",
                     env_updates={"METAORDER_COMP_CONFIG": str(cfg_path)},
                     dry_run=dry_run,
@@ -679,7 +708,7 @@ def _run_metaorder_distributions(
     updates.update(style_updates)
     with _temporary_yaml_copy(METAORDER_DISTRIBUTIONS_CFG, updates) as cfg_path:
         _run_logged_command(
-            [sys.executable, "scripts/metaorder_distributions.py"],
+            [sys.executable, "scripts/run_analysis.py", "metaorders", "distributions"],
             log_path=log_dir / "metaorder_distributions.log",
             env_updates={"METAORDER_DISTRIBUTIONS_CONFIG": str(cfg_path)},
             dry_run=dry_run,
@@ -706,7 +735,9 @@ def _run_metaorder_summary(
         _run_logged_command(
             [
                 sys.executable,
-                "scripts/metaorder_summary_statistics.py",
+                "scripts/run_analysis.py",
+                "metaorders",
+                "summary",
                 "--condition-on-client-proprietary",
                 "true" if condition_on_client_proprietary else "false",
             ],
@@ -729,7 +760,7 @@ def _run_member_statistics(
         "IMG_OUTPUT_PATH_OVERRIDE": str(img_output_root),
     }
     _run_logged_command(
-        [sys.executable, "scripts/member_statistics.py"],
+        [sys.executable, "scripts/run_analysis.py", "members", "stats"],
         log_path=log_dir / "member_statistics.log",
         env_updates=env_updates,
         dry_run=dry_run,
@@ -751,7 +782,7 @@ def _run_prop_vs_nonprop_overlays(
     updates.update(style_updates)
     with _temporary_yaml_copy(PLOT_PROP_NONPROP_CFG, updates) as cfg_path:
         _run_logged_command(
-            [sys.executable, "scripts/plot_prop_nonprop_fits.py"],
+            [sys.executable, "scripts/run_analysis.py", "impact", "overlay"],
             log_path=log_dir / "plot_prop_nonprop_fits.log",
             env_updates={"PLOT_PROP_NONPROP_FITS_CONFIG": str(cfg_path)},
             dry_run=dry_run,
@@ -773,7 +804,7 @@ def _run_crowding_analysis(
     updates.update(style_updates)
     with _temporary_yaml_copy(CROWDING_CFG, updates) as cfg_path:
         _run_logged_command(
-            [sys.executable, "scripts/crowding_analysis.py"],
+            [sys.executable, "scripts/run_analysis.py", "crowding", "daily"],
             log_path=log_dir / "crowding_analysis.log",
             env_updates={"CROWDING_CONFIG": str(cfg_path)},
             dry_run=dry_run,
@@ -797,7 +828,9 @@ def _run_crowding_vs_eta(
         _run_logged_command(
             [
                 sys.executable,
-                "scripts/crowding_vs_part_rate.py",
+                "scripts/run_analysis.py",
+                "crowding",
+                "eta",
                 "--dataset-name",
                 dataset_name,
                 "--config-path",
@@ -806,6 +839,92 @@ def _run_crowding_vs_eta(
                 str(img_output_root),
             ],
             log_path=log_dir / "crowding_vs_part_rate.log",
+            dry_run=dry_run,
+        )
+
+
+def _run_crowding_impact(
+    *,
+    dataset_name: str,
+    img_output_root: Path,
+    log_dir: Path,
+    style_updates: Mapping[str, int],
+    dry_run: bool,
+) -> None:
+    updates = {
+        "DATASET_NAME": dataset_name,
+        "IMG_OUTPUT_PATH": str(img_output_root),
+    }
+    updates.update(style_updates)
+    with _temporary_yaml_copy(CROWDING_IMPACT_CFG, updates) as cfg_path:
+        _run_logged_command(
+            [
+                sys.executable,
+                "scripts/run_analysis.py",
+                "crowding",
+                "impact",
+                "--config-path",
+                str(cfg_path),
+            ],
+            log_path=log_dir / "crowding_impact.log",
+            dry_run=dry_run,
+        )
+
+
+def _run_crowding_overlap(
+    *,
+    dataset_name: str,
+    img_output_root: Path,
+    log_dir: Path,
+    style_updates: Mapping[str, int],
+    dry_run: bool,
+) -> None:
+    updates = {
+        "DATASET_NAME": dataset_name,
+        "IMG_OUTPUT_PATH": str(img_output_root),
+        "PLOTS": False,
+        "WRITE_PARQUET": True,
+    }
+    updates.update(style_updates)
+    with _temporary_yaml_copy(CROWDING_OVERLAP_CFG, updates) as cfg_path:
+        _run_logged_command(
+            [
+                sys.executable,
+                "scripts/run_analysis.py",
+                "crowding",
+                "overlap",
+                "--config-path",
+                str(cfg_path),
+            ],
+            log_path=log_dir / "crowding_overlap.log",
+            dry_run=dry_run,
+        )
+
+
+def _run_member_active_overlap(
+    *,
+    dataset_name: str,
+    img_output_root: Path,
+    log_dir: Path,
+    style_updates: Mapping[str, int],
+    dry_run: bool,
+) -> None:
+    updates = {
+        "DATASET_NAME": dataset_name,
+        "IMG_OUTPUT_PATH": str(img_output_root),
+    }
+    updates.update(style_updates)
+    with _temporary_yaml_copy(MEMBER_ACTIVE_OVERLAP_CROWDING_CFG, updates) as cfg_path:
+        _run_logged_command(
+            [
+                sys.executable,
+                "scripts/run_analysis.py",
+                "crowding",
+                "member-overlap",
+                "--config-path",
+                str(cfg_path),
+            ],
+            log_path=log_dir / "member_active_overlap_crowding.log",
             dry_run=dry_run,
         )
 
@@ -827,7 +946,7 @@ def _run_metaorder_execution_schedule(
     updates.update(style_updates)
     with _temporary_yaml_copy(METAORDER_EXECUTION_SCHEDULE_CFG, updates) as cfg_path:
         _run_logged_command(
-            [sys.executable, "scripts/metaorder_execution_schedule.py"],
+            [sys.executable, "scripts/run_analysis.py", "execution", "schedule"],
             log_path=log_dir / "metaorder_execution_schedule.log",
             env_updates={"METAORDER_EXECUTION_SCHEDULE_CONFIG": str(cfg_path)},
             dry_run=dry_run,
@@ -851,7 +970,9 @@ def _run_metaorder_start_event_study(
         _run_logged_command(
             [
                 sys.executable,
-                "scripts/metaorder_start_event_study.py",
+                "scripts/run_analysis.py",
+                "metaorders",
+                "start-event",
                 "--config-path",
                 str(cfg_path),
             ],
@@ -963,15 +1084,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     --------
     Generate every figure referenced in the paper:
 
-    >>> # python scripts/generate_paper_figures.py --targets all
+    >>> # python scripts/run_analysis.py paper figures --targets all
 
     Generate only the impact figures:
 
-    >>> # python scripts/generate_paper_figures.py --targets impact
+    >>> # python scripts/run_analysis.py paper figures --targets impact
 
     Generate two explicit figures:
 
-    >>> # python scripts/generate_paper_figures.py --figures \\
+    >>> # python scripts/run_analysis.py paper figures --figures \\
     >>> #   images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.png \\
     >>> #   images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary.png
     """
@@ -1219,6 +1340,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
 
+        if "crowding_impact" in work.tasks:
+            downstream_tasks.append(
+                (
+                    "crowding_impact",
+                    partial(
+                        _run_crowding_impact,
+                        dataset_name=dataset_name,
+                        img_output_root=img_output_root,
+                        log_dir=log_dir,
+                        style_updates=style_updates,
+                        dry_run=args.dry_run,
+                    ),
+                )
+            )
+
         if "start_event_study" in work.tasks:
             downstream_tasks.append(
                 (
@@ -1235,6 +1371,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
 
         _run_task_batch(downstream_tasks, max_workers=max_workers)
+
+        if "member_active_overlap" in work.tasks:
+            _run_crowding_overlap(
+                dataset_name=dataset_name,
+                img_output_root=img_output_root,
+                log_dir=log_dir,
+                style_updates=style_updates,
+                dry_run=args.dry_run,
+            )
+            _run_member_active_overlap(
+                dataset_name=dataset_name,
+                img_output_root=img_output_root,
+                log_dir=log_dir,
+                style_updates=style_updates,
+                dry_run=args.dry_run,
+            )
 
         _run_metaorder_stage(
             dataset_name=dataset_name,

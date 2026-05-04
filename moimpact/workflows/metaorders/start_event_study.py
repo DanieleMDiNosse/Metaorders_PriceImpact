@@ -33,7 +33,7 @@ except Exception:  # pragma: no cover
 
 # Ensure repository-root imports work when running from the repo root.
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -63,6 +63,12 @@ COL_START_TS = "StartTimestamp"
 MINUTE_NS = np.int64(60 * 1_000_000_000)
 VARIANT_ALL_OTHERS = "all_others"
 VARIANT_EXCLUDE_SAME_ACTOR = "exclude_same_actor"
+SUMMARY_METRIC_SPECS = (
+    ("same_pre_mean_rate", "same_sign", "pre", "mean"),
+    ("same_post_mean_rate", "same_sign", "post", "mean"),
+    ("opp_pre_mean_rate", "opposite_sign", "pre", "mean"),
+    ("opp_post_mean_rate", "opposite_sign", "post", "mean"),
+)
 
 
 @dataclass(frozen=True)
@@ -1159,6 +1165,137 @@ def _metric_support_from_bootstrap_payload(
         np.sum(control_valid * metric_valid, axis=0, dtype=float),
         np.sum(metric_valid, axis=0, dtype=float),
     )
+
+
+def _prepare_group_metrics(
+    df: pd.DataFrame,
+    *,
+    label: str,
+    bin_spec: BinSpec,
+    session_start_time: time,
+    session_end_time: time,
+    same_actor_col: Optional[str],
+    exclude_same_actor: bool,
+) -> pd.DataFrame:
+    variants = _prepare_group_metrics_variants(
+        df,
+        label=label,
+        bin_spec=bin_spec,
+        session_start_time=session_start_time,
+        session_end_time=session_end_time,
+        same_actor_col=same_actor_col,
+        compute_exclude_same_actor=exclude_same_actor,
+        n_jobs=1,
+        show_progress=False,
+    )
+    variant_key = VARIANT_EXCLUDE_SAME_ACTOR if exclude_same_actor else VARIANT_ALL_OTHERS
+    out = variants[variant_key].copy()
+
+    pre_indices = [idx for idx, right in enumerate(bin_spec.right_minutes) if float(right) <= 0.0]
+    post_indices = [idx for idx, left in enumerate(bin_spec.left_minutes) if float(left) >= 0.0]
+    for prefix, output_prefix in [("same", "same"), ("opp", "opp")]:
+        for side, indices in [("pre", pre_indices), ("post", post_indices)]:
+            cols = [f"{prefix}_rate_{_safe_bin_label(bin_spec.labels[idx])}" for idx in indices]
+            available = [col for col in cols if col in out.columns]
+            target_col = f"{output_prefix}_{side}_mean_rate"
+            if available:
+                out[target_col] = out[available].mean(axis=1)
+            else:
+                out[target_col] = np.nan
+    return out
+
+
+def _weighted_stat_from_strata(
+    strata: pd.DataFrame,
+    *,
+    metric_cols: Sequence[str],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+    if strata.empty:
+        n_metrics = len(metric_cols)
+        nan_vec = np.full(n_metrics, np.nan, dtype=float)
+        return nan_vec, nan_vec, nan_vec, 0.0
+
+    if COL_DATE in strata.columns:
+        dates = pd.Index(pd.to_datetime(strata[COL_DATE], errors="coerce"))
+        unique_dates = pd.Index(pd.unique(dates))
+        date_codes = unique_dates.get_indexer(dates)
+        n_dates = int(len(unique_dates))
+    else:
+        date_codes = np.zeros(len(strata), dtype=np.int64)
+        n_dates = 1
+
+    def _metric_matrix(prefix: str) -> np.ndarray:
+        cols = [f"{prefix}__{metric}" for metric in metric_cols]
+        return strata.reindex(columns=cols).fillna(0.0).to_numpy(dtype=float)
+
+    payload = BootstrapPayload(
+        date_codes=np.ascontiguousarray(date_codes, dtype=np.int64),
+        n_dates=n_dates,
+        n_treated=strata.get("n_treated", pd.Series(0.0, index=strata.index)).to_numpy(dtype=float),
+        n_control=strata.get("n_control", pd.Series(0.0, index=strata.index)).to_numpy(dtype=float),
+        treated_sums=_metric_matrix("sum_treated"),
+        control_sums=_metric_matrix("sum_control"),
+        treated_valid=_metric_matrix("n_treated_valid"),
+        control_valid=_metric_matrix("n_control_valid"),
+    )
+    return _weighted_stat_from_bootstrap_payload(payload)
+
+
+def _summary_effect_from_metric_arrays(
+    stratum_arrays: Sequence[tuple[np.ndarray, np.ndarray]],
+) -> np.ndarray:
+    if not stratum_arrays:
+        return np.empty(0, dtype=float)
+
+    n_metrics = int(stratum_arrays[0][0].shape[1])
+    treated_sum = np.zeros(n_metrics, dtype=float)
+    control_sum = np.zeros(n_metrics, dtype=float)
+    treated_count = np.zeros(n_metrics, dtype=float)
+    control_count = np.zeros(n_metrics, dtype=float)
+    for treated_values, control_values in stratum_arrays:
+        treated = np.asarray(treated_values, dtype=float)
+        control = np.asarray(control_values, dtype=float)
+        treated_mask = np.isfinite(treated)
+        control_mask = np.isfinite(control)
+        treated_sum += np.nansum(treated, axis=0)
+        control_sum += np.nansum(control, axis=0)
+        treated_count += np.sum(treated_mask, axis=0)
+        control_count += np.sum(control_mask, axis=0)
+
+    treated_mean = np.divide(treated_sum, treated_count, out=np.full(n_metrics, np.nan), where=treated_count > 0)
+    control_mean = np.divide(control_sum, control_count, out=np.full(n_metrics, np.nan), where=control_count > 0)
+    return treated_mean - control_mean
+
+
+def _permutation_summary_stats(
+    df: pd.DataFrame,
+    *,
+    summary_metric_cols: Sequence[str],
+    n_runs: int,
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    metrics = list(summary_metric_cols)
+    if not metrics:
+        return np.empty(0, dtype=float), np.empty((int(n_runs), 0), dtype=float)
+
+    def _effect(frame: pd.DataFrame) -> np.ndarray:
+        treated = frame.loc[frame["high_eta"].astype(bool), metrics].to_numpy(dtype=float)
+        control = frame.loc[~frame["high_eta"].astype(bool), metrics].to_numpy(dtype=float)
+        return _summary_effect_from_metric_arrays([(treated, control)])
+
+    observed = _effect(df)
+    rng = np.random.default_rng(seed)
+    draws = np.empty((int(n_runs), len(metrics)), dtype=float)
+    for run_idx in range(int(n_runs)):
+        shuffled = df.copy()
+        labels = []
+        for _, group in df.groupby("stratum_key", sort=False, dropna=False):
+            group_labels = group["high_eta"].to_numpy(dtype=int).copy()
+            rng.shuffle(group_labels)
+            labels.append(pd.Series(group_labels, index=group.index))
+        shuffled["high_eta"] = pd.concat(labels).sort_index().to_numpy(dtype=int)
+        draws[run_idx] = _effect(shuffled)
+    return observed, draws
 
 
 def _split_replicate_batches(total_runs: int, worker_count: int, *, batches_per_worker: int = 8) -> list[int]:

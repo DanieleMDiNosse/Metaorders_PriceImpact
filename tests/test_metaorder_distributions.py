@@ -5,8 +5,8 @@ from unittest import mock
 
 import pandas as pd
 
-import scripts.metaorder_distributions as metaorder_distributions
-from scripts.metaorder_distributions import (
+import moimpact.workflows.metaorders.distributions as metaorder_distributions
+from moimpact.workflows.metaorders.distributions import (
     _annotation_text_from_fit_row,
     _build_best_vs_second_review_table,
     _compact_fit_summary_table,
@@ -313,21 +313,21 @@ class TestMetaorderDistributionsReview(unittest.TestCase):
 
 
 class TestMetaorderDistributionsParallelism(unittest.TestCase):
-    @mock.patch("scripts.metaorder_distributions.os.cpu_count", return_value=8)
+    @mock.patch("moimpact.workflows.metaorders.distributions.os.cpu_count", return_value=8)
     def test_worker_count_defaults_to_panel_count_cap(self, _cpu_count: mock.Mock) -> None:
         with mock.patch.object(metaorder_distributions, "POWERLAW_FIT_ENABLED", True):
             with mock.patch.object(metaorder_distributions, "POWERLAW_FULL_BOOTSTRAP_ENABLED", True):
                 with mock.patch.object(metaorder_distributions, "POWERLAW_FIT_MAX_WORKERS", None):
                     self.assertEqual(_resolve_powerlaw_fit_worker_count(3), 3)
 
-    @mock.patch("scripts.metaorder_distributions.os.cpu_count", return_value=16)
+    @mock.patch("moimpact.workflows.metaorders.distributions.os.cpu_count", return_value=16)
     def test_worker_count_auto_caps_bootstrap_heavy_runs(self, _cpu_count: mock.Mock) -> None:
         with mock.patch.object(metaorder_distributions, "POWERLAW_FIT_ENABLED", True):
             with mock.patch.object(metaorder_distributions, "POWERLAW_FULL_BOOTSTRAP_ENABLED", True):
                 with mock.patch.object(metaorder_distributions, "POWERLAW_FIT_MAX_WORKERS", None):
                     self.assertEqual(_resolve_powerlaw_fit_worker_count(10), 4)
 
-    @mock.patch("scripts.metaorder_distributions.os.cpu_count", return_value=8)
+    @mock.patch("moimpact.workflows.metaorders.distributions.os.cpu_count", return_value=8)
     def test_worker_count_respects_configured_cap(self, _cpu_count: mock.Mock) -> None:
         with mock.patch.object(metaorder_distributions, "POWERLAW_FIT_ENABLED", True):
             with mock.patch.object(metaorder_distributions, "POWERLAW_FIT_MAX_WORKERS", 2):

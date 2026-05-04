@@ -13,7 +13,7 @@ from moimpact.execution_typology import (
     extract_schedule_features,
     unpack_float32_path,
 )
-from scripts.metaorder_execution_typology import main as execution_typology_main
+from moimpact.workflows.execution.typology import main as execution_typology_main
 
 
 def _pack(values: list[float]) -> bytes:

@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 # Ensure repository-root imports work when running from the repo root.
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -512,7 +512,7 @@ def main() -> None:
     Run from the repository root:
 
     >>> # doctest: +SKIP
-    >>> # python scripts/metaorder_intraday_analysis.py
+    >>> # python scripts/run_analysis.py metaorders intraday-impact
     """
     log_path = OUTPUT_ROOT / "logs" / with_member_nationality_tag(
         f"metaorder_intraday_analysis_{LEVEL}_prop_vs_client.log",
@@ -555,7 +555,7 @@ def main() -> None:
             if not table_path.exists():
                 raise FileNotFoundError(
                     f"Missing input parquet for {group_label}: {table_path}. "
-                    "Run scripts/metaorder_computation.py for both proprietary and non-proprietary groups first."
+                    "Run scripts/run_analysis.py metaorders compute for both proprietary and non-proprietary groups first."
                 )
             df_group = pd.read_parquet(table_path)
             summary_rows, session_fits = _run_group_session_analysis(

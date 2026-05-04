@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from moimpact.stats.active_overlap import compute_member_active_overlap_features
-import scripts.member_active_overlap_crowding as member_overlap
+import moimpact.workflows.crowding.member_overlap as member_overlap
 
 
 def _ts(value: str) -> pd.Timestamp:
@@ -246,6 +246,8 @@ class TestMemberActiveOverlapWorkflow(unittest.TestCase):
             self.assertTrue((out_dir / "per_member_correlations.csv").exists())
             self.assertTrue((out_dir / "per_member_correlations.parquet").exists())
             self.assertTrue((out_dir / "member_window_correlations.csv").exists())
+            self.assertTrue((out_dir / "member_comovement_series.csv").exists())
+            self.assertTrue((out_dir / "member_comovement_series.parquet").exists())
             self.assertTrue((out_dir / "sample_counts.csv").exists())
             self.assertTrue((out_dir / "run_manifest.json").exists())
             self.assertFalse((out_dir / "active_member_overlap_targets.parquet").exists())
@@ -256,6 +258,12 @@ class TestMemberActiveOverlapWorkflow(unittest.TestCase):
                 & (global_corr["lead_lag_bucket"] == "all_active")
             ].iloc[0]
             self.assertAlmostEqual(float(same_isin_all["r"]), 1.0)
+
+            comovement = pd.read_csv(out_dir / "member_comovement_series.csv")
+            self.assertFalse(comovement.empty)
+            self.assertEqual(set(comovement["Member"].astype(str)), {"M1"})
+            self.assertIn("prop_target_imbalance", comovement.columns)
+            self.assertIn("active_client_imbalance", comovement.columns)
 
 
 if __name__ == "__main__":

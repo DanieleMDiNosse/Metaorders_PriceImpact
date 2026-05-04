@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import scripts.metaorder_start_time_distribution as start_dist
+import moimpact.workflows.metaorders.start_time_distribution as start_dist
 
 
 def _period(start_ts: str, end_ts: str | None = None) -> list[int]:

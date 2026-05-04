@@ -1,12 +1,12 @@
 # Metaorder Distributions
 
-This document covers `scripts/metaorder_distributions.py`, which builds the
+This document covers `scripts/run_analysis.py metaorders distributions`, which builds the
 combined client-vs-proprietary distribution diagnostics and the optional
 tail-model overlays.
 
 ## Purpose
 
-The script loads the canonical proprietary and client metaorder dictionaries,
+The workflow loads the canonical proprietary and client metaorder dictionaries,
 reconstructs comparable samples from the per-ISIN trade tapes, and exports:
 
 - one multi-panel comparison figure
@@ -20,8 +20,9 @@ Default config:
 
 - `config_ymls/metaorder_distributions.yml`
 
-Environment-variable override:
+Config override:
 
+- `--config PATH`
 - `METAORDER_DISTRIBUTIONS_CONFIG`
 
 Main required inputs:
@@ -32,7 +33,7 @@ Main required inputs:
   `metaorders_dict_all_{LEVEL}_non_proprietary[ _member_nationality_{...} ].pkl`
 - per-ISIN trade tapes under `PARQUET_PATH`
 
-The script shares the filtering logic in
+The workflow shares the filtering logic in
 `moimpact/metaorder_distribution_samples.py`, including:
 
 - trading-hours filtering
@@ -53,7 +54,7 @@ Each panel compares proprietary and client samples on the same layout.
 
 ## Tail-model fitting
 
-When `POWERLAW_FIT_ENABLED=true`, the script fits a power-law tail to each
+When `POWERLAW_FIT_ENABLED=true`, the workflow fits a power-law tail to each
 panel and can compare it against:
 
 - `lognormal`
@@ -78,7 +79,7 @@ Two fitting modes are supported:
 
 ## Bootstrap summaries
 
-When `POWERLAW_FULL_BOOTSTRAP_ENABLED=true`, the script reruns the full
+When `POWERLAW_FULL_BOOTSTRAP_ENABLED=true`, the workflow reruns the full
 tail-fitting pipeline on bootstrap resamples of each panel.
 
 These bootstrap results feed:
@@ -122,7 +123,7 @@ Canonical stems:
 - saved plot data:
   `metaorder_distribution_plot_data_prop_vs_client[ _member_nationality_{...} ]`
 
-The script writes:
+The workflow writes:
 
 - fit summary CSV and Parquet
 - plot data CSV and Parquet
@@ -131,10 +132,10 @@ The script writes:
 
 ## Load mode
 
-The script supports a saved-output regeneration mode:
+The workflow supports a saved-output regeneration mode:
 
 ```bash
-python scripts/metaorder_distributions.py --load
+python scripts/run_analysis.py metaorders distributions --load
 ```
 
 In that mode it rebuilds the Plotly figure from the saved fit-summary and
@@ -148,14 +149,13 @@ From the repo root:
 ```bash
 source /home/danielemdn/miniconda3/etc/profile.d/conda.sh
 conda activate main
-python scripts/metaorder_distributions.py
+python scripts/run_analysis.py metaorders distributions
 ```
 
 To point at another YAML:
 
 ```bash
-METAORDER_DISTRIBUTIONS_CONFIG=config_ymls/metaorder_distributions.yml \
-python scripts/metaorder_distributions.py
+python scripts/run_analysis.py metaorders distributions --config config_ymls/metaorder_distributions.yml
 ```
 
 ## Related docs

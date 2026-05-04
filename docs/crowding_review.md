@@ -40,9 +40,15 @@ This file is an editorial checklist for the crowding discussion in
 
 ## Good references inside the repo
 
-- `scripts/crowding_analysis.py`
-- `scripts/crowding_vs_part_rate.py`
+- `scripts/run_analysis.py crowding daily`
+- `scripts/run_analysis.py crowding eta`
+- `scripts/run_analysis.py crowding impact`
+- `scripts/run_analysis.py crowding intraday`
+- `scripts/run_analysis.py crowding overlap`
+- `scripts/run_analysis.py crowding member-overlap`
 - `docs/imbalance_and_crowding.md`
+- `docs/crowding_impact_analysis.md`
+- `docs/member_active_overlap_crowding.md`
 - `docs/bootstrap_methods.md`
 
 ## Practical recommendation
@@ -50,4 +56,4 @@ This file is an editorial checklist for the crowding discussion in
 When updating `paper/main.tex`, pull numbers from saved tables or logs under
 `out_files/` rather than retyping them manually. The crowding section is easier
 to keep consistent when the narrative follows the exact file names produced by
-the scripts.
+the workflows.

@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import scripts.crowding_overlap_analysis as overlap
+import moimpact.workflows.crowding.overlap as overlap
 
 
 def _period(start_ts: str, end_ts: str | None = None) -> list[int]:

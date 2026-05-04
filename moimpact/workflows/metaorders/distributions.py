@@ -28,7 +28,7 @@ How to run
    `METAORDER_DISTRIBUTIONS_CONFIG` to an alternate YAML file.
 2) Run:
 
-    python scripts/metaorder_distributions.py
+    python scripts/run_analysis.py metaorders distributions
 
 Outputs
 -------
@@ -77,9 +77,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Ensure repository-root imports (e.g., `moimpact`) work when running
-# `python scripts/metaorder_distributions.py` from the repo root.
+# `python scripts/run_analysis.py metaorders distributions` from the repo root.
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -659,13 +659,28 @@ def _annotation_text_from_fit_row(fit_row: Mapping[str, object]) -> str:
     if not bool(fit_row.get("fit_success", False)):
         return "No stable fit"
 
-    return (
-        "<span style='color:"
-        f"{POWERLAW_TRACE_COLOR}"
-        ";'>α = "
-        f"{_format_annotation_scalar(fit_row.get('alpha', np.nan), format_spec='.4f')}"
-        "</span>"
+    best_model = str(fit_row.get("best_fit_model", "unavailable") or "unavailable")
+    lines = [f"Best fit = {best_model}"]
+    lines.append(
+        _format_annotation_interval(
+            label="x_min",
+            estimate=fit_row.get("xmin", np.nan),
+            ci_low=fit_row.get("bootstrap_xmin_ci_low", np.nan),
+            ci_high=fit_row.get("bootstrap_xmin_ci_high", np.nan),
+            format_spec=".4g",
+            ci_label=_bootstrap_ci_label(fit_row),
+        )
     )
+    alpha_line = _format_annotation_interval(
+        label="alpha",
+        estimate=fit_row.get("alpha", np.nan),
+        ci_low=fit_row.get("power_law_alpha_ci_low", np.nan),
+        ci_high=fit_row.get("power_law_alpha_ci_high", np.nan),
+        format_spec=".4f",
+        ci_label=_bootstrap_ci_label(fit_row),
+    )
+    lines.append(f"<span style='color:{POWERLAW_TRACE_COLOR};'>{alpha_line}</span>")
+    return "<br>".join(lines)
 
 
 def _resolve_powerlaw_fit_worker_count(panel_count: int) -> int:

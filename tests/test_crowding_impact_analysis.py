@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import scripts.crowding_impact_analysis as crowding_impact
+import moimpact.workflows.crowding.impact as crowding_impact
 
 
 def _period(date_str: str, minute_offset: int) -> list[int]:

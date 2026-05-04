@@ -33,7 +33,7 @@ except Exception:  # pragma: no cover
 
 
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -137,6 +137,7 @@ _PCA_SCATTER_COLORWAY = [
     "#1D3557",
     "#2A9D8F",
 ]
+_PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
 
 
 class _NullTqdm:
@@ -1011,7 +1012,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(list(argv) if argv is not None else None)
     cfg = _load_yaml_defaults(resolve_repo_path(_REPO_ROOT, args.config_path))
 
-    apply_shared_plotly_style(load_plot_style())
+    global _PLOT_STYLE
+    _PLOT_STYLE = apply_shared_plotly_style(load_plot_style())
 
     paths = _resolve_paths(cfg, args)
     k_min = int(args.k_min if args.k_min is not None else cfg.get("K_MIN", 2))

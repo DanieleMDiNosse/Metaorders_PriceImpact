@@ -255,8 +255,8 @@ def collect_metaorder_distribution_samples(
     Notes
     -----
     The logic intentionally mirrors the sample construction in
-    ``scripts/metaorder_summary_statistics.py`` and
-    ``scripts/metaorder_distributions.py``:
+    ``scripts/run_analysis.py metaorders summary`` and
+    ``scripts/run_analysis.py metaorders distributions``:
     durations and inter-arrivals are returned in minutes, while ``Q``, ``Q/V``,
     and participation rate are returned in their raw units. When
     ``include_counts_by_member`` is False, the returned `counts_by_member`

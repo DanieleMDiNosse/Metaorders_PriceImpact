@@ -209,8 +209,8 @@ __marimo__/
 # Images generated from notebooks
 images/
 
-# Outputs generated from notebooks
-# out_files/
+# Generated analysis outputs
+out_files/
 
 # Metaorder scripts 
 metaorder_scripts/

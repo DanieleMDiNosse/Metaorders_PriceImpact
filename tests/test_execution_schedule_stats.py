@@ -281,7 +281,7 @@ class TestExecutionScheduleScriptSmoke(unittest.TestCase):
             env["METAORDER_EXECUTION_SCHEDULE_CONFIG"] = str(cfg_path)
             env["MPLBACKEND"] = "Agg"
             proc = subprocess.run(
-                [sys.executable, "scripts/metaorder_execution_schedule.py"],
+                [sys.executable, "scripts/run_analysis.py", "execution", "schedule"],
                 cwd=repo_root,
                 env=env,
                 capture_output=True,
@@ -289,7 +289,7 @@ class TestExecutionScheduleScriptSmoke(unittest.TestCase):
                 check=False,
             )
             if proc.returncode != 0:
-                self.fail(f"metaorder_execution_schedule.py failed:\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}")
+                self.fail(f"execution schedule workflow failed:\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}")
 
             analysis_dir = out_root / "member_metaorder_execution_schedule"
             scalar_inference = analysis_dir / "execution_schedule_scalar_inference_prop_vs_client.parquet"

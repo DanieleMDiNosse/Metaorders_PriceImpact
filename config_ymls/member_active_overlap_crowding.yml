@@ -26,6 +26,16 @@ MIN_OBS_PER_MEMBER: 30
 MIN_OBS_PER_MEMBER_WINDOW: 5
 MEMBER_WINDOW_DAYS: 3
 
+# Co-movement figure. The figure selects the top positive global-correlation
+# members in the specified scope/bucket, then compares the equal-weighted
+# proprietary target-direction imbalance with the equal-weighted active client
+# imbalance in non-overlapping trading-date windows. No per-window observation
+# threshold is applied; windows without valid active client imbalance are absent.
+COMOVEMENT_SCOPE: same_isin
+COMOVEMENT_LEAD_LAG_BUCKET: all_active
+COMOVEMENT_TOP_N_MEMBERS: 2
+COMOVEMENT_WINDOW_DAYS: 5
+
 # Active-overlap computation is parallelized by (Member, Date). N_JOBS=0 means
 # auto, capped at 4 workers to avoid excessive memory use.
 OVERLAP_BATCH_SIZE: 2048

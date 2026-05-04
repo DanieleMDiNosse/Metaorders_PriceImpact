@@ -350,10 +350,10 @@ INPUT ./images/member_active_overlap_crowding/png/per_member_correlations_same_i
 INPUT ./images/member_active_overlap_crowding/png/per_member_correlations_same_isin_all_active.png
 INPUT ./images/member_active_overlap_crowding/png/per_member_correlations_same_isin_all_active.png
 INPUT ./images/member_active_overlap_crowding/png/per_member_correlations_same_isin_all_active.png
-INPUT ./images/member_active_overlap_crowding/png/member_window_heatmap_same_isin_all_active.png
-INPUT ./images/member_active_overlap_crowding/png/member_window_heatmap_same_isin_all_active.png
-INPUT ./images/member_active_overlap_crowding/png/member_window_heatmap_same_isin_all_active.png
-INPUT ./images/member_active_overlap_crowding/png/member_window_heatmap_same_isin_all_active.png
+INPUT ./images/member_active_overlap_crowding/png/member_comovement_same_isin_all_active.png
+INPUT ./images/member_active_overlap_crowding/png/member_comovement_same_isin_all_active.png
+INPUT ./images/member_active_overlap_crowding/png/member_comovement_same_isin_all_active.png
+INPUT ./images/member_active_overlap_crowding/png/member_comovement_same_isin_all_active.png
 INPUT ./tables/appendix_it_metaorder_stats.tex
 INPUT ./tables/appendix_it_metaorder_stats.tex
 INPUT tables/appendix_it_metaorder_stats.tex

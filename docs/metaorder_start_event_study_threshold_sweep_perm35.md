@@ -1,7 +1,7 @@
 # Metaorder Start Event-Study Threshold Sweep (35 Permutations)
 
 This note summarizes the threshold-sweep rerun of
-`scripts/metaorder_start_event_study.py` using five `high_eta` cutoffs and a
+`scripts/run_analysis.py metaorders start-event` using five `high_eta` cutoffs and a
 small permutation budget.
 
 ## Run setup
@@ -9,7 +9,8 @@ small permutation budget.
 Command used:
 
 ```bash
-.venv/bin/python scripts/metaorder_start_event_study.py \
+conda activate main
+python scripts/run_analysis.py metaorders start-event \
   --analysis-tag metaorder_start_event_study_threshold_sweep_perm35 \
   --high-eta-quantiles 0.5,0.6,0.7,0.8,0.9 \
   --bootstrap-runs 0 \

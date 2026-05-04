@@ -1,8 +1,9 @@
 # Crowding Impact Analysis: Short Summary
 
-This note is a compact companion to [`crowding_impact_analysis.md`](crowding_impact_analysis.md).
-It explains, in plain language, what the `scripts/crowding_impact_analysis.py`
-workflow does and what the current `ftsemib` run found on `2026-04-22`.
+This note is a compact companion to
+[`crowding_impact_analysis.md`](crowding_impact_analysis.md). It explains, in
+plain language, what `scripts/run_analysis.py crowding impact` does and what
+the documented `ftsemib` run found on `2026-04-22`.
 
 ## Question
 
@@ -56,7 +57,7 @@ The workflow has three main blocks.
 
 ### 1. Crowding-conditioned impact curves
 
-For client and proprietary flow separately, the script:
+For client and proprietary flow separately, the workflow:
 
 1. splits crowding into three group-specific buckets: low, mid, and high
 2. fits impact curves inside each bucket
@@ -89,7 +90,7 @@ The additional robustness block controls jointly for:
 - `V_t / V`
 - `|imbalance|`
 
-The script first builds a `6 x 6 x 4` binning grid over these variables, keeps
+The workflow first builds a `6 x 6 x 4` binning grid over these variables, keeps
 cells with at least `20` observations, and regresses the log of the cell mean
 impact on the bin centers:
 

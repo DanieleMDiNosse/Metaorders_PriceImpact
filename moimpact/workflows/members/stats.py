@@ -66,7 +66,7 @@ Usage
 -----
 Run from the repository root:
 
-    python scripts/member_statistics.py
+    python scripts/run_analysis.py members stats
 
 To change the data location or trading-hours filter, edit `DATA_DIR` and
 `TRADING_HOURS` in the "Config" section near the top of the file.
@@ -88,9 +88,9 @@ import plotly.graph_objects as go
 import plotly.io as pio
 
 # Ensure repository-root imports (e.g., `moimpact`) work when running
-# `python scripts/member_statistics.py` from the repo root.
+# `python scripts/run_analysis.py members stats` from the repo root.
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 

@@ -13,7 +13,7 @@ How to run
 1) Activate the repository conda environment.
 2) Run from the repository root:
 
-    python scripts/member_active_overlap_crowding.py
+    python scripts/run_analysis.py crowding member-overlap
 
 Outputs are written under:
 
@@ -36,9 +36,10 @@ from typing import Any, Optional, Sequence
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 _SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-_REPO_ROOT = _SCRIPT_DIR.parent if _SCRIPT_DIR.name == "scripts" else _SCRIPT_DIR
+_REPO_ROOT = _SCRIPT_DIR.parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -103,6 +104,10 @@ class RuntimeOptions:
     member_window_days: int
     min_obs_per_member: int
     min_obs_per_member_window: int
+    comovement_scope: str
+    comovement_lead_lag_bucket: str
+    comovement_top_n_members: int
+    comovement_window_days: int
     overlap_batch_size: int
     n_jobs: int
     plots: bool
@@ -136,7 +141,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     Examples
     --------
     >>> # From the repository root:
-    >>> # python scripts/member_active_overlap_crowding.py
+    >>> # python scripts/run_analysis.py crowding member-overlap
     """
     args = _parse_args(argv)
     cfg_path = _resolve_config_path(args.config_path)
@@ -171,6 +176,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     global_correlations = _build_global_correlations(features, options)
     per_member = _build_per_member_correlations(features, options)
     member_window = _build_member_window_correlations(features, options)
+    comovement = _build_member_comovement_series(features, per_member, options)
     sample_counts = _build_sample_counts(features)
 
     _write_table(global_correlations, paths.out_dir / "global_correlations.csv")
@@ -178,11 +184,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     per_member.to_parquet(paths.out_dir / "per_member_correlations.parquet", index=False)
     _write_table(member_window, paths.out_dir / "member_window_correlations.csv")
     member_window.to_parquet(paths.out_dir / "member_window_correlations.parquet", index=False)
+    _write_table(comovement, paths.out_dir / "member_comovement_series.csv")
+    comovement.to_parquet(paths.out_dir / "member_comovement_series.parquet", index=False)
     _write_table(sample_counts, paths.out_dir / "sample_counts.csv")
 
     if options.plots:
         _plot_global_lead_lag(global_correlations, plot_dirs, options)
         _plot_per_member(per_member, plot_dirs, options)
+        _plot_member_comovement_series(comovement, plot_dirs, options)
         _plot_member_window_heatmaps(member_window, plot_dirs, options)
 
     manifest_path = paths.out_dir / "run_manifest.json"
@@ -215,6 +224,25 @@ def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
         type=int,
         default=None,
         help="Minimum valid rows per member-window heatmap cell.",
+    )
+    parser.add_argument("--comovement-scope", type=str, default=None, help="Scope for the member co-movement figure.")
+    parser.add_argument(
+        "--comovement-lead-lag-bucket",
+        type=str,
+        default=None,
+        help="Lead-lag bucket for the member co-movement figure.",
+    )
+    parser.add_argument(
+        "--comovement-top-n-members",
+        type=int,
+        default=None,
+        help="Number of top positive global-correlation members in the co-movement figure.",
+    )
+    parser.add_argument(
+        "--comovement-window-days",
+        type=int,
+        default=None,
+        help="Non-overlapping trading-date window length for the co-movement figure.",
     )
     parser.add_argument("--overlap-batch-size", type=int, default=None, help="Overlap matrix target batch size.")
     parser.add_argument("--n-jobs", type=int, default=None, help="Process workers. Zero means auto capped at 4.")
@@ -280,6 +308,20 @@ def _resolve_options(args: argparse.Namespace, cfg: dict[str, Any]) -> RuntimeOp
         if args.min_obs_per_member_window is not None
         else cfg.get("MIN_OBS_PER_MEMBER_WINDOW", 5)
     )
+    comovement_scope = str(args.comovement_scope or cfg.get("COMOVEMENT_SCOPE", "same_isin"))
+    comovement_lead_lag_bucket = str(
+        args.comovement_lead_lag_bucket or cfg.get("COMOVEMENT_LEAD_LAG_BUCKET", BUCKET_ALL_ACTIVE)
+    )
+    comovement_top_n_members = int(
+        args.comovement_top_n_members
+        if args.comovement_top_n_members is not None
+        else cfg.get("COMOVEMENT_TOP_N_MEMBERS", 2)
+    )
+    comovement_window_days = int(
+        args.comovement_window_days
+        if args.comovement_window_days is not None
+        else cfg.get("COMOVEMENT_WINDOW_DAYS", 5)
+    )
     overlap_batch_size = int(
         args.overlap_batch_size if args.overlap_batch_size is not None else cfg.get("OVERLAP_BATCH_SIZE", 2048)
     )
@@ -300,6 +342,14 @@ def _resolve_options(args: argparse.Namespace, cfg: dict[str, Any]) -> RuntimeOp
         raise ValueError("MIN_OBS_PER_MEMBER must be positive.")
     if min_obs_per_member_window <= 0:
         raise ValueError("MIN_OBS_PER_MEMBER_WINDOW must be positive.")
+    if comovement_scope not in VALID_SCOPES:
+        raise ValueError(f"COMOVEMENT_SCOPE must be one of {sorted(VALID_SCOPES)}.")
+    if comovement_lead_lag_bucket not in VALID_LEAD_LAG_BUCKETS:
+        raise ValueError(f"COMOVEMENT_LEAD_LAG_BUCKET must be one of {sorted(VALID_LEAD_LAG_BUCKETS)}.")
+    if comovement_top_n_members <= 0:
+        raise ValueError("COMOVEMENT_TOP_N_MEMBERS must be positive.")
+    if comovement_window_days <= 0:
+        raise ValueError("COMOVEMENT_WINDOW_DAYS must be positive.")
     if overlap_batch_size <= 0:
         raise ValueError("OVERLAP_BATCH_SIZE must be positive.")
 
@@ -319,6 +369,10 @@ def _resolve_options(args: argparse.Namespace, cfg: dict[str, Any]) -> RuntimeOp
         member_window_days=member_window_days,
         min_obs_per_member=min_obs_per_member,
         min_obs_per_member_window=min_obs_per_member_window,
+        comovement_scope=comovement_scope,
+        comovement_lead_lag_bucket=comovement_lead_lag_bucket,
+        comovement_top_n_members=comovement_top_n_members,
+        comovement_window_days=comovement_window_days,
         overlap_batch_size=overlap_batch_size,
         n_jobs=n_jobs,
         plots=plots,
@@ -358,7 +412,7 @@ def _load_input_table(path: Path) -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError(
             f"Missing active-overlap input table: {path}. "
-            "Run scripts/crowding_overlap_analysis.py first or set INPUT_PATH."
+            "Run scripts/run_analysis.py crowding overlap first or set INPUT_PATH."
         )
     required = ["group", "Member", "ISIN", "Date", "StartTimestamp", "EndTimestamp", "Q", "Direction"]
     try:
@@ -439,6 +493,148 @@ def _build_member_window_correlations(features: pd.DataFrame, options: RuntimeOp
     return pd.DataFrame(rows)
 
 
+def _build_member_comovement_series(
+    features: pd.DataFrame,
+    per_member: pd.DataFrame,
+    options: RuntimeOptions,
+) -> pd.DataFrame:
+    selected_members = _select_comovement_members(per_member, options)
+    if features.empty or not selected_members:
+        return pd.DataFrame(
+            columns=[
+                "scope",
+                "lead_lag_bucket",
+                "Member",
+                "Window",
+                "window_start",
+                "window_end",
+                "window_mid",
+                "n_valid",
+                "n_dates",
+                "prop_target_imbalance",
+                "active_client_imbalance",
+                "mean_signed_alignment",
+                "member_global_r",
+                "member_global_lo",
+                "member_global_hi",
+                "window_series_corr",
+            ]
+        )
+
+    working = features[
+        (features[COL_SCOPE].astype(str) == options.comovement_scope)
+        & (features[COL_BUCKET].astype(str) == options.comovement_lead_lag_bucket)
+        & (features[COL_MEMBER].astype(str).isin([str(member) for member in selected_members]))
+    ].copy()
+    if working.empty:
+        return pd.DataFrame()
+
+    for col in [COL_DIRECTION, COL_IMBALANCE, "active_client_alignment"]:
+        working[col] = pd.to_numeric(working[col], errors="coerce")
+    working[COL_DATE] = pd.to_datetime(working[COL_DATE], errors="coerce").dt.normalize()
+    working = working.replace([np.inf, -np.inf], np.nan).dropna(subset=[COL_DIRECTION, COL_IMBALANCE, COL_DATE])
+    if working.empty:
+        return pd.DataFrame()
+
+    window_meta = _build_window_metadata(working[COL_DATE], window_days=options.comovement_window_days)
+    if window_meta.empty:
+        return pd.DataFrame()
+    window_map = dict(zip(window_meta["window_date"], window_meta["Window"]))
+    working["Window"] = working[COL_DATE].dt.date.map(window_map)
+    working = working.dropna(subset=["Window"])
+    if working.empty:
+        return pd.DataFrame()
+
+    member_stats = per_member[
+        (per_member["scope"].astype(str) == options.comovement_scope)
+        & (per_member["lead_lag_bucket"].astype(str) == options.comovement_lead_lag_bucket)
+    ].copy()
+    member_stats["__member_key__"] = member_stats[COL_MEMBER].astype(str)
+    member_stats = member_stats.set_index("__member_key__")[["r", "lo", "hi"]].apply(pd.to_numeric, errors="coerce")
+
+    grouped = working.groupby([COL_MEMBER, "Window"], sort=True, dropna=False)
+    rows: list[dict[str, object]] = []
+    for (member, window), group in grouped:
+        window_rows = window_meta[window_meta["Window"] == str(window)]
+        if window_rows.empty:
+            continue
+        window_info = window_rows.iloc[0]
+        directions = group[COL_DIRECTION].to_numpy(dtype=float)
+        client_imb = group[COL_IMBALANCE].to_numpy(dtype=float)
+        align = group["active_client_alignment"].to_numpy(dtype=float)
+        member_key = str(member)
+        global_row = member_stats.loc[member_key] if member_key in member_stats.index else None
+        rows.append(
+            {
+                "scope": options.comovement_scope,
+                "lead_lag_bucket": options.comovement_lead_lag_bucket,
+                "Member": member,
+                "Window": str(window),
+                "window_start": window_info["window_start"],
+                "window_end": window_info["window_end"],
+                "window_mid": window_info["window_mid"],
+                "n_valid": int(len(group)),
+                "n_dates": int(group[COL_DATE].nunique()),
+                # Equal-weighted target averages preserve the population used
+                # by Corr(target_direction, active_client_imbalance).
+                "prop_target_imbalance": float(np.nanmean(directions)),
+                "active_client_imbalance": float(np.nanmean(client_imb)),
+                "mean_signed_alignment": float(np.nanmean(align)),
+                "member_global_r": float(global_row["r"]) if global_row is not None else np.nan,
+                "member_global_lo": float(global_row["lo"]) if global_row is not None else np.nan,
+                "member_global_hi": float(global_row["hi"]) if global_row is not None else np.nan,
+            }
+        )
+
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+    out = out.sort_values(["Member", "window_start"]).reset_index(drop=True)
+    out["window_series_corr"] = np.nan
+    for member, idx in out.groupby("Member", sort=False).groups.items():
+        sub = out.loc[idx, ["prop_target_imbalance", "active_client_imbalance"]].dropna()
+        if len(sub) >= 3:
+            out.loc[idx, "window_series_corr"] = _safe_corr(
+                sub["prop_target_imbalance"].to_numpy(dtype=float),
+                sub["active_client_imbalance"].to_numpy(dtype=float),
+            )
+    return out
+
+
+def _select_comovement_members(per_member: pd.DataFrame, options: RuntimeOptions) -> list[object]:
+    if per_member.empty:
+        return []
+    candidates = per_member[
+        (per_member["scope"].astype(str) == options.comovement_scope)
+        & (per_member["lead_lag_bucket"].astype(str) == options.comovement_lead_lag_bucket)
+        & (per_member["passes_min_obs"].astype(bool))
+    ].copy()
+    if candidates.empty:
+        return []
+    candidates["r"] = pd.to_numeric(candidates["r"], errors="coerce")
+    candidates = candidates[np.isfinite(candidates["r"].to_numpy(dtype=float))].copy()
+    if candidates.empty:
+        return []
+    positive = candidates[candidates["r"] > 0.0].sort_values("r", ascending=False)
+    if len(positive) >= options.comovement_top_n_members:
+        selected = positive.head(options.comovement_top_n_members)
+    else:
+        remainder = candidates.loc[~candidates.index.isin(positive.index)].sort_values("r", ascending=False)
+        selected = pd.concat([positive, remainder], axis=0).head(options.comovement_top_n_members)
+    return selected[COL_MEMBER].tolist()
+
+
+def _safe_corr(x: np.ndarray, y: np.ndarray) -> float:
+    finite = np.isfinite(x) & np.isfinite(y)
+    if finite.sum() < 3:
+        return float("nan")
+    x_valid = x[finite]
+    y_valid = y[finite]
+    if np.nanstd(x_valid) <= 1e-12 or np.nanstd(y_valid) <= 1e-12:
+        return float("nan")
+    return float(np.corrcoef(x_valid, y_valid)[0, 1])
+
+
 def _correlation_row(
     frame: pd.DataFrame,
     *,
@@ -486,14 +682,33 @@ def _correlation_row(
 
 
 def _build_window_map(dates: pd.Series, *, window_days: int) -> dict[dt.date, str]:
+    window_meta = _build_window_metadata(dates, window_days=window_days)
+    return dict(zip(window_meta["window_date"], window_meta["Window"]))
+
+
+def _build_window_metadata(dates: pd.Series, *, window_days: int) -> pd.DataFrame:
     unique_dates = sorted(pd.to_datetime(dates, errors="coerce").dt.date.dropna().unique())
-    out: dict[dt.date, str] = {}
+    rows: list[dict[str, object]] = []
     for idx in range(0, len(unique_dates), int(window_days)):
         chunk = unique_dates[idx : idx + int(window_days)]
+        if not chunk:
+            continue
         label = f"{chunk[0]}_to_{chunk[-1]}"
+        start_ts = pd.Timestamp(chunk[0])
+        end_ts = pd.Timestamp(chunk[-1])
+        mid_ts = start_ts + (end_ts - start_ts) / 2
         for date_value in chunk:
-            out[date_value] = label
-    return out
+            rows.append(
+                {
+                    "window_date": date_value,
+                    "Window": label,
+                    "window_start": start_ts.date().isoformat(),
+                    "window_end": end_ts.date().isoformat(),
+                    "window_mid": mid_ts.date().isoformat(),
+                }
+            )
+    return pd.DataFrame(rows)
+
 
 
 def _build_sample_counts(features: pd.DataFrame) -> pd.DataFrame:
@@ -598,6 +813,142 @@ def _plot_per_member(per_member: pd.DataFrame, plot_dirs, options: RuntimeOption
         )
 
 
+def _plot_member_comovement_series(comovement: pd.DataFrame, plot_dirs, options: RuntimeOptions) -> None:
+    if comovement.empty:
+        return
+
+    plot_df = comovement.copy()
+    plot_df["window_mid"] = pd.to_datetime(plot_df["window_mid"], errors="coerce")
+    plot_df["prop_target_imbalance"] = pd.to_numeric(plot_df["prop_target_imbalance"], errors="coerce")
+    plot_df["active_client_imbalance"] = pd.to_numeric(plot_df["active_client_imbalance"], errors="coerce")
+    plot_df["n_valid"] = pd.to_numeric(plot_df["n_valid"], errors="coerce").fillna(0).astype(int)
+    plot_df = plot_df.dropna(subset=["window_mid", "prop_target_imbalance", "active_client_imbalance"])
+    if plot_df.empty:
+        return
+
+    member_order = (
+        plot_df.groupby(plot_df["Member"].astype(str), sort=False)["member_global_r"]
+        .first()
+        .sort_values(ascending=False)
+    )
+    members = member_order.index.tolist()
+    fig = make_subplots(
+        rows=len(members),
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.10 if len(members) > 1 else 0.05,
+        subplot_titles=[_comovement_subplot_title(plot_df, member) for member in members],
+    )
+
+    for row_idx, member in enumerate(members, start=1):
+        member_df = plot_df[plot_df["Member"].astype(str) == member].sort_values("window_mid").copy()
+        if member_df.empty:
+            continue
+        custom = np.column_stack(
+            [
+                member_df["Window"].astype(str),
+                member_df["n_valid"].astype(int),
+                member_df["mean_signed_alignment"].round(4),
+            ]
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=member_df["window_mid"],
+                y=member_df["prop_target_imbalance"],
+                mode="lines+markers",
+                name="Proprietary target imbalance",
+                legendgroup="prop",
+                showlegend=row_idx == 1,
+                marker=dict(size=7, color=COLOR_PROPRIETARY),
+                line=dict(color=COLOR_PROPRIETARY, width=2.2),
+                customdata=custom,
+                hovertemplate=(
+                    "Member="
+                    + member
+                    + "<br>Window=%{customdata[0]}<br>n=%{customdata[1]}"
+                    + "<br>prop imbalance=%{y:.3f}<br>mean alignment=%{customdata[2]:.3f}<extra></extra>"
+                ),
+            ),
+            row=row_idx,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=member_df["window_mid"],
+                y=member_df["active_client_imbalance"],
+                mode="lines+markers",
+                name="Active client imbalance",
+                legendgroup="client",
+                showlegend=row_idx == 1,
+                marker=dict(size=7, color=COLOR_CLIENT),
+                line=dict(color=COLOR_CLIENT, width=2.2, dash="dash"),
+                customdata=custom,
+                hovertemplate=(
+                    "Member="
+                    + member
+                    + "<br>Window=%{customdata[0]}<br>n=%{customdata[1]}"
+                    + "<br>client imbalance=%{y:.3f}<br>mean alignment=%{customdata[2]:.3f}<extra></extra>"
+                ),
+            ),
+            row=row_idx,
+            col=1,
+        )
+        fig.add_hline(y=0.0, line=dict(color=COLOR_NEUTRAL, width=1, dash="dot"), row=row_idx, col=1)
+        fig.update_yaxes(range=[-1.05, 1.05], title_text="Imbalance", row=row_idx, col=1)
+
+    fig.update_layout(
+        title=dict(
+            text=(
+                "Prop-client active-imbalance co-movement"
+                f"<br><sup>{options.comovement_scope}, {options.comovement_lead_lag_bucket}; "
+                f"{options.comovement_window_days}-trading-day windows</sup>"
+            ),
+            x=0.5,
+            xanchor="center",
+        ),
+        width=1200,
+        height=max(540, 300 * len(members)),
+        font=dict(size=14),
+        title_font=dict(size=18),
+        legend=dict(
+            title_text="",
+            orientation="v",
+            x=1.01,
+            xanchor="left",
+            y=1.0,
+            yanchor="top",
+            font=dict(size=13),
+        ),
+        margin=dict(l=70, r=260, t=120, b=70),
+    )
+    fig.update_annotations(font_size=14)
+    fig.update_xaxes(tickfont=dict(size=12), title_font=dict(size=13))
+    fig.update_yaxes(tickfont=dict(size=12), title_font=dict(size=13))
+    fig.update_xaxes(title_text="Window midpoint", row=len(members), col=1)
+    save_plotly_figure(
+        fig,
+        stem=f"member_comovement_{options.comovement_scope}_{options.comovement_lead_lag_bucket}",
+        dirs=plot_dirs,
+        write_html=options.write_html,
+        write_png=options.write_png,
+        strict_png=False,
+    )
+
+
+def _comovement_subplot_title(plot_df: pd.DataFrame, member: str) -> str:
+    member_df = plot_df[plot_df["Member"].astype(str) == member]
+    if member_df.empty:
+        return f"Member {member}"
+    global_r = pd.to_numeric(member_df["member_global_r"], errors="coerce").dropna()
+    n_total = int(pd.to_numeric(member_df["n_valid"], errors="coerce").sum())
+    pieces = [f"Member {member} (n={n_total})"]
+    if not global_r.empty:
+        pieces.append(f"target r={float(global_r.iloc[0]):.3f}")
+    # The window-level correlation is descriptive and can be unstable with
+    # short windows; keep it in the exported table rather than the plot title.
+    return " | ".join(pieces)
+
+
 def _plot_member_window_heatmaps(member_window: pd.DataFrame, plot_dirs, options: RuntimeOptions) -> None:
     if member_window.empty:
         return
@@ -668,6 +1019,10 @@ def _build_manifest(
             "member_window_days": options.member_window_days,
             "min_obs_per_member": options.min_obs_per_member,
             "min_obs_per_member_window": options.min_obs_per_member_window,
+            "comovement_scope": options.comovement_scope,
+            "comovement_lead_lag_bucket": options.comovement_lead_lag_bucket,
+            "comovement_top_n_members": options.comovement_top_n_members,
+            "comovement_window_days": options.comovement_window_days,
             "overlap_batch_size": options.overlap_batch_size,
             "n_jobs": options.n_jobs,
         },

@@ -15,6 +15,6 @@ pyarrow==22.0.0
 scikit-learn==1.8.0
 matplotlib==3.10.8
 
-# `scripts/crowding_vs_part_rate.py` enables interaction regressions by default
+# `scripts/run_analysis.py crowding eta` enables interaction regressions by default
 # and skips that step when statsmodels is missing.
 statsmodels>=0.14

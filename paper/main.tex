@@ -2166,6 +2166,23 @@ already active client flow; the latter two indicate local co-movement, but do
 not establish that proprietary trading follows client flow, since the client
 metaorders start after the proprietary interval has begun.
 
+To make the strongest member-level correlations visually interpretable, we also
+aggregate the target-level quantities into non-overlapping 5-trading-day
+windows for the two members with the largest positive global correlations. For
+member $m$ and window $w$, we plot the proprietary target-direction imbalance
+and the average active client imbalance,
+\[
+P_{m,w}=n_{m,w}^{-1}\sum_i \epsilon_i^{\mathrm{prop}},
+\qquad
+C_{m,w}=n_{m,w}^{-1}\sum_i \mathrm{imb}^{\mathrm{act}}_{i,m},
+\]
+where the sums run over valid proprietary targets in that member-window. Unlike
+the discarded member-window heatmap, this diagnostic imposes no minimum count
+filter at the window level; sparse windows are simply reflected in the number of
+targets reported in the figure metadata. We therefore use this panel only as a
+descriptive co-movement diagnostic; the inferential object remains the
+target-level correlation with bootstrap confidence intervals.
+
 \begin{figure}[t]
   \centering
   \begin{subfigure}{0.85\textwidth}
@@ -2176,13 +2193,14 @@ metaorders start after the proprietary interval has begun.
   \vspace{0.5em}
   \begin{subfigure}{0.95\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{images/member_active_overlap_crowding/png/member_window_heatmap_same_isin_all_active}
-    \caption{Non-overlapping 3-day member-window correlations.}
+    \includegraphics[width=\textwidth]{images/member_active_overlap_crowding/png/member_comovement_same_isin_all_active}
+    \caption{Window-level co-movement for the two strongest positive members.}
   \end{subfigure}
   \caption{Active member-level prop--client alignment. The top panel reports
   $r_m^{\mathrm{act}}$ for members with at least 30 valid proprietary targets.
-  The bottom panel reports the same correlation over non-overlapping 3-day
-  windows, displaying cells with at least 5 valid proprietary targets.}
+  The bottom panel compares the proprietary target-direction imbalance with the
+  active client imbalance for members 96862 and 91149 in non-overlapping
+  5-trading-day windows.}
   \label{fig:member_active_overlap_crowding}
 \end{figure}
 

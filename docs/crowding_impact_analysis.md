@@ -60,14 +60,15 @@ instantaneous execution environment faced by the target metaorder.
 
 ## Run Inventory
 
-The results below combine four complementary analyses.
+The results below combine five complementary analyses.
 
-| Analysis | Script | Main output folder | Role in the argument |
+| Analysis | Command | Main output folder | Role in the argument |
 |---|---|---|---|
-| Crowding-conditioned impact curves | `scripts/crowding_impact_analysis.py` | `out_files/ftsemib/crowding_impact/` | Tests whether impact is higher in high-crowding terciles. |
-| Crowding vs participation rate | `scripts/crowding_vs_part_rate.py` | `out_files/ftsemib/crowding_vs_part_rate/` | Checks whether crowding increases with execution aggressiveness. |
-| Intraday start-bin crowding | `scripts/crowding_intraday_profile.py` | `out_files/ftsemib/crowding_intraday_profile/` | Describes start-time variation in local start-bin crowding. |
-| Active overlap analysis | `scripts/crowding_overlap_analysis.py` | `out_files/ftsemib/crowding_overlap_analysis/` | Tests true interval overlap during each target metaorder's life. |
+| Crowding-conditioned impact curves | `scripts/run_analysis.py crowding impact` | `out_files/ftsemib/crowding_impact/` | Tests whether impact is higher in high-crowding terciles. |
+| Crowding vs participation rate | `scripts/run_analysis.py crowding eta` | `out_files/ftsemib/crowding_vs_part_rate/` | Checks whether crowding increases with execution aggressiveness. |
+| Intraday start-bin crowding | `scripts/run_analysis.py crowding intraday` | `out_files/ftsemib/crowding_intraday_profile/` | Describes start-time variation in local start-bin crowding. |
+| Active overlap analysis | `scripts/run_analysis.py crowding overlap` | `out_files/ftsemib/crowding_overlap_analysis/` | Tests true interval overlap during each target metaorder's life. |
+| Member active overlap | `scripts/run_analysis.py crowding member-overlap` | `out_files/ftsemib/member_active_overlap_crowding/` | Tests whether same-member proprietary flow co-moves with active client flow. |
 
 The main active-overlap run used:
 
@@ -79,7 +80,7 @@ The main active-overlap run used:
 - overlap computation: per `(ISIN, Date)` block, batch size `2048`, `N_JOBS=4`
 - impact regressions: `statsmodels 0.14.6`, OLS with Date-cluster standard errors
 - binned WLS regressions: 30 log-`Q/V` bins, minimum 20 metaorders per
-  group-bin cell, matching `MIN_COUNT` in `metaorder_computation.py`
+  group-bin cell, matching `MIN_COUNT` in `scripts/run_analysis.py metaorders compute`
 - sample: `843,869` metaorders, `251` dates, `41` ISINs
 
 ## Definitions
@@ -436,7 +437,7 @@ power-law fit: log-binned `Q/V` cells, `log(mean Impact)` as the dependent
 variable, and WLS weights based on the delta-method variance of
 `log(mean Impact)`.
 
-To align the active-overlap test with that original evidence, the script now
+To align the active-overlap test with that original evidence, the workflow now
 also estimates:
 
 ```text
@@ -452,12 +453,12 @@ W2: W1 + log(mean overlap_count_tw_all_cell)
 
 The cell is always the same object as in the standard impact curves:
 `group x Q/V-log-bin`. The `Q/V` regressor is the geometric center of the
-log-bin, exactly as in `metaorder_computation.py`. Additional controls summarize
-the composition of that same cell and are averaged before taking logs. The
-minimum retained-cell size is 20 metaorders, the same `MIN_COUNT` used by the
-standard impact fit. Signed overlap variables are not included linearly in this
-WLS specification; directional crowding is represented through the same-sign and
-opposite-sign positive components.
+log-bin, exactly as in `scripts/run_analysis.py metaorders compute`. Additional
+controls summarize the composition of that same cell and are averaged before
+taking logs. The minimum retained-cell size is 20 metaorders, the same
+`MIN_COUNT` used by the standard impact fit. Signed overlap variables are not
+included linearly in this WLS specification; directional crowding is represented
+through the same-sign and opposite-sign positive components.
 The output is in:
 
 [`overlap_impact_wls_regressions.csv`](../out_files/ftsemib/crowding_overlap_analysis/overlap_impact_wls_regressions.csv)
@@ -580,3 +581,11 @@ Intraday and active overlap:
 - [`out_files/ftsemib/crowding_overlap_analysis/overlap_impact_wls_cells.csv`](../out_files/ftsemib/crowding_overlap_analysis/overlap_impact_wls_cells.csv)
 - [`out_files/ftsemib/crowding_overlap_analysis/overlap_impact_wls_regressions.csv`](../out_files/ftsemib/crowding_overlap_analysis/overlap_impact_wls_regressions.csv)
 - [`out_files/ftsemib/crowding_overlap_analysis/run_manifest.json`](../out_files/ftsemib/crowding_overlap_analysis/run_manifest.json)
+
+Member active overlap:
+
+- [`out_files/ftsemib/member_active_overlap_crowding/global_correlations.csv`](../out_files/ftsemib/member_active_overlap_crowding/global_correlations.csv)
+- [`out_files/ftsemib/member_active_overlap_crowding/per_member_correlations.csv`](../out_files/ftsemib/member_active_overlap_crowding/per_member_correlations.csv)
+- [`out_files/ftsemib/member_active_overlap_crowding/member_comovement_series.csv`](../out_files/ftsemib/member_active_overlap_crowding/member_comovement_series.csv)
+- [`out_files/ftsemib/member_active_overlap_crowding/member_window_correlations.csv`](../out_files/ftsemib/member_active_overlap_crowding/member_window_correlations.csv)
+- [`out_files/ftsemib/member_active_overlap_crowding/run_manifest.json`](../out_files/ftsemib/member_active_overlap_crowding/run_manifest.json)

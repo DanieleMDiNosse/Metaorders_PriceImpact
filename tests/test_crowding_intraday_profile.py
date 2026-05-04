@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import scripts.crowding_intraday_profile as intraday_crowding
+import moimpact.workflows.crowding.intraday as intraday_crowding
 
 
 def _period(start_ts: str, end_ts: str | None = None) -> list[int]:

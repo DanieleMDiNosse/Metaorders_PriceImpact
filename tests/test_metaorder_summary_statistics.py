@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from moimpact.plotting import COLOR_CLIENT, COLOR_PROPRIETARY
-from scripts.metaorder_summary_statistics import (
+from moimpact.workflows.metaorders.summary import (
     _daily_metaorder_volume,
     build_daily_metaorder_share_table,
     build_mean_daily_metaorder_share_figure,

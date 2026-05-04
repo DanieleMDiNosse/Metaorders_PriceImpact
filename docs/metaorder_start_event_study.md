@@ -1,11 +1,11 @@
 # Metaorder Start Event-Study
 
-This document covers `scripts/metaorder_start_event_study.py`, which measures
+This document covers `scripts/run_analysis.py metaorders start-event`, which measures
 whether high-participation metaorders tend to start in locally crowded
 neighborhoods and whether their starts are followed by elevated nearby start
 intensity.
 
-The script is phrased as an event-study of start intensity, not as a causal
+The workflow is phrased as an event-study of start intensity, not as a causal
 claim about who triggered whom.
 
 ## Inputs and config
@@ -17,10 +17,16 @@ Default config:
 Main environment-free entrypoint:
 
 ```bash
-python scripts/metaorder_start_event_study.py
+python scripts/run_analysis.py metaorders start-event
 ```
 
-By default the script loads the filtered proprietary and client metaorder
+Alternate YAML:
+
+```bash
+python scripts/run_analysis.py metaorders start-event --config config_ymls/metaorder_start_event_study.yml
+```
+
+By default the workflow loads the filtered proprietary and client metaorder
 tables from `out_files/{DATASET_NAME}/`, but both input paths can be overridden
 through CLI flags or YAML.
 
@@ -45,9 +51,9 @@ Core design choices:
   - `same_sign`
   - `opposite_sign`
 
-## Outputs
+## Event Metrics
 
-For each group and variant, the script builds:
+For each group and variant, the workflow builds:
 
 - event-time curves of treated and control start intensity
 - diagnostics on matching, simultaneous starts, and boundary truncation
@@ -73,7 +79,7 @@ Two resampling schemes are used:
 - date-cluster bootstrap for confidence intervals
 - within-stratum permutation of the high-`eta` label for p-values
 
-The script then applies:
+The workflow then applies:
 
 - Benjamini-Hochberg adjustment to the bin-by-bin curve tests, separately
   within each `(group, variant, sign relation)` family
@@ -92,12 +98,12 @@ Main knobs:
 
 See [`bootstrap_methods.md`](bootstrap_methods.md) for the resampling details.
 
-For performance, the script parallelizes the independent `(ISIN, Date)` event
+For performance, the workflow parallelizes the independent `(ISIN, Date)` event
 windows and the bootstrap/permutation replicate batches when `N_JOBS` is
 greater than 1 or set to `0` for the auto mode. The event-window counting loop
 also uses `numba` when it is available in the active Python environment.
 
-When multiple `high_eta` quantiles are requested, the script reuses the
+When multiple `high_eta` quantiles are requested, the workflow reuses the
 materialized event-window metrics and matching strata across thresholds. In
 that sweep mode it switches to outer threshold-level parallelism and keeps the
 per-threshold bootstrap/permutation workers serial to avoid nested executor
@@ -168,7 +174,7 @@ as blank figures.
 
 ## Useful CLI overrides
 
-The script exposes a full CLI. Common overrides include:
+The command exposes a full CLI. Common overrides include:
 
 - `--dataset-name`
 - `--analysis-tag`
@@ -190,7 +196,7 @@ The script exposes a full CLI. Common overrides include:
 Example:
 
 ```bash
-python scripts/metaorder_start_event_study.py \
+python scripts/run_analysis.py metaorders start-event \
   --analysis-tag metaorder_start_event_study \
   --high-eta-quantiles 0.5,0.6,0.7,0.8,0.9 \
   --event-window-minutes 20 \
