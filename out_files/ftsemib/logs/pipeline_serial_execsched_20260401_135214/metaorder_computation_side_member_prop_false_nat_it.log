@@ -1,47 +1,0 @@
-[WLS] Running weighted least-squares impact fits...
-[WLS] After participation-rate filter (PR < 1.0): 24094 -> 23862 metaorders
-[Impact Path] Normalized impact paths:   0%|          | 0/23862 [00:00<?, ?it/s][Impact Path] Normalized impact paths:   4%|▎         | 866/23862 [00:00<00:02, 8651.10it/s][Impact Path] Normalized impact paths:   7%|▋         | 1755/23862 [00:00<00:02, 8790.00it/s][Impact Path] Normalized impact paths:  11%|█         | 2640/23862 [00:00<00:02, 8813.88it/s][Impact Path] Normalized impact paths:  15%|█▍        | 3522/23862 [00:00<00:02, 8647.71it/s][Impact Path] Normalized impact paths:  18%|█▊        | 4388/23862 [00:00<00:02, 8595.83it/s][Impact Path] Normalized impact paths:  22%|██▏       | 5248/23862 [00:00<00:02, 8577.96it/s][Impact Path] Normalized impact paths:  26%|██▌       | 6108/23862 [00:00<00:02, 8584.46it/s][Impact Path] Normalized impact paths:  29%|██▉       | 6967/23862 [00:00<00:01, 8578.53it/s][Impact Path] Normalized impact paths:  33%|███▎      | 7828/23862 [00:00<00:01, 8585.34it/s][Impact Path] Normalized impact paths:  36%|███▋      | 8687/23862 [00:01<00:01, 8561.58it/s][Impact Path] Normalized impact paths:  40%|████      | 9547/23862 [00:01<00:01, 8571.31it/s][Impact Path] Normalized impact paths:  44%|████▎     | 10405/23862 [00:01<00:01, 8572.61it/s][Impact Path] Normalized impact paths:  47%|████▋     | 11272/23862 [00:01<00:01, 8599.76it/s][Impact Path] Normalized impact paths:  51%|█████     | 12133/23862 [00:01<00:01, 8498.33it/s][Impact Path] Normalized impact paths:  54%|█████▍    | 12984/23862 [00:01<00:01, 8473.15it/s][Impact Path] Normalized impact paths:  58%|█████▊    | 13837/23862 [00:01<00:01, 8489.42it/s][Impact Path] Normalized impact paths:  62%|██████▏   | 14687/23862 [00:01<00:01, 8465.70it/s][Impact Path] Normalized impact paths:  65%|██████▌   | 15537/23862 [00:01<00:00, 8475.71it/s][Impact Path] Normalized impact paths:  69%|██████▊   | 16386/23862 [00:01<00:00, 8479.01it/s][Impact Path] Normalized impact paths:  72%|███████▏  | 17237/23862 [00:02<00:00, 8486.61it/s][Impact Path] Normalized impact paths:  76%|███████▌  | 18090/23862 [00:02<00:00, 8497.94it/s][Impact Path] Normalized impact paths:  79%|███████▉  | 18941/23862 [00:02<00:00, 8501.12it/s][Impact Path] Normalized impact paths:  83%|████████▎ | 19792/23862 [00:02<00:00, 8483.13it/s][Impact Path] Normalized impact paths:  87%|████████▋ | 20646/23862 [00:02<00:00, 8498.26it/s][Impact Path] Normalized impact paths:  90%|█████████ | 21504/23862 [00:02<00:00, 8521.49it/s][Impact Path] Normalized impact paths:  94%|█████████▎| 22358/23862 [00:02<00:00, 8525.26it/s][Impact Path] Normalized impact paths:  97%|█████████▋| 23211/23862 [00:02<00:00, 8519.10it/s][Impact Path] Normalized impact paths: 100%|██████████| 23862/23862 [00:02<00:00, 8540.65it/s]
-[Impact Path] Saved normalized impact path plot to None
---- Overall (Buy) ---
-Power law: Y = 0.0320019 +/- 0.0247
-Power law: gamma = 0.490632 +/- 0.433
-Power law: R^2_log = 0.2046 | R^2_lin = -0.6599
-Logarithmic: a = 0.042538 +/- 0.127 | b = 2.939 +/- 10.8 | R^2_lin = 0.4467
-Bins used: 7 (min_count >= 20)
---- Overall (Sell) ---
-Power law: Y = 0.0197041 +/- 0.00575
-Power law: gamma = 0.269945 +/- 0.107
-Power law: R^2_log = 0.5167 | R^2_lin = -0.1425
-Logarithmic: a = 0.493578 +/- 6.07 | b = 0.288439 +/- 3.66 | R^2_lin = 0.7863
-Bins used: 8 (min_count >= 20)
-[Buy][$\eta < \eta_{median}$] skipped: Not enough valid bins after filtering (got 1; need at least 2).
---- Conditioned on η (Buy, power-law only) ---
-[η $\eta ≥ \eta_{median}$] Y = 0.0633116 +/- 0.0143 | gamma = 0.912153 +/- 0.108 |
-[η $\eta ≥ \eta_{median}$] R^2_log = 0.8766 | R^2_lin = 0.5782
-[η $\eta ≥ \eta_{median}$] Beta controls: None
-[η $\eta ≥ \eta_{median}$] Beta controls SE: None
---- Conditioned on η (Sell, power-law only) ---
-[η $\eta ≥ \eta_{median}$] Y = 0.0227139 +/- 0.00675 | gamma = 0.472664 +/- 0.0838 |
-[η $\eta ≥ \eta_{median}$] R^2_log = 0.7261 | R^2_lin = 0.0814
-[η $\eta ≥ \eta_{median}$] Beta controls: None
-[η $\eta ≥ \eta_{median}$] Beta controls SE: None
-[η $\eta < \eta_{median}$] Y = 0.00275864 +/- 3.17e-17 | gamma = -0.000417 +/- 1.4e-15 |
-[η $\eta < \eta_{median}$] R^2_log = nan | R^2_lin = nan
-[η $\eta < \eta_{median}$] Beta controls: None
-[η $\eta < \eta_{median}$] Beta controls SE: None
-[Surface] Saved 3D surface to None (HTML: /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_buy_3d_surface_member_non_proprietary_member_nationality_it.html) and heatmap to None (HTML: /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_buy_heatmap_member_non_proprietary_member_nationality_it.html); min_count per 2D bin = 10
-[Surface] Saved 3D surface to None (HTML: /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_sell_3d_surface_member_non_proprietary_member_nationality_it.html) and heatmap to None (HTML: /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_participation_sell_heatmap_member_non_proprietary_member_nationality_it.html); min_count per 2D bin = 10
-[Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
-[Bivariate Fits]   C = 0.0288967 +/- 0.00622 (95% CI) | delta = 0.162061 +/- 0.0765 | gamma = 0.394127 +/- 0.0618
-[Bivariate Fits]   R^2_log = 0.6127 | R^2_lin = -0.0612
-[Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
-[Bivariate Fits]   a = 0.0308102 +/- 0.0841 (95% CI) | b = 0.882612 +/- 2.97 | c = 232.195 +/- 275
-[Bivariate Fits]   R^2_lin = 0.4315
-[Bivariate Fits] Saved interactive 3D HTML plot to /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_duration_buy_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.html
-[Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
-[Bivariate Fits]   C = 0.0267861 +/- 0.00609 (95% CI) | delta = 0.085006 +/- 0.0878 | gamma = 0.391086 +/- 0.062
-[Bivariate Fits]   R^2_log = 0.6054 | R^2_lin = 0.0117
-[Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
-[Bivariate Fits]   a = 0.0039726 +/- 0.00403 (95% CI) | b = 51.564 +/- 148 | c = 216.679 +/- 285
-[Bivariate Fits]   R^2_lin = 0.4025
-[Bivariate Fits] Saved interactive 3D HTML plot to /home/danieledinosse/repositories/Metaorders_PriceImpact/images/ftsemib/member_non_proprietary/html/impact_surface_qv_duration_sell_3d_surface_bivariate_fits_member_non_proprietary_member_nationality_it.html
