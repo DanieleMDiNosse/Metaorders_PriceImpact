@@ -28,6 +28,14 @@ import sys
 import tempfile
 from typing import Any, Callable, Iterator, Mapping, Sequence
 
+from moimpact.paper_figure_styles import (
+    PAPER_FIGURE_STYLES_ENV,
+    PAPER_FIGURE_STYLE_MODE_ENV,
+    PAPER_FIGURE_STYLE_MODE_PER_FIGURE,
+    PAPER_FIGURE_STYLE_MODES,
+    resolve_paper_figure_style_mode,
+)
+
 try:
     import yaml
 except Exception as exc:  # pragma: no cover
@@ -211,28 +219,57 @@ def _runner_default_targets() -> tuple[str, ...]:
     return ("all",)
 
 
+def _runner_optional_positive_int(key: str) -> int | None:
+    raw = _RUNNER_CFG.get(key)
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        raise ValueError(f"Invalid {key} value in {_RUNNER_CONFIG_PATH}: {raw!r}")
+    if isinstance(raw, int):
+        value = int(raw)
+    elif isinstance(raw, str):
+        text = raw.strip().lower()
+        if text in {"", "none", "null"}:
+            return None
+        if not text.isdigit():
+            raise ValueError(f"Invalid {key} value in {_RUNNER_CONFIG_PATH}: {raw!r}")
+        value = int(text)
+    else:
+        raise ValueError(f"Invalid {key} value in {_RUNNER_CONFIG_PATH}: {raw!r}")
+    if value <= 0:
+        raise ValueError(f"{key} must be a positive integer or null in {_RUNNER_CONFIG_PATH}, got {raw!r}.")
+    return value
+
+
 def _style_updates_from_runner_cfg() -> dict[str, int]:
     """
-    Summary
-    -------
-    Return legacy per-script style overrides requested by the paper runner.
+    Return figure-generation overrides requested by the paper runner config.
 
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    dict[str, int]
-        Always-empty mapping.
-
-    Notes
-    -----
-    Plot typography is now controlled centrally by `config_ymls/plot_style.yml`.
-    The paper runner no longer propagates font-size overrides into individual
-    analysis YAML files.
+    Plot typography remains centralized in ``config_ymls/plot_style.yml``. The
+    paper runner only forwards the optional impact-fit canvas dimensions to the
+    scripts that generate Figures 6, 7, 8, 17, and 18.
     """
-    return {}
+    updates: dict[str, int] = {}
+    width = _runner_optional_positive_int("IMPACT_FIT_FIGURE_WIDTH")
+    height = _runner_optional_positive_int("IMPACT_FIT_FIGURE_HEIGHT")
+    if width is not None:
+        updates["IMPACT_FIT_FIGURE_WIDTH"] = width
+    if height is not None:
+        updates["IMPACT_FIT_FIGURE_HEIGHT"] = height
+    return updates
+
+
+def _runner_default_style_mode() -> str:
+    raw = _RUNNER_CFG.get("STYLE_MODE")
+    return resolve_paper_figure_style_mode(None if raw is None else str(raw))
+
+
+def _runner_default_paper_style_config() -> str:
+    path = _resolve_runner_path(
+        _RUNNER_CFG.get(PAPER_FIGURE_STYLES_ENV),
+        _REPO_ROOT / "config_ymls" / "paper_figure_styles.yml",
+    )
+    return path.as_posix()
 
 
 def _runner_default_max_workers() -> int:
@@ -1050,6 +1087,24 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=_runner_default_write_pdf(),
         help="Whether to export PDF sidecars for paper figures. Default: value from paper_figures.yml.",
     )
+    parser.add_argument(
+        "--style-mode",
+        choices=tuple(sorted(PAPER_FIGURE_STYLE_MODES)),
+        default=_runner_default_style_mode(),
+        help=(
+            "Figure styling mode. 'global' uses only the normal global plot_style.yml "
+            "workflow styles; 'per-figure' additionally applies the paper-style YAML "
+            "by output stem. Default: STYLE_MODE from paper_figures.yml."
+        ),
+    )
+    parser.add_argument(
+        "--paper-style-config",
+        default=_runner_default_paper_style_config(),
+        help=(
+            "YAML with optional paper-specific defaults and per-figure overrides, "
+            "used only when --style-mode=per-figure. Relative paths resolve from the repo root."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -1101,7 +1156,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     paper_tex_path = Path(args.paper_tex).resolve()
     img_output_root = Path(args.img_output_root).resolve()
     dataset_name = str(args.dataset_name)
-    style_updates = _style_updates_from_runner_cfg()
+    style_mode = resolve_paper_figure_style_mode(args.style_mode)
+    style_updates = (
+        _style_updates_from_runner_cfg()
+        if style_mode == PAPER_FIGURE_STYLE_MODE_PER_FIGURE
+        else {}
+    )
+    paper_style_config_path = _resolve_runner_path(
+        args.paper_style_config,
+        _REPO_ROOT / "config_ymls" / "paper_figure_styles.yml",
+    )
+    if style_mode == PAPER_FIGURE_STYLE_MODE_PER_FIGURE and not paper_style_config_path.exists():
+        raise FileNotFoundError(f"Missing paper style config: {paper_style_config_path}")
     max_workers = _resolve_max_workers(int(args.max_workers))
     write_pdf = bool(args.write_pdf)
 
@@ -1166,6 +1232,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "selected_figures": list(work.figures),
         "tasks": sorted(work.tasks),
         "style_updates": style_updates,
+        "style_mode": style_mode,
+        "paper_style_config": str(paper_style_config_path),
         "max_workers": max_workers,
         "write_pdf": write_pdf,
         "stage_all": work.stage_all.name,
@@ -1190,14 +1258,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"stage_it={work.stage_it.name}, "
         f"tasks={', '.join(sorted(work.tasks))}, "
         f"max_workers={max_workers}, "
-        f"write_pdf={write_pdf}"
+        f"write_pdf={write_pdf}, "
+        f"style_mode={style_mode}"
+    )
+
+    print(
+        "[style] "
+        f"mode={style_mode}, "
+        f"paper_style_config={paper_style_config_path}"
     )
 
     original_plotly_write_pdf = os.environ.get("PLOTLY_WRITE_PDF")
+    original_style_mode = os.environ.get(PAPER_FIGURE_STYLE_MODE_ENV)
+    original_paper_style_config = os.environ.get(PAPER_FIGURE_STYLES_ENV)
     if write_pdf:
         os.environ["PLOTLY_WRITE_PDF"] = "true"
     else:
         os.environ.pop("PLOTLY_WRITE_PDF", None)
+    os.environ[PAPER_FIGURE_STYLE_MODE_ENV] = style_mode
+    os.environ[PAPER_FIGURE_STYLES_ENV] = str(paper_style_config_path)
 
     try:
         _run_metaorder_intro(
@@ -1403,6 +1482,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             os.environ.pop("PLOTLY_WRITE_PDF", None)
         else:
             os.environ["PLOTLY_WRITE_PDF"] = original_plotly_write_pdf
+        if original_style_mode is None:
+            os.environ.pop(PAPER_FIGURE_STYLE_MODE_ENV, None)
+        else:
+            os.environ[PAPER_FIGURE_STYLE_MODE_ENV] = original_style_mode
+        if original_paper_style_config is None:
+            os.environ.pop(PAPER_FIGURE_STYLES_ENV, None)
+        else:
+            os.environ[PAPER_FIGURE_STYLES_ENV] = original_paper_style_config
 
     print("[done] Paper-figure generation plan completed.")
     return 0

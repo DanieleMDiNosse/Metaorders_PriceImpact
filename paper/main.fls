@@ -3,7 +3,7 @@ INPUT /etc/texmf/web2c/texmf.cnf
 INPUT /usr/share/texmf/web2c/texmf.cnf
 INPUT /usr/share/texlive/texmf-dist/web2c/texmf.cnf
 INPUT /var/lib/texmf/web2c/pdftex/pdflatex.fmt
-INPUT main.tex
+INPUT /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/main.tex
 OUTPUT main.log
 INPUT /usr/share/texlive/texmf-dist/tex/latex/base/article.cls
 INPUT /usr/share/texlive/texmf-dist/tex/latex/base/article.cls
@@ -252,14 +252,6 @@ INPUT ./images/member_proprietary/png/power_law_fits_by_participation_rate.pdf
 INPUT ./images/member_proprietary/png/power_law_fits_by_participation_rate.pdf
 INPUT ./images/member_proprietary/png/power_law_fits_by_participation_rate.pdf
 INPUT ./images/member_proprietary/png/power_law_fits_by_participation_rate.pdf
-INPUT ./images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.pdf
-INPUT ./images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.pdf
-INPUT ./images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.pdf
-INPUT ./images/member_non_proprietary/png/impact_surface_qv_participation_heatmap_member_non_proprietary.pdf
-INPUT ./images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.pdf
-INPUT ./images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.pdf
-INPUT ./images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.pdf
-INPUT ./images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.pdf
 INPUT ./images/member_proprietary/png/normalized_impact_path_member_proprietary.pdf
 INPUT ./images/member_proprietary/png/normalized_impact_path_member_proprietary.pdf
 INPUT ./images/member_proprietary/png/normalized_impact_path_member_proprietary.pdf

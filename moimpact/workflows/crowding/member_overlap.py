@@ -44,6 +44,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from moimpact.config import format_path_template, load_yaml_mapping, resolve_repo_path
+from moimpact.paper_figure_styles import apply_plotly_paper_figure_style, plotly_size_from_paper_style
 from moimpact.plot_style import apply_shared_plotly_style, load_plot_style
 from moimpact.plotting import (
     COLOR_CLIENT,
@@ -925,13 +926,26 @@ def _plot_member_comovement_series(comovement: pd.DataFrame, plot_dirs, options:
     fig.update_xaxes(tickfont=dict(size=12), title_font=dict(size=13))
     fig.update_yaxes(tickfont=dict(size=12), title_font=dict(size=13))
     fig.update_xaxes(title_text="Window midpoint", row=len(members), col=1)
+    stem = f"member_comovement_{options.comovement_scope}_{options.comovement_lead_lag_bucket}"
+    style = apply_plotly_paper_figure_style(
+        fig,
+        stem,
+        default_tick_font_size=12,
+        default_label_font_size=13,
+        default_title_font_size=18,
+        default_legend_font_size=13,
+        default_annotation_font_size=14,
+        default_line_width=2.2,
+        default_reference_line_width=1,
+    )
     save_plotly_figure(
         fig,
-        stem=f"member_comovement_{options.comovement_scope}_{options.comovement_lead_lag_bucket}",
+        stem=stem,
         dirs=plot_dirs,
         write_html=options.write_html,
         write_png=options.write_png,
         strict_png=False,
+        **plotly_size_from_paper_style(style),
     )
 
 

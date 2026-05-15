@@ -62,6 +62,7 @@ except Exception as exc:  # pragma: no cover
     raise ImportError("Missing dependency: pyyaml is required to read config defaults.") from exc
 
 from moimpact.config import format_path_template, resolve_repo_path
+from moimpact.paper_figure_styles import apply_plotly_paper_figure_style, plotly_size_from_paper_style
 from moimpact.plot_style import (
     apply_matplotlib_style,
     apply_shared_plotly_style,
@@ -173,6 +174,19 @@ def save_plotly_figure(fig, *args, **kwargs):
     This workflow exports title-less figures to keep labels in paper captions.
     """
     fig.update_layout(title=None)
+    stem = kwargs.get("stem")
+    if stem is not None:
+        style = apply_plotly_paper_figure_style(
+            fig,
+            str(stem),
+            default_tick_font_size=TICK_FONT_SIZE,
+            default_label_font_size=LABEL_FONT_SIZE,
+            default_title_font_size=TITLE_FONT_SIZE,
+            default_legend_font_size=LEGEND_FONT_SIZE,
+            default_annotation_font_size=TITLE_FONT_SIZE,
+            default_line_width=2,
+        )
+        kwargs.update(plotly_size_from_paper_style(style))
     return _save_plotly_figure(fig, *args, **kwargs)
 
 

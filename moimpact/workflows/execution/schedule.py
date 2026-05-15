@@ -47,6 +47,7 @@ from moimpact.config import (
 )
 from moimpact.logging_utils import PrintTee, setup_file_logger
 from moimpact.metaorder_distribution_samples import parse_member_nationality, with_member_nationality_tag
+from moimpact.paper_figure_styles import paper_figure_style, plotly_size_from_paper_style
 from moimpact.plot_style import (
     apply_shared_plotly_style,
     load_plot_style,
@@ -58,6 +59,8 @@ from moimpact.plotting import (
     PlotOutputDirs,
     ensure_plot_dirs,
     make_plot_output_dirs,
+    plotly_export_size_kwargs,
+    plotly_layout_size_kwargs,
     save_plotly_figure as _save_plotly_figure,
 )
 from moimpact.stats.execution_schedule import (
@@ -480,7 +483,7 @@ def _add_heatmap_overlay(
     col: int,
     line_color: str,
     line_dash: str = "solid",
-    line_width: int = 3,
+    line_width: float = 3,
     hovertemplate: str,
 ) -> None:
     """Draw a visible line on top of a heatmap using a light halo."""
@@ -525,6 +528,18 @@ def _plot_heatmap(
     y_center = 0.5 * (proprietary_summary.y_bin_edges[:-1] + proprietary_summary.y_bin_edges[1:])
     zmax = _heatmap_color_max(proprietary_summary, client_summary)
     overlay_curve_label = _overlay_curve_label()
+    figure_style = paper_figure_style(_heatmap_figure_stem())
+    figure_size = plotly_size_from_paper_style(
+        figure_style,
+        default_width=1300,
+        default_height=700,
+    )
+    tick_font_size = int(figure_style.get("tick_font_size", TICK_FONT_SIZE))
+    label_font_size = int(figure_style.get("label_font_size", LABEL_FONT_SIZE))
+    annotation_font_size = int(figure_style.get("annotation_font_size", TITLE_FONT_SIZE))
+    line_width = float(figure_style.get("line_width", 4))
+    reference_line_width = float(figure_style.get("reference_line_width", 2))
+    layout_margin = figure_style.get("margin")
 
     fig = make_subplots(
         rows=1,
@@ -559,7 +574,7 @@ def _plot_heatmap(
             row=1,
             col=col,
             line_color=line_color,
-            line_width=4,
+            line_width=line_width,
             hovertemplate=f"tau=%{{x:.3f}}<br>{overlay_curve_label} cum. vol=%{{y:.3f}}<extra></extra>",
         )
         _add_heatmap_overlay(
@@ -570,23 +585,52 @@ def _plot_heatmap(
             col=col,
             line_color=COLOR_NEUTRAL,
             line_dash="dash",
-            line_width=2,
+            line_width=reference_line_width,
             hovertemplate="tau=%{x:.3f}<br>TWAP=%{y:.3f}<extra></extra>",
         )
 
-    fig.update_layout(
-        coloraxis=dict(
+    colorbar = dict(
+        title=dict(text="Cond. density", font=dict(size=label_font_size)),
+        tickfont=dict(size=tick_font_size),
+    )
+    layout_kwargs: dict[str, Any] = {
+        "coloraxis": dict(
             colorscale=HEATMAP_COLORSCALE,
             cmin=0.0,
             cmax=zmax,
-            colorbar=dict(title="Cond. density"),
+            colorbar=colorbar,
         ),
-        height=700,
-        width=1300,
+        "font": dict(size=label_font_size),
+        **plotly_layout_size_kwargs(figure_size),
+    }
+    if layout_margin:
+        layout_kwargs["margin"] = dict(layout_margin)
+    fig.update_layout(**layout_kwargs)
+    fig.update_annotations(font_size=annotation_font_size)
+    fig.update_xaxes(
+        title_text="Normalized execution time",
+        range=[0.0, 1.0],
+        title_font=dict(size=label_font_size),
+        tickfont=dict(size=tick_font_size),
+        row=1,
+        col=1,
     )
-    fig.update_xaxes(title_text="Normalized execution time", range=[0.0, 1.0], row=1, col=1)
-    fig.update_xaxes(title_text="Normalized execution time", range=[0.0, 1.0], row=1, col=2)
-    fig.update_yaxes(title_text="Cumulative volume fraction", range=[0.0, 1.0], row=1, col=1)
+    fig.update_xaxes(
+        title_text="Normalized execution time",
+        range=[0.0, 1.0],
+        title_font=dict(size=label_font_size),
+        tickfont=dict(size=tick_font_size),
+        row=1,
+        col=2,
+    )
+    fig.update_yaxes(
+        title_text="Cumulative volume fraction",
+        range=[0.0, 1.0],
+        title_font=dict(size=label_font_size),
+        tickfont=dict(size=tick_font_size),
+        row=1,
+        col=1,
+    )
     return fig
 
 
@@ -835,6 +879,11 @@ def main() -> None:
 
         heatmap_fig = _plot_heatmap(proprietary_summary, client_summary)
         heatmap_stem = _heatmap_figure_stem()
+        heatmap_size = plotly_size_from_paper_style(
+            paper_figure_style(heatmap_stem),
+            default_width=1300,
+            default_height=700,
+        )
         save_plotly_figure(
             heatmap_fig,
             stem=heatmap_stem,
@@ -842,6 +891,7 @@ def main() -> None:
             write_html=True,
             write_png=True,
             strict_png=False,
+            **plotly_export_size_kwargs(heatmap_size),
         )
 
         print(f"[Execution schedule] Saved cumulative schedule table to {curve_table_path}")

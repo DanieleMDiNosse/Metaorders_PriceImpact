@@ -1,0 +1,199 @@
+# Per-figure styling/layout overrides for generated figures used in paper/main.tex.
+#
+# Keys under `figures` are output filename stems without extension. You can also
+# use full paper paths without extension when a generator is wired to look them up.
+# These overrides are applied in the generating scripts, not via LaTeX resizing.
+#
+# Common keys currently supported by moimpact.paper_figure_styles:
+#   width, height              Plotly canvas/export size in px
+#   tick_font_size             Axis tick font size
+#   label_font_size            Axis label/title font size
+#   title_font_size            Figure title font size
+#   legend_font_size           Legend font size
+#   annotation_font_size       Annotation/subplot label font size
+#   line_width                 Main trace line width
+#   reference_line_width       Reference-line width
+#   showlegend                 true/false
+#   buy_color, sell_color      Optional trace colors for buy/sell panels
+#   mean_color, line_color     Optional plot-specific line colors
+#   band_alpha                 Optional SEM/confidence-band opacity in [0, 1]
+#   margin: {l, r, t, b, pad}  Plotly layout margin in px
+
+# Individual normalized-impact-path panels used in the paper 2x2 composites.
+impact_path_2x2_panel: &impact_path_2x2_panel
+  width: 1200
+  height: 1000
+  tick_font_size: 60
+  label_font_size: 66
+  annotation_font_size: 60
+  showlegend: false
+  line_width: 5
+  reference_line_width: 3
+  margin:
+    l: 130
+    r: 40
+    t: 35
+    b: 115
+
+# For generated 1x2 plot matrices: reference impact-path font sizes minus 5.
+one_by_two_panel_fig9_minus5: &one_by_two_panel_fig9_minus5
+  tick_font_size: 45
+  label_font_size: 50
+  title_font_size: 61
+  legend_font_size: 55
+  annotation_font_size: 55
+  line_width: 5
+  reference_line_width: 3
+  margin:
+    l: 120
+    r: 50
+    t: 55
+    b: 115
+
+# Single impact-fit panels stacked as a 2x1 paper figure.
+participation_fit_panel: &participation_fit_panel
+  width: 1200
+  height: 1000
+  tick_font_size: 34
+  label_font_size: 38
+  title_font_size: 38
+  legend_font_size: 32
+  line_width: 4
+  margin:
+    l: 95
+    r: 35
+    t: 45
+    b: 95
+
+execution_schedule_panel: &execution_schedule_panel
+  tick_font_size: 32
+  label_font_size: 36
+  title_font_size: 36
+  annotation_font_size: 34
+  line_width: 5
+  reference_line_width: 3
+  margin:
+    l: 95
+    r: 110
+    t: 50
+    b: 85
+
+rolling_timeseries_panel: &rolling_timeseries_panel
+  width: 1200
+  height: 520
+  tick_font_size: 38
+  label_font_size: 42
+  title_font_size: 42
+  legend_font_size: 36
+  line_width: 4
+  reference_line_width: 2
+  margin:
+    l: 105
+    r: 35
+    t: 35
+    b: 85
+
+crowding_impact_2x2_panel: &crowding_impact_2x2_panel
+  width: 1200
+  height: 1000
+  tick_font_size: 55
+  label_font_size: 61
+  title_font_size: 61
+  legend_font_size: 55
+  annotation_font_size: 55
+  line_width: 5
+  margin:
+    l: 120
+    r: 50
+    t: 70
+    b: 115
+
+member_comovement_panel: &member_comovement_panel
+  width: 1200
+  height: 720
+  tick_font_size: 24
+  label_font_size: 28
+  title_font_size: 30
+  legend_font_size: 24
+  annotation_font_size: 24
+  line_width: 3.5
+  reference_line_width: 2
+  margin:
+    l: 90
+    r: 250
+    t: 115
+    b: 85
+
+figures:
+  # Current Figures 10 and 11: normalized impact paths (overall and Italian-member panels).
+  normalized_impact_path_member_proprietary:
+    <<: *impact_path_2x2_panel
+
+  normalized_impact_path_member_proprietary_by_side:
+    <<: *impact_path_2x2_panel
+    buy_color: "#2E7D32"
+    sell_color: "#C06C84"
+
+  normalized_impact_path_member_non_proprietary:
+    <<: *impact_path_2x2_panel
+
+  normalized_impact_path_member_non_proprietary_by_side:
+    <<: *impact_path_2x2_panel
+    buy_color: "#2E7D32"
+    sell_color: "#C06C84"
+
+  normalized_impact_path_member_proprietary_member_nationality_it:
+    <<: *impact_path_2x2_panel
+
+  normalized_impact_path_member_proprietary_by_side_member_nationality_it:
+    <<: *impact_path_2x2_panel
+    buy_color: "#2E7D32"
+    sell_color: "#C06C84"
+
+  normalized_impact_path_member_non_proprietary_member_nationality_it:
+    <<: *impact_path_2x2_panel
+
+  normalized_impact_path_member_non_proprietary_by_side_member_nationality_it:
+    <<: *impact_path_2x2_panel
+    buy_color: "#2E7D32"
+    sell_color: "#C06C84"
+
+  # Figure 5: execution-schedule heatmap; increase fonts a bit.
+  execution_schedule_heatmap_prop_vs_client:
+    <<: *execution_schedule_panel
+  execution_schedule_heatmap_prop_vs_client_median:
+    <<: *execution_schedule_panel
+
+  # Figure 8: 2x1 impact-by-participation figure; increase fonts a bit.
+  power_law_fits_by_participation_rate:
+    <<: *participation_fit_panel
+
+  # Figure 11: 3x1 crowding rolling time series; increase fonts.
+  all_vs_all_crowding_rolling_3d:
+    <<: *rolling_timeseries_panel
+  daily_crowding_rolling_3d:
+    <<: *rolling_timeseries_panel
+  cross_crowding_rolling_3d:
+    <<: *rolling_timeseries_panel
+
+  # Current Figure 13: generated 1x2 local/cross-crowding matrices.
+  curve_mean_align_vs_eta_local:
+    <<: *one_by_two_panel_fig9_minus5
+  curve_mean_abs_imb_vs_eta_local:
+    <<: *one_by_two_panel_fig9_minus5
+  curve_mean_align_vs_eta_cross:
+    <<: *one_by_two_panel_fig9_minus5
+  curve_mean_abs_imb_vs_eta_cross:
+    <<: *one_by_two_panel_fig9_minus5
+
+  # Current Figure 17: crowding-impact curves, generated as one 1x2 matrix.
+  main_crowding_impact_curves:
+    <<: *one_by_two_panel_fig9_minus5
+
+  # Current Figure 18: crowding-impact eta robustness, generated as a 2x2 matrix.
+  eta_robustness_crowding_impact_curves:
+    <<: *crowding_impact_2x2_panel
+
+  # Current Figure 19 bottom panel only: prop-client active-imbalance co-movement.
+  member_comovement_same_isin_all_active:
+    <<: *member_comovement_panel

@@ -12,3 +12,19 @@ DEFAULT_TARGETS: [all]
 # 0 -> conservative auto-selection, 1 -> serial, >1 -> explicit cap.
 MAX_WORKERS: 0
 WRITE_PDF: true
+
+# Styling mode for generated paper figures.
+#   global     -> use only the workflow/global plot_style.yml settings.
+#   per-figure -> use plot_style.yml plus paper_figure_styles.yml overrides by output stem.
+STYLE_MODE: per-figure
+PAPER_FIGURE_STYLES_CONFIG: config_ymls/paper_figure_styles.yml
+
+# Optional paper-runner canvas size for paper impact-fit figures.
+# Used when STYLE_MODE is per-figure; ignored by --style-mode global so that
+# global mode reflects the normal workflow/config_ymls/plot_style.yml baseline.
+# Figures 6-8 and 17-18 in paper/main.tex. These values are forwarded to the
+# underlying generator YAMLs; set either value to null to use each script's
+# default / config_ymls/plot_style.yml export size. The paper impact-fit
+# figures are landscape with the long side equal to 1.2x the short side.
+IMPACT_FIT_FIGURE_WIDTH: 1200
+IMPACT_FIT_FIGURE_HEIGHT: 1000

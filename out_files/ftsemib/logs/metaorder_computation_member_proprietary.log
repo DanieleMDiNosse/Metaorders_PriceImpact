@@ -1186,3 +1186,88 @@
 2026-04-22 09:27:36,289 - [Bivariate Fits]   R^2_lin = 0.8699
 2026-04-22 09:27:45,186 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_duration_sell_3d_surface_bivariate_fits_member_proprietary.html
 2026-04-22 09:27:45,186 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_duration_sell_3d_surface_bivariate_fits_member_proprietary.png
+2026-05-15 09:14:30,993 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-05-15 09:14:31,001 - Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+2026-05-15 09:14:31,784 - [SQL Fits] Building metaorders info dataframe...
+2026-05-15 09:16:16,572 - [Metaorders] Computing metaorders across all ISINs (dataset=ftsemib)...
+2026-05-15 09:16:16,572 - Loading /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_dict_all_member_proprietary.pkl
+2026-05-15 09:16:17,364 - [SQL Fits] Building metaorders info dataframe...
+2026-05-15 09:19:23,405 - [SQL Fits] Saving unfiltered metaorders info dataframe...
+2026-05-15 09:19:24,310 - [SQL Fits] Applying filters (Q/V > 1e-05) and computing Impact...
+2026-05-15 09:19:24,681 - [SQL Fits] Metaorders before Q/V filter: 588543 | after Q/V filter: 588334
+2026-05-15 09:19:25,713 - [WLS] Running weighted least-squares impact fits...
+2026-05-15 09:19:26,817 - [WLS] After participation-rate filter (PR < 1.0): 588334 -> 588172 metaorders
+2026-05-15 09:19:50,530 - --- Overall (All) ---
+2026-05-15 09:19:50,530 - Power law: Y = 0.0726443 +/- 0.00366
+2026-05-15 09:19:50,530 - Power law: gamma = 0.366203 +/- 0.00828
+2026-05-15 09:19:50,530 - Power law: R^2_log = 0.9864 | R^2_lin = 0.9877
+2026-05-15 09:19:50,531 - Logarithmic: a = 0.00677111 +/- 0.000112 | b = 6650.44 +/- 305 | R^2_lin = 0.9234
+2026-05-15 09:19:50,531 - Bins used: 29 (min_count >= 20)
+2026-05-15 09:19:53,705 - --- Conditioned on η (power-law only) ---
+2026-05-15 09:19:53,705 - [η η < median η] Y = 0.0814311 +/- 0.0077 | gamma = 0.380005 +/- 0.0143 |
+2026-05-15 09:19:53,705 - [η η < median η] R^2_log = 0.9630 | R^2_lin = 0.9655
+2026-05-15 09:19:53,705 - [η η < median η] Beta controls: None
+2026-05-15 09:19:53,705 - [η η < median η] Beta controls SE: None
+2026-05-15 09:19:53,705 - [η η ≥ median η] Y = 0.0647549 +/- 0.00245 | gamma = 0.349725 +/- 0.00627 |
+2026-05-15 09:19:53,705 - [η η ≥ median η] R^2_log = 0.9930 | R^2_lin = 0.9920
+2026-05-15 09:19:53,705 - [η η ≥ median η] Beta controls: None
+2026-05-15 09:19:53,705 - [η η ≥ median η] Beta controls SE: None
+2026-05-15 09:20:05,781 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_participation_3d_surface_member_proprietary.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_participation_3d_surface_member_proprietary.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_participation_heatmap_member_proprietary.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_participation_heatmap_member_proprietary.html); min_count per 2D bin = 10
+2026-05-15 09:20:05,938 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-05-15 09:20:05,938 - [Bivariate Fits]   C = 0.0634309 +/- 0.00323 (95% CI) | delta = 0.337442 +/- 0.0116 | gamma = 0.345822 +/- 0.00912
+2026-05-15 09:20:05,938 - [Bivariate Fits]   R^2_log = 0.9492 | R^2_lin = 0.9638
+2026-05-15 09:20:05,938 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-05-15 09:20:05,938 - [Bivariate Fits]   a = 0.00453803 +/- 0.000183 (95% CI) | b = 120.114 +/- 10.2 | c = 1697.16 +/- 122
+2026-05-15 09:20:05,938 - [Bivariate Fits]   R^2_lin = 0.8833
+2026-05-15 09:20:15,681 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_duration_3d_surface_bivariate_fits_member_proprietary.html
+2026-05-15 09:20:15,681 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_duration_3d_surface_bivariate_fits_member_proprietary.png
+2026-05-15 09:20:17,334 - [WLS] Running weighted least-squares impact fits...
+2026-05-15 09:20:18,556 - [WLS] After participation-rate filter (PR < 1.0): 588334 -> 588172 metaorders
+2026-05-15 09:20:38,263 - --- Overall (Buy) ---
+2026-05-15 09:20:38,263 - Power law: Y = 0.0721798 +/- 0.00391
+2026-05-15 09:20:38,263 - Power law: gamma = 0.369929 +/- 0.00895
+2026-05-15 09:20:38,263 - Power law: R^2_log = 0.9856 | R^2_lin = 0.9852
+2026-05-15 09:20:38,263 - Logarithmic: a = 0.00677273 +/- 0.000166 | b = 6156.66 +/- 413 | R^2_lin = 0.9241
+2026-05-15 09:20:38,263 - Bins used: 27 (min_count >= 20)
+2026-05-15 09:20:38,487 - --- Overall (Sell) ---
+2026-05-15 09:20:38,487 - Power law: Y = 0.0714748 +/- 0.00498
+2026-05-15 09:20:38,487 - Power law: gamma = 0.358945 +/- 0.0114
+2026-05-15 09:20:38,487 - Power law: R^2_log = 0.9745 | R^2_lin = 0.9837
+2026-05-15 09:20:38,487 - Logarithmic: a = 0.00679147 +/- 0.000152 | b = 7073.21 +/- 443 | R^2_lin = 0.9178
+2026-05-15 09:20:38,487 - Bins used: 28 (min_count >= 20)
+2026-05-15 09:20:44,359 - --- Conditioned on η (Buy, power-law only) ---
+2026-05-15 09:20:44,359 - [η η ≥ median η] Y = 0.0573791 +/- 0.00327 | gamma = 0.329226 +/- 0.00939 |
+2026-05-15 09:20:44,359 - [η η ≥ median η] R^2_log = 0.9824 | R^2_lin = 0.9798
+2026-05-15 09:20:44,359 - [η η ≥ median η] Beta controls: None
+2026-05-15 09:20:44,359 - [η η ≥ median η] Beta controls SE: None
+2026-05-15 09:20:44,359 - [η η < median η] Y = 0.0860266 +/- 0.00864 | gamma = 0.397241 +/- 0.0153 |
+2026-05-15 09:20:44,359 - [η η < median η] R^2_log = 0.9629 | R^2_lin = 0.9577
+2026-05-15 09:20:44,360 - [η η < median η] Beta controls: None
+2026-05-15 09:20:44,360 - [η η < median η] Beta controls SE: None
+2026-05-15 09:20:47,946 - --- Conditioned on η (Sell, power-law only) ---
+2026-05-15 09:20:47,946 - [η η < median η] Y = 0.0755877 +/- 0.0104 | gamma = 0.360108 +/- 0.0206 |
+2026-05-15 09:20:47,947 - [η η < median η] R^2_log = 0.9212 | R^2_lin = 0.9434
+2026-05-15 09:20:47,947 - [η η < median η] Beta controls: None
+2026-05-15 09:20:47,947 - [η η < median η] Beta controls SE: None
+2026-05-15 09:20:47,947 - [η η ≥ median η] Y = 0.0730849 +/- 0.00238 | gamma = 0.369949 +/- 0.00542 |
+2026-05-15 09:20:47,947 - [η η ≥ median η] R^2_log = 0.9951 | R^2_lin = 0.9950
+2026-05-15 09:20:47,947 - [η η ≥ median η] Beta controls: None
+2026-05-15 09:20:47,947 - [η η ≥ median η] Beta controls SE: None
+2026-05-15 09:20:58,978 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_participation_buy_3d_surface_member_proprietary.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_participation_buy_3d_surface_member_proprietary.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_participation_buy_heatmap_member_proprietary.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_participation_buy_heatmap_member_proprietary.html); min_count per 2D bin = 10
+2026-05-15 09:21:10,874 - [Surface] Saved 3D surface to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_participation_sell_3d_surface_member_proprietary.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_participation_sell_3d_surface_member_proprietary.html) and heatmap to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_participation_sell_heatmap_member_proprietary.png (HTML: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_participation_sell_heatmap_member_proprietary.html); min_count per 2D bin = 10
+2026-05-15 09:21:10,960 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-05-15 09:21:10,960 - [Bivariate Fits]   C = 0.0593051 +/- 0.00383 (95% CI) | delta = 0.341355 +/- 0.0152 | gamma = 0.327552 +/- 0.0115
+2026-05-15 09:21:10,960 - [Bivariate Fits]   R^2_log = 0.9228 | R^2_lin = 0.9314
+2026-05-15 09:21:10,960 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-05-15 09:21:10,960 - [Bivariate Fits]   a = 0.00432773 +/- 0.000251 (95% CI) | b = 103.22 +/- 12.1 | c = 2319.48 +/- 263
+2026-05-15 09:21:10,960 - [Bivariate Fits]   R^2_lin = 0.8543
+2026-05-15 09:21:20,114 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_duration_buy_3d_surface_bivariate_fits_member_proprietary.html
+2026-05-15 09:21:20,114 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_duration_buy_3d_surface_bivariate_fits_member_proprietary.png
+2026-05-15 09:21:20,276 - [Bivariate Fits] Power-law: I/sigma = C * eta^delta * F^gamma
+2026-05-15 09:21:20,276 - [Bivariate Fits]   C = 0.0673897 +/- 0.00457 (95% CI) | delta = 0.316250 +/- 0.015 | gamma = 0.366547 +/- 0.0122
+2026-05-15 09:21:20,276 - [Bivariate Fits]   R^2_log = 0.9175 | R^2_lin = 0.9398
+2026-05-15 09:21:20,276 - [Bivariate Fits] Logarithmic: I/sigma = a*log10(1+b*eta)*log10(1+c*F)
+2026-05-15 09:21:20,276 - [Bivariate Fits]   a = 0.00477407 +/- 0.000266 (95% CI) | b = 139.309 +/- 17 | c = 1270.69 +/- 116
+2026-05-15 09:21:20,276 - [Bivariate Fits]   R^2_lin = 0.8699
+2026-05-15 09:21:30,068 - [Bivariate Fits] Saved interactive 3D HTML plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/html/impact_surface_qv_duration_sell_3d_surface_bivariate_fits_member_proprietary.html
+2026-05-15 09:21:30,068 - [Bivariate Fits] Saved static PNG plot to /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/member_proprietary/png/impact_surface_qv_duration_sell_3d_surface_bivariate_fits_member_proprietary.png

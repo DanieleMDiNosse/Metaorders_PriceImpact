@@ -1594,3 +1594,12 @@ Mean imbalance: +0.403
 2026-04-22 01:46:51,310 - 
 [Daily count plots] Saved imbalance time-series to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/png/daily_counts_imbalance_timeseries.png
 2026-04-22 01:46:53,868 - [Daily count plots] Saved imbalance density plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/png/daily_counts_imbalance_histogram.png
+2026-05-15 09:39:31,284 - Using parquet directory: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/data/parquet
+2026-05-15 09:39:32,407 - Adding 'Date' column from 'Period' for file: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-05-15 09:39:42,888 - Adding 'Date' column from 'Period' for file: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-05-15 09:40:06,365 - 
+[Prop vs Non-Prop] Saved proprietary metaorders with imbalance columns to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet
+2026-05-15 09:40:06,839 - 
+[Prop vs Non-Prop] Saved non-proprietary metaorders with imbalance columns to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet
+2026-05-15 09:42:13,386 - 
+[Imbalance vs returns] Saved scatter plot to: /home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/prop_vs_nonprop/png/imbalance_vs_daily_returns.png

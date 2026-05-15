@@ -77,6 +77,7 @@ from moimpact.impact_fits import (
     weights_from_sigma,
 )
 from moimpact.logging_utils import PrintTee, setup_file_logger
+from moimpact.paper_figure_styles import apply_plotly_paper_figure_style, plotly_size_from_paper_style
 from moimpact.plot_style import apply_shared_plotly_style, load_plot_style, plotly_legend_layout
 from moimpact.plotting import (
     COLOR_CLIENT,
@@ -85,6 +86,9 @@ from moimpact.plotting import (
     PlotOutputDirs,
     ensure_plot_dirs,
     make_plot_output_dirs,
+    plotly_export_size_kwargs,
+    plotly_figure_size_from_config,
+    plotly_layout_size_kwargs,
     save_plotly_figure as _base_save_plotly_figure,
 )
 
@@ -248,6 +252,19 @@ class DateBootstrapSampler:
 def _export_plotly_figure(fig, *args, **kwargs):
     """Save a Plotly figure while keeping the top-level title outside the panel."""
     fig.update_layout(title=None)
+    stem = kwargs.get("stem")
+    if stem is not None:
+        style = apply_plotly_paper_figure_style(
+            fig,
+            str(stem),
+            default_tick_font_size=PLOT_STYLE.tick_font_size,
+            default_label_font_size=PLOT_STYLE.label_font_size,
+            default_title_font_size=PLOT_STYLE.title_font_size,
+            default_legend_font_size=PLOT_STYLE.legend_font_size,
+            default_annotation_font_size=PLOT_STYLE.annotation_font_size,
+            default_line_width=2,
+        )
+        kwargs.update(plotly_size_from_paper_style(style))
     return _base_save_plotly_figure(fig, *args, **kwargs)
 
 
@@ -2201,6 +2218,7 @@ def _plot_main_curves(
     benchmark_phis: Sequence[float],
     write_html: bool,
     write_png: bool,
+    figure_size: Optional[Mapping[str, int]] = None,
 ) -> None:
     if outputs.fit_summary.empty or outputs.binned_curve_data.empty:
         return
@@ -2260,7 +2278,10 @@ def _plot_main_curves(
     fig.update_yaxes(type="log", title_text="I/σ")
     legend = plotly_legend_layout(PLOT_STYLE)
     legend["title"] = {"text": "Crowding quantile"}
-    fig.update_layout(height=560, width=1050, legend=legend)
+    fig.update_layout(
+        legend=legend,
+        **plotly_layout_size_kwargs(figure_size, default_width=1050, default_height=560),
+    )
     _export_plotly_figure(
         fig,
         stem="main_crowding_impact_curves",
@@ -2268,6 +2289,7 @@ def _plot_main_curves(
         write_html=write_html,
         write_png=write_png,
         strict_png=False,
+        **plotly_export_size_kwargs(figure_size),
     )
 
 
@@ -2438,6 +2460,7 @@ def _plot_eta_robustness(
     *,
     write_html: bool,
     write_png: bool,
+    figure_size: Optional[Mapping[str, int]] = None,
 ) -> None:
     if outputs.fit_summary.empty or outputs.binned_curve_data.empty:
         return
@@ -2513,7 +2536,14 @@ def _plot_eta_robustness(
         fig.update_xaxes(type="log", title_text="φ", row=row_idx, col=2)
         fig.update_yaxes(type="log", title_text="I/σ", row=row_idx, col=1)
         fig.update_yaxes(type="log", title_text="I/σ", row=row_idx, col=2)
-    fig.update_layout(height=max(480, 360 * len(eta_bins)), width=1080, legend=plotly_legend_layout(PLOT_STYLE))
+    fig.update_layout(
+        legend=plotly_legend_layout(PLOT_STYLE),
+        **plotly_layout_size_kwargs(
+            figure_size,
+            default_width=1080,
+            default_height=max(480, 360 * len(eta_bins)),
+        ),
+    )
     _export_plotly_figure(
         fig,
         stem="eta_robustness_crowding_impact_curves",
@@ -2521,6 +2551,7 @@ def _plot_eta_robustness(
         write_html=write_html,
         write_png=write_png,
         strict_png=False,
+        **plotly_export_size_kwargs(figure_size),
     )
 
 
@@ -3136,6 +3167,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     write_html = _resolve_bool(args.write_html, cfg, "WRITE_HTML", True)
     write_png = _resolve_bool(args.write_png, cfg, "WRITE_PNG", True)
     show_progress = _resolve_bool(args.show_progress, cfg, "SHOW_PROGRESS", True)
+    impact_fit_figure_size = plotly_figure_size_from_config(cfg)
 
     manifest = {
         "run_timestamp": dt.datetime.now().isoformat(),
@@ -3179,6 +3211,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         },
         "write_html": write_html,
         "write_png": write_png,
+        "impact_fit_figure_size": dict(impact_fit_figure_size),
     }
 
     if args.dry_run:
@@ -3541,6 +3574,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             benchmark_phis=benchmark_phis,
             write_html=write_html,
             write_png=write_png,
+            figure_size=impact_fit_figure_size,
         )
         _plot_predicted_impacts(
             main_outputs.predictions,
@@ -3561,6 +3595,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             img_dirs,
             write_html=write_html,
             write_png=write_png,
+            figure_size=impact_fit_figure_size,
         )
         _plot_joint_regression_coefficients(
             joint_reg_plot_ci,

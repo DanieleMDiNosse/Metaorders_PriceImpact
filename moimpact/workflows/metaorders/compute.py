@@ -36,6 +36,7 @@ from moimpact.impact_fits import (
     weights_from_sigma as _weights_from_sigma,
 )
 from moimpact.logging_utils import PrintTee, setup_file_logger
+from moimpact.paper_figure_styles import paper_figure_style, plotly_size_from_paper_style
 from moimpact.plot_style import (
     THEME_COLORWAY,
     apply_shared_plotly_style,
@@ -48,6 +49,9 @@ from moimpact.plotting import (
     PlotOutputDirs,
     ensure_plot_dirs,
     make_plot_output_dirs,
+    plotly_export_size_kwargs,
+    plotly_figure_size_from_config,
+    plotly_layout_size_kwargs,
     save_plotly_figure as _save_plotly_figure,
 )
 
@@ -129,6 +133,37 @@ TICK_FONT_SIZE = PLOT_STYLE.tick_font_size
 LABEL_FONT_SIZE = PLOT_STYLE.label_font_size
 TITLE_FONT_SIZE = PLOT_STYLE.title_font_size
 LEGEND_FONT_SIZE = PLOT_STYLE.legend_font_size
+
+# Fallback normalized impact-path style. Paper runs can override these values
+# figure-by-figure in config_ymls/paper_figure_styles.yml.
+IMPACT_PATH_FIGURE_SIZE = {"width": 1200, "height": 1000}
+IMPACT_PATH_TICK_FONT_SIZE = max(TICK_FONT_SIZE, 60)
+IMPACT_PATH_LABEL_FONT_SIZE = max(LABEL_FONT_SIZE, 66)
+IMPACT_PATH_LINE_WIDTH = 5
+IMPACT_PATH_REFERENCE_LINE_WIDTH = 3
+IMPACT_PATH_MARGIN = {"l": 130, "r": 40, "t": 35, "b": 115}
+
+
+def _default_impact_fit_width() -> Optional[int]:
+    value = IMPACT_FIT_FIGURE_SIZE.get("width")
+    return None if value is None else int(value)
+
+
+def _default_impact_fit_height() -> Optional[int]:
+    value = IMPACT_FIT_FIGURE_SIZE.get("height")
+    return None if value is None else int(value)
+
+
+def _apply_line_width_override(fig: go.Figure, line_width: Optional[float]) -> None:
+    """Apply a line-width override to traces that actually draw lines."""
+    if line_width is None:
+        return
+    for trace in fig.data:
+        mode = getattr(trace, "mode", None)
+        if mode is None or "lines" not in str(mode):
+            continue
+        if getattr(trace, "line", None) is not None:
+            trace.line.width = float(line_width)
 
 
 def save_plotly_figure(fig, *args, **kwargs):
@@ -253,6 +288,7 @@ MIN_COUNT = int(_cfg_require("MIN_COUNT"))
 MIN_COUNT_SURFACE = int(_cfg_require("MIN_COUNT_SURFACE"))
 MAX_PARTICIPATION_RATE = float(_cfg_require("MAX_PARTICIPATION_RATE"))
 N_PR_BINS_SURFACE = int(_cfg_require("N_PR_BINS_SURFACE"))
+IMPACT_FIT_FIGURE_SIZE = plotly_figure_size_from_config(_CFG)
 N_SIGNATURE_PLOTS: Optional[int] = (
     None if _CFG.get("N_SIGNATURE_PLOTS") is None else int(_CFG["N_SIGNATURE_PLOTS"])
 )
@@ -1813,6 +1849,23 @@ def plot_normalized_impact_path(
         raise KeyError(f"Missing required column '{side_col}' for split-by-side plotting.")
 
     grid = np.linspace(0.0, 1.0 + duration_multiplier, n_grid)
+    stem = Path(out_path).stem
+    figure_style = paper_figure_style(stem)
+    figure_size = plotly_size_from_paper_style(
+        figure_style,
+        default_width=IMPACT_PATH_FIGURE_SIZE["width"],
+        default_height=IMPACT_PATH_FIGURE_SIZE["height"],
+    )
+    tick_font_size = int(figure_style.get("tick_font_size", IMPACT_PATH_TICK_FONT_SIZE))
+    label_font_size = int(figure_style.get("label_font_size", IMPACT_PATH_LABEL_FONT_SIZE))
+    line_width = float(figure_style.get("line_width", IMPACT_PATH_LINE_WIDTH))
+    reference_line_width = float(
+        figure_style.get("reference_line_width", IMPACT_PATH_REFERENCE_LINE_WIDTH)
+    )
+    showlegend = bool(figure_style.get("showlegend", False))
+    margin = dict(IMPACT_PATH_MARGIN)
+    margin.update(figure_style.get("margin", {}))
+
     paths_all: List[np.ndarray] = []
     paths_buy: List[np.ndarray] = []
     paths_sell: List[np.ndarray] = []
@@ -1873,6 +1926,8 @@ def plot_normalized_impact_path(
                 fillcolor=COLOR_BAND_PROPRIETARY,
                 line=dict(width=0),
                 name="± SEM",
+                showlegend=False,
+                hoverinfo="skip",
             )
         )
         fig.add_trace(
@@ -1880,14 +1935,15 @@ def plot_normalized_impact_path(
                 x=grid,
                 y=mean_path,
                 mode="lines",
-                line=dict(color=COLOR_PROPRIETARY, width=2),
+                line=dict(color=COLOR_PROPRIETARY, width=line_width),
                 name="Mean impact path",
+                showlegend=showlegend,
             )
         )
         title = "Normalized impact path"
     else:
-        buy_color = THEME_COLORWAY[1]
-        sell_color = THEME_COLORWAY[2]
+        buy_color = str(figure_style.get("buy_color", "#2E7D32"))
+        sell_color = str(figure_style.get("sell_color", THEME_COLORWAY[2]))
         buy_band = _hex_to_rgba(buy_color, 0.20)
         sell_band = _hex_to_rgba(sell_color, 0.20)
 
@@ -1915,8 +1971,9 @@ def plot_normalized_impact_path(
                     x=grid,
                     y=mean_buy,
                     mode="lines",
-                    line=dict(color=buy_color, width=2),
+                    line=dict(color=buy_color, width=line_width),
                     name="Buy mean impact path",
+                    showlegend=showlegend,
                 )
             )
         else:
@@ -1945,8 +2002,9 @@ def plot_normalized_impact_path(
                     x=grid,
                     y=mean_sell,
                     mode="lines",
-                    line=dict(color=sell_color, width=2),
+                    line=dict(color=sell_color, width=line_width),
                     name="Sell mean impact path",
+                    showlegend=showlegend,
                 )
             )
         else:
@@ -1957,14 +2015,26 @@ def plot_normalized_impact_path(
             return
         title = "Normalized impact path (buy vs sell)"
 
-    fig.add_vline(x=1.0, line=dict(color=COLOR_NEUTRAL, width=1, dash="dash"))
+    fig.add_vline(x=1.0, line=dict(color=COLOR_NEUTRAL, width=reference_line_width, dash="dash"))
     fig.update_layout(
         title=title,
         xaxis_title="Normalized time",
         yaxis_title="E[I/σ]",
+        showlegend=showlegend,
+        margin=margin,
+        xaxis=dict(
+            title_font=dict(size=label_font_size),
+            tickfont=dict(size=tick_font_size),
+            automargin=True,
+        ),
+        yaxis=dict(
+            title_font=dict(size=label_font_size),
+            tickfont=dict(size=tick_font_size),
+            automargin=True,
+        ),
+        **plotly_layout_size_kwargs(figure_size),
     )
 
-    stem = Path(out_path).stem
     _, png_path = save_plotly_figure(
         fig,
         stem=stem,
@@ -1972,6 +2042,7 @@ def plot_normalized_impact_path(
         write_html=True,
         write_png=True,
         strict_png=False,
+        **plotly_export_size_kwargs(figure_size),
     )
     tqdm.write(f"[Impact Path] Saved normalized impact path plot to {png_path}")
 
@@ -2014,7 +2085,11 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
             label_size=label_size,
             legend_size=legend_size,
         )
-        fig.update_layout(title="Impact fits (power-law and logarithmic, aggregated)", title_font=dict(size=title_size))
+        fig.update_layout(
+            title="Impact fits (power-law and logarithmic, aggregated)",
+            title_font=dict(size=title_size),
+            **plotly_layout_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
+        )
         save_plotly_figure(
             fig,
             stem=_with_member_nationality_tag(f"power_law_fit_overall_{LEVEL}"),
@@ -2022,6 +2097,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
             write_html=True,
             write_png=True,
             strict_png=False,
+            **plotly_export_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
         )
 
         print("--- Overall (All) ---")
@@ -2093,6 +2169,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
         fig.update_layout(
             title="Impact fits (power-law and logarithmic, buy vs sell)",
             title_font=dict(size=title_size),
+            **plotly_layout_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
         )
         save_plotly_figure(
             fig,
@@ -2101,6 +2178,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
             write_html=True,
             write_png=True,
             strict_png=False,
+            **plotly_export_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
         )
 
     pr_col = "Participation Rate"
@@ -2115,6 +2193,20 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
                 print(f"[WLS] Conditioned-on-η fits skipped: {e}")
                 df_pr = None
             if df_pr is not None:
+                stem = _with_member_nationality_tag("power_law_fits_by_participation_rate")
+                figure_style = paper_figure_style(stem)
+                figure_size = plotly_size_from_paper_style(
+                    figure_style,
+                    default_width=_default_impact_fit_width(),
+                    default_height=_default_impact_fit_height(),
+                )
+                local_tick_size = int(figure_style.get("tick_font_size", tick_size))
+                local_label_size = int(figure_style.get("label_font_size", label_size))
+                local_legend_size = int(figure_style.get("legend_font_size", legend_size))
+                local_title_size = int(figure_style.get("title_font_size", title_size))
+                line_width = figure_style.get("line_width")
+                layout_margin = figure_style.get("margin")
+
                 fig = go.Figure()
                 fits_by_pr = {}
                 for label in df_pr["PR_bin"].dropna().unique():
@@ -2135,22 +2227,28 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
                         binned_sub,
                         params_sub,
                         label_prefix=str(label),
-                        tick_size=tick_size,
-                        label_size=label_size,
-                        legend_size=legend_size,
+                        tick_size=local_tick_size,
+                        label_size=local_label_size,
+                        legend_size=local_legend_size,
                     )
                     fits_by_pr[str(label)] = params_sub
-                fig.update_layout(
-                    title="Power-law fits conditioned on η (aggregated)",
-                    title_font=dict(size=title_size),
-                )
+                _apply_line_width_override(fig, None if line_width is None else float(line_width))
+                layout_kwargs = {
+                    "title": "Power-law fits conditioned on η (aggregated)",
+                    "title_font": dict(size=local_title_size),
+                    **plotly_layout_size_kwargs(figure_size),
+                }
+                if layout_margin:
+                    layout_kwargs["margin"] = dict(layout_margin)
+                fig.update_layout(**layout_kwargs)
                 save_plotly_figure(
                     fig,
-                    stem=_with_member_nationality_tag("power_law_fits_by_participation_rate"),
+                    stem=stem,
                     dirs=PLOT_OUTPUT_DIRS,
                     write_html=True,
                     write_png=True,
                     strict_png=False,
+                    **plotly_export_size_kwargs(figure_size),
                 )
 
                 print("--- Conditioned on η (power-law only) ---")
@@ -2212,6 +2310,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
                 fig.update_layout(
                     title=f"Power-law fits conditioned on η ({side_label})",
                     title_font=dict(size=title_size),
+                    **plotly_layout_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
                 )
                 save_plotly_figure(
                     fig,
@@ -2222,6 +2321,7 @@ def run_wls_fits_and_surfaces(df: pd.DataFrame, *, split_by_side: bool = False) 
                     write_html=True,
                     write_png=True,
                     strict_png=False,
+                    **plotly_export_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
                 )
 
                 print(f"--- Conditioned on η ({side_label}, power-law only) ---")

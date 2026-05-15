@@ -2,6 +2,9 @@
 
 # Plot styling is centralized in config_ymls/plot_style.yml.
 DEFAULT_FIGSIZE: [11, 7.5]
+# Optional Plotly canvas size for impact-fit figures only (null -> plot_style.yml defaults).
+IMPACT_FIT_FIGURE_WIDTH: null
+IMPACT_FIT_FIGURE_HEIGHT: null
 
 # Side decomposition
 # If true, decompose (some) outputs into buy vs sell metaorders (Direction=+1/-1).
@@ -10,7 +13,7 @@ SPLIT_BY_SIDE: false
 # Dataset / preprocessing
 LEVEL: member  # "member" or "client"
 PROPRIETARY: false
-RECOMPUTE: true
+RECOMPUTE: false
 TRADING_HOURS: ["09:30:00", "17:30:00"]
 MEMBER_NATIONALITY: foreign  # null|all for no filter, or "it" / "foreign"
 
