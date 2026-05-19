@@ -5,10 +5,15 @@ Unified Plotly-first plotting helpers shared across repository scripts.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral
 import os
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Mapping, Optional, Tuple
 
+from moimpact.paper_figure_styles import (
+    apply_plotly_paper_figure_style,
+    plotly_size_from_paper_style,
+)
 from moimpact.plot_style import THEME_COLORWAY, load_plot_style
 
 _PLOT_STYLE = load_plot_style()
@@ -57,6 +62,79 @@ def _env_flag(name: str, *, default: bool = False) -> bool:
     if normalized in {"0", "false", "no", "off"}:
         return False
     return default
+
+
+def _parse_optional_positive_int(value: object, *, key: str) -> Optional[int]:
+    """Parse a nullable positive-integer figure-size config value."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"{key} must be a positive integer or null, got {value!r}.")
+    if isinstance(value, Integral):
+        parsed = int(value)
+    elif isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"", "none", "null"}:
+            return None
+        if not normalized.isdigit():
+            raise ValueError(f"{key} must be a positive integer or null, got {value!r}.")
+        parsed = int(normalized)
+    else:
+        raise ValueError(f"{key} must be a positive integer or null, got {value!r}.")
+    if parsed <= 0:
+        raise ValueError(f"{key} must be a positive integer or null, got {value!r}.")
+    return parsed
+
+
+def plotly_figure_size_from_config(
+    cfg: Mapping[str, object],
+    *,
+    width_key: str = "IMPACT_FIT_FIGURE_WIDTH",
+    height_key: str = "IMPACT_FIT_FIGURE_HEIGHT",
+) -> dict[str, int]:
+    """
+    Return optional Plotly canvas dimensions from a YAML mapping.
+
+    The result uses Plotly's ``width``/``height`` keyword names. Missing or null
+    config values are omitted so callers can preserve existing defaults.
+    """
+    size: dict[str, int] = {}
+    width = _parse_optional_positive_int(cfg.get(width_key), key=width_key)
+    height = _parse_optional_positive_int(cfg.get(height_key), key=height_key)
+    if width is not None:
+        size["width"] = width
+    if height is not None:
+        size["height"] = height
+    return size
+
+
+def plotly_layout_size_kwargs(
+    figure_size: Optional[Mapping[str, int]],
+    *,
+    default_width: Optional[int] = None,
+    default_height: Optional[int] = None,
+) -> dict[str, int]:
+    """Build Plotly layout size kwargs, honoring explicit overrides first."""
+    width = figure_size.get("width") if figure_size is not None else None
+    height = figure_size.get("height") if figure_size is not None else None
+    if width is None:
+        width = default_width
+    if height is None:
+        height = default_height
+
+    out: dict[str, int] = {}
+    if width is not None:
+        out["width"] = int(width)
+    if height is not None:
+        out["height"] = int(height)
+    return out
+
+
+def plotly_export_size_kwargs(figure_size: Optional[Mapping[str, int]]) -> dict[str, int]:
+    """Build static-export size kwargs for ``save_plotly_figure``."""
+    if not figure_size:
+        return {}
+    return {key: int(value) for key, value in figure_size.items() if key in {"width", "height"}}
 
 
 @dataclass(frozen=True)
@@ -240,6 +318,13 @@ def save_plotly_figure(
     # Pipeline-level control: hide all figure legends when requested.
     if _env_flag("DISABLE_PLOT_LEGENDS", default=False):
         fig.update_layout(showlegend=False)
+
+    paper_style = apply_plotly_paper_figure_style(fig, stem)
+    paper_size = plotly_size_from_paper_style(paper_style)
+    if "width" in paper_size:
+        width = paper_size["width"]
+    if "height" in paper_size:
+        height = paper_size["height"]
 
     if write_html:
         html_path = dirs.html_dir / f"{stem}.html"

@@ -5,7 +5,7 @@
     "bootstrap_runs": 1000,
     "client_path": null,
     "cluster_ci": "date",
-    "config_path": "/tmp/paper_fig_cfg_25ae_ze6/crowding_analysis.yml",
+    "config_path": "/tmp/paper_fig_cfg_rdr1s5fv/crowding_analysis.yml",
     "dataset_name": "ftsemib",
     "dry_run": false,
     "eta_binning": "pooled_quantiles",
@@ -31,12 +31,12 @@
   },
   "client_path": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_non_proprietary.parquet",
   "dataset_name": "ftsemib",
-  "git_hash": "3713ecde63f7edf72134edf62ace9564750364ab",
+  "git_hash": "8d20c0a52b3b1d3941b3fb69f936fb6aca539930",
   "html_dir": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/crowding_vs_part_rate/html",
   "img_dir": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/crowding_vs_part_rate",
   "out_dir": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/crowding_vs_part_rate",
   "png_dir": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/images/crowding_vs_part_rate/png",
   "prop_path": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/out_files/ftsemib/metaorders_info_sameday_filtered_member_proprietary.parquet",
-  "run_id": "20260422_014654",
-  "timestamp": "2026-04-22T01:46:54.646376"
+  "run_id": "20260518_210945",
+  "timestamp": "2026-05-18T21:09:45.901991"
 }

@@ -46,3 +46,8 @@ POOLED_REGRESSION_IMPACT_MODE: signed_mean
 # Figure export.
 WRITE_HTML: true
 WRITE_PNG: true
+# Optional Plotly canvas size for crowding impact-curve figures only
+# (main_crowding_impact_curves and eta_robustness_crowding_impact_curves).
+# null -> each plot's existing layout size plus plot_style.yml export defaults.
+IMPACT_FIT_FIGURE_WIDTH: null
+IMPACT_FIT_FIGURE_HEIGHT: null

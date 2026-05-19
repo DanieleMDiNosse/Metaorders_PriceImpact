@@ -3,7 +3,7 @@
   "bootstrap_batch_size": 128,
   "bootstrap_runs": 1000,
   "cluster_col": null,
-  "config_path": "/tmp/paper_fig_cfg_i25xallf/metaorder_execution_schedule.yml",
+  "config_path": "/tmp/paper_fig_cfg_ih7y5vhn/metaorder_execution_schedule.yml",
   "curve_overlay_stat": "mean",
   "dataset_name": "ftsemib",
   "groups": {
@@ -37,6 +37,6 @@
   "run_execution_schedule_inference": false,
   "scalar_histogram_bins": 1024,
   "scalar_summary_stat": "median",
-  "script": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/scripts/metaorder_execution_schedule.py",
-  "timestamp_utc": "2026-04-21T23:39:56.895570+00:00"
+  "script": "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/moimpact/workflows/execution/schedule.py",
+  "timestamp_utc": "2026-05-18T08:56:09.465961+00:00"
 }

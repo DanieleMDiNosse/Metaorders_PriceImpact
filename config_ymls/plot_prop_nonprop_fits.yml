@@ -1,6 +1,10 @@
 # plot_prop_nonprop_fits.py configuration
 
 # Plot styling is centralized in config_ymls/plot_style.yml.
+# Optional Plotly canvas size for the power-law/logarithmic overlay figures
+# (null -> plot_style.yml defaults).
+IMPACT_FIT_FIGURE_WIDTH: null
+IMPACT_FIT_FIGURE_HEIGHT: null
 
 # Dataset and paths
 DATASET_NAME: ftsemib

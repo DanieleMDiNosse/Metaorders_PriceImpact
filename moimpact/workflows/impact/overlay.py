@@ -64,6 +64,9 @@ from moimpact.plotting import (
     PlotOutputDirs,
     ensure_plot_dirs,
     make_plot_output_dirs,
+    plotly_export_size_kwargs,
+    plotly_figure_size_from_config,
+    plotly_layout_size_kwargs,
     save_plotly_figure,
 )
 from moimpact.stats.impact_paths import RetentionDifferenceBootstrapResult, bootstrap_retention_difference
@@ -149,6 +152,7 @@ FIT_USE_MEDIAN = bool(_cfg_require("FIT_USE_MEDIAN"))
 FIT_MIN_QV = float(_cfg_require("FIT_MIN_QV"))
 FIT_MAX_PARTICIPATION_RATE = _parse_optional_float(_CFG.get("FIT_MAX_PARTICIPATION_RATE"))
 FIT_MIN_DURATION_SECONDS = _parse_optional_float(_CFG.get("FIT_MIN_DURATION_SECONDS"))
+IMPACT_FIT_FIGURE_SIZE = plotly_figure_size_from_config(_CFG)
 
 RUN_RETENTION_BOOTSTRAP = bool(_cfg_require("RUN_RETENTION_BOOTSTRAP"))
 RETENTION_OUTPUT_STEM = str(_cfg_require("RETENTION_OUTPUT_STEM"))
@@ -721,6 +725,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 showlegend=True,
                 title=None,
                 legend=plotly_legend_layout(PLOT_STYLE, font=dict(size=LEGEND_FONT_SIZE)),
+                **plotly_layout_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
             )
             fit_html_path, fit_png_path = save_plotly_figure(
                 fit_fig,
@@ -729,6 +734,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 write_html=True,
                 write_png=True,
                 strict_png=False,
+                **plotly_export_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
             )
             print(
                 "[Prop vs Non-Prop] Saved power-law overlay figure "
@@ -761,6 +767,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 showlegend=True,
                 title=None,
                 legend=plotly_legend_layout(PLOT_STYLE, font=dict(size=LEGEND_FONT_SIZE)),
+                **plotly_layout_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
             )
             log_fit_output_stem = _derive_log_fit_output_stem(FIT_OUTPUT_STEM)
             log_fit_html_path, log_fit_png_path = save_plotly_figure(
@@ -770,6 +777,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 write_html=True,
                 write_png=True,
                 strict_png=False,
+                **plotly_export_size_kwargs(IMPACT_FIT_FIGURE_SIZE),
             )
             print(
                 "[Prop vs Non-Prop] Saved logarithmic overlay figure "

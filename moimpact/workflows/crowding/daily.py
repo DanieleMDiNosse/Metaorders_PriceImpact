@@ -15,7 +15,7 @@ those imbalances:
 - Member-level crowding between proprietary direction and client flow aggregated
   at `(Member, Date)` (optional).
 - Crowding conditioned on participation rate (eta), delegated to the
-  `crowding_vs_part_rate.py` workflow from the same config.
+  `moimpact.workflows.crowding.eta` workflow from the same config.
 
 For each case it reports both global correlations and mean daily correlations,
 with Date-cluster bootstrap confidence intervals (resampling trading dates with
@@ -70,6 +70,7 @@ from moimpact.config import (
     resolve_repo_path,
 )
 from moimpact.logging_utils import PrintTee, setup_file_logger
+from moimpact.paper_figure_styles import apply_plotly_paper_figure_style, plotly_size_from_paper_style
 from moimpact.plot_style import (
     THEME_COLORWAY,
     apply_shared_plotly_style,
@@ -155,6 +156,20 @@ def save_plotly_figure(fig, *args, **kwargs):
     This analysis exports title-less figures to keep panel labeling external.
     """
     fig.update_layout(title=None)
+    stem = kwargs.get("stem")
+    if stem is not None:
+        style = apply_plotly_paper_figure_style(
+            fig,
+            str(stem),
+            default_tick_font_size=TICK_FONT_SIZE,
+            default_label_font_size=LABEL_FONT_SIZE,
+            default_title_font_size=TITLE_FONT_SIZE,
+            default_legend_font_size=LEGEND_FONT_SIZE,
+            default_annotation_font_size=ANNOTATION_FONT_SIZE,
+            default_line_width=2,
+            default_reference_line_width=1,
+        )
+        kwargs.update(plotly_size_from_paper_style(style))
     return _save_plotly_figure(fig, *args, **kwargs)
 
 # ---------------------------------------------------------------------
@@ -2432,7 +2447,7 @@ def run_crowding_vs_part_rate_analysis(
     """
     Summary
     -------
-    Run the participation-rate crowding workflow from `crowding_vs_part_rate.py`.
+    Run the participation-rate crowding workflow from `moimpact.workflows.crowding.eta`.
 
     Parameters
     ----------
@@ -2451,7 +2466,7 @@ def run_crowding_vs_part_rate_analysis(
     -------
     None
         Writes the same CSV/Parquet tables and Plotly/Matplotlib figures as
-        `crowding_vs_part_rate.py`.
+        `moimpact.workflows.crowding.eta`.
 
     Notes
     -----
@@ -2495,9 +2510,9 @@ def run_crowding_vs_part_rate_analysis(
         raise ValueError("CROWDING_VS_PART_RATE_REG_SAMPLE_FRAC must be in (0, 1].")
 
     try:
-        from crowding_vs_part_rate import main as crowding_vs_part_rate_main
+        from moimpact.workflows.crowding.eta import main as crowding_vs_part_rate_main
     except Exception as exc:  # pragma: no cover
-        raise RuntimeError("Failed to import crowding_vs_part_rate.py.") from exc
+        raise RuntimeError("Failed to import moimpact.workflows.crowding.eta.") from exc
 
     argv: List[str] = [
         "--config-path",
