@@ -211,6 +211,8 @@ images/
 
 # Generated analysis outputs
 out_files/
+tmp_paper_style_preview_*/
+tmp_paper_figure_style_preview_*/
 
 # Metaorder scripts 
 metaorder_scripts/

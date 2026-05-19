@@ -839,6 +839,7 @@ def _run_crowding_analysis(
         "IMG_OUTPUT_PATH": str(img_output_root),
     }
     updates.update(style_updates)
+    updates["RUN_CROWDING_VS_PART_RATE"] = False
     with _temporary_yaml_copy(CROWDING_CFG, updates) as cfg_path:
         _run_logged_command(
             [sys.executable, "scripts/run_analysis.py", "crowding", "daily"],

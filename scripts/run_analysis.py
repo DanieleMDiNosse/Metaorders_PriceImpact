@@ -152,6 +152,11 @@ COMMANDS: dict[tuple[str, str], CommandSpec] = {
         "generate figures referenced by paper/main.tex",
         config_env="PAPER_FIGURES_CONFIG",
     ),
+    ("paper", "style-preview"): CommandSpec(
+        "moimpact.workflows.paper.style_preview",
+        "create a no-data temporary paper build with fake styled figures",
+        pass_config_path=True,
+    ),
 }
 
 
@@ -160,6 +165,7 @@ ALIASES: dict[tuple[str, str], tuple[str, str]] = {
     ("event", "study"): ("metaorders", "start-event"),
     ("crowding", "part-rate"): ("crowding", "eta"),
     ("paper", "figs"): ("paper", "figures"),
+    ("paper", "preview"): ("paper", "style-preview"),
 }
 
 

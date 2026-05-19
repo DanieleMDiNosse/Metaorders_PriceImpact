@@ -18,56 +18,72 @@
 #   mean_color, line_color     Optional plot-specific line colors
 #   band_alpha                 Optional SEM/confidence-band opacity in [0, 1]
 #   margin: {l, r, t, b, pad}  Plotly layout margin in px
+#
+# Organization rule: entries are grouped by manuscript section/paper order, not
+# by fragile LaTeX figure number. Reuse a layout preset unless a figure genuinely
+# needs its own margins or typography.
 
-# Individual normalized-impact-path panels used in the paper 2x2 composites.
-impact_path_2x2_panel: &impact_path_2x2_panel
+# -----------------------------------------------------------------------------
+# Layout presets
+# -----------------------------------------------------------------------------
+
+# Figures 1 and 2 (member-statistics panels in Section Data and Metaorder Reconstruction).
+# Single panels placed as subfigures near 0.70\linewidth: keep fonts large
+# enough after LaTeX scaling but leave room for long categorical x labels.
+member_stat_subfigure_panel: &member_stat_subfigure_panel
   width: 1200
-  height: 1000
-  tick_font_size: 60
-  label_font_size: 66
-  annotation_font_size: 60
-  showlegend: false
-  line_width: 5
-  reference_line_width: 3
+  height: 850
+  tick_font_size: 30
+  label_font_size: 34
+  title_font_size: 36
+  legend_font_size: 28
+  annotation_font_size: 30
+  line_width: 3.5
+  reference_line_width: 2
   margin:
-    l: 130
-    r: 40
-    t: 35
-    b: 115
+    l: 105
+    r: 45
+    t: 70
+    b: 120
 
-# For generated 1x2 plot matrices: reference impact-path font sizes minus 5.
-one_by_two_panel_fig9_minus5: &one_by_two_panel_fig9_minus5
-  tick_font_size: 45
-  label_font_size: 50
-  title_font_size: 61
-  legend_font_size: 55
-  annotation_font_size: 55
-  line_width: 5
-  reference_line_width: 3
-  margin:
-    l: 120
-    r: 50
-    t: 55
-    b: 115
-
-# Single impact-fit panels stacked as a 2x1 paper figure.
-participation_fit_panel: &participation_fit_panel
-  width: 1200
-  height: 1000
-  tick_font_size: 34
-  label_font_size: 38
-  title_font_size: 38
+# Figure 3 (member metaorder profiles in Section Descriptive Properties).
+# Full-width descriptive 1x2 matrices.
+descriptive_1x2_panel: &descriptive_1x2_panel
+  width: 1600
+  height: 900
+  tick_font_size: 30
+  label_font_size: 30
+  title_font_size: 36
   legend_font_size: 32
+  annotation_font_size: 34
   line_width: 4
+  reference_line_width: 2.5
   margin:
-    l: 95
-    r: 35
-    t: 45
-    b: 95
+    l: 115
+    r: 55
+    t: 75
+    b: 110
+
+# Large distribution grid used as a full-width standalone figure.
+distribution_grid_panel: &distribution_grid_panel
+  width: 1600
+  height: 1150
+  tick_font_size: 34
+  label_font_size: 34
+  title_font_size: 34
+  legend_font_size: 32
+  annotation_font_size: 34
+  line_width: 4
+  reference_line_width: 2.5
+  margin:
+    l: 115
+    r: 55
+    t: 80
+    b: 115
 
 execution_schedule_panel: &execution_schedule_panel
-  tick_font_size: 32
-  label_font_size: 36
+  tick_font_size: 30
+  label_font_size: 30
   title_font_size: 36
   annotation_font_size: 34
   line_width: 5
@@ -78,13 +94,65 @@ execution_schedule_panel: &execution_schedule_panel
     t: 50
     b: 85
 
+# Figures 6 and 7 (power-law and logarithmic impact overlays).
+# Single impact-fit panels included at 0.85\textwidth.
+impact_fit_single_panel: &impact_fit_single_panel
+  width: 1200
+  height: 1000
+  tick_font_size: 30
+  label_font_size: 30
+  title_font_size: 36
+  legend_font_size: 34
+  annotation_font_size: 34
+  line_width: 4
+  reference_line_width: 2.5
+  margin:
+    l: 105
+    r: 45
+    t: 55
+    b: 105
+
+# Figure 8 (impact conditional on participation rate).
+# Single impact-fit panels stacked as a 2x1 paper figure.
+participation_fit_panel: &participation_fit_panel
+  width: 1200
+  height: 1000
+  tick_font_size: 32
+  label_font_size: 34
+  title_font_size: 38
+  legend_font_size: 32
+  line_width: 4
+  margin:
+    l: 95
+    r: 35
+    t: 45
+    b: 95
+
+# Figures 9 and 10 (normalized impact paths, aggregate and Italian subsample).
+# Individual normalized-impact-path panels used in the paper 2x2 composites.
+impact_path_2x2_panel: &impact_path_2x2_panel
+  width: 1200
+  height: 1000
+  tick_font_size: 45
+  label_font_size: 50
+  annotation_font_size: 55
+  showlegend: false
+  line_width: 5
+  reference_line_width: 3
+  margin:
+    l: 130
+    r: 40
+    t: 35
+    b: 115
+
+# Figure 11 (crowding rolling time series).
 rolling_timeseries_panel: &rolling_timeseries_panel
   width: 1200
   height: 520
-  tick_font_size: 38
-  label_font_size: 42
-  title_font_size: 42
-  legend_font_size: 36
+  tick_font_size: 30
+  label_font_size: 30
+  title_font_size: 30
+  legend_font_size: 23
   line_width: 4
   reference_line_width: 2
   margin:
@@ -93,14 +161,31 @@ rolling_timeseries_panel: &rolling_timeseries_panel
     t: 35
     b: 85
 
+# Figures 12 and 13 (crowding conditioned on participation rate).
+# 1x2 crowding-vs-participation matrices (local and cross-group).
+one_by_two_panel_fig9_minus5: &one_by_two_panel_fig9_minus5
+  tick_font_size: 30
+  label_font_size: 30
+  title_font_size: 30
+  legend_font_size: 30
+  annotation_font_size: 30
+  line_width: 5
+  reference_line_width: 3
+  margin:
+    l: 120
+    r: 50
+    t: 55
+    b: 115
+
+# Figure 17
 crowding_impact_2x2_panel: &crowding_impact_2x2_panel
   width: 1200
   height: 1000
-  tick_font_size: 55
-  label_font_size: 61
-  title_font_size: 61
-  legend_font_size: 55
-  annotation_font_size: 55
+  tick_font_size: 25
+  label_font_size: 25
+  title_font_size: 30
+  legend_font_size: 25
+  annotation_font_size: 30
   line_width: 5
   margin:
     l: 120
@@ -108,6 +193,42 @@ crowding_impact_2x2_panel: &crowding_impact_2x2_panel
     t: 70
     b: 115
 
+# Figures 14 and 15 (member-level crowding histograms/heatmaps).
+# Distribution diagnostics for member-level prop-client alignment.
+member_crowding_hist_panel: &member_crowding_hist_panel
+  width: 1200
+  height: 800
+  tick_font_size: 30
+  label_font_size: 30
+  title_font_size: 36
+  legend_font_size: 28
+  annotation_font_size: 30
+  line_width: 3.5
+  reference_line_width: 2
+  margin:
+    l: 105
+    r: 45
+    t: 70
+    b: 100
+
+member_crowding_heatmap_panel: &member_crowding_heatmap_panel
+  width: 1400
+  height: 900
+  tick_font_size: 30
+  label_font_size: 30
+  title_font_size: 34
+  legend_font_size: 26
+  annotation_font_size: 28
+  line_width: 3
+  reference_line_width: 2
+  margin:
+    l: 105
+    r: 140
+    t: 70
+    b: 110
+
+# Figure 18 (active member-level prop-client alignment).
+# Active member-level prop-client alignment and window-level co-movement.
 member_comovement_panel: &member_comovement_panel
   width: 1200
   height: 720
@@ -124,76 +245,187 @@ member_comovement_panel: &member_comovement_panel
     t: 115
     b: 85
 
+active_member_correlations_panel: &active_member_correlations_panel
+  width: 1200
+  height: 720
+  tick_font_size: 30
+  label_font_size: 30
+  title_font_size: 30
+  legend_font_size: 28
+  annotation_font_size: 30
+  line_width: 3.5
+  reference_line_width: 2
+  margin:
+    l: 105
+    r: 45
+    t: 80
+    b: 110
+
+# Optional/dormant impact-surface heatmaps (currently disabled in the LaTeX source).
+# Optional/dormant impact-surface heatmaps. These are currently inside an
+# \iffalse block in paper/main.tex, but keeping a preset here makes them ready
+# if the figure is re-enabled.
+impact_surface_heatmap_panel: &impact_surface_heatmap_panel
+  width: 1200
+  height: 900
+  tick_font_size: 32
+  label_font_size: 36
+  title_font_size: 38
+  legend_font_size: 30
+  annotation_font_size: 32
+  line_width: 3
+  reference_line_width: 2
+  margin:
+    l: 110
+    r: 140
+    t: 70
+    b: 110
+
+# -----------------------------------------------------------------------------
+# Figure overrides, grouped in paper order
+# -----------------------------------------------------------------------------
+
 figures:
-  # Current Figures 10 and 11: normalized impact paths (overall and Italian-member panels).
+  # Figure 1a: active members per ISIN (paper label fig:members_isins).
+  members_per_isin:
+    <<: *member_stat_subfigure_panel
+
+  # Figure 1b: ISIN coverage per member (paper label fig:trades_per_member).
+  member_isin_coverage_per_member:
+    <<: *member_stat_subfigure_panel
+
+  # Figure 2a: proprietary/client trades per ISIN (paper label fig:members_isins).
+  proprietary_vs_client_trades_per_isin:
+    <<: *member_stat_subfigure_panel
+
+  # Figure 2b: mean daily metaorder-volume share (paper label fig:mean_perc_metavol_dailyvol).
+  mean_daily_metaorder_volume_share:
+    <<: *member_stat_subfigure_panel
+
+  # Figure 3: member metaorder profiles (paper label fig:metaorders_per_member).
+  member_metaorder_profiles_all_metaorders:
+    <<: *descriptive_1x2_panel
+
+  # Figure 4: metaorder metric distributions (paper label fig:metaorders_distributions).
+  metaorder_distributions_prop_vs_client:
+    <<: *distribution_grid_panel
+
+  # Dormant/legacy schedule output; retained for generators that emit the non-median stem.
+  execution_schedule_heatmap_prop_vs_client:
+    <<: *execution_schedule_panel
+
+  # Figure 5: execution schedule heatmap with medians (paper label fig:execution_schedule_characterization).
+  execution_schedule_heatmap_prop_vs_client_median:
+    <<: *execution_schedule_panel
+
+  # Figure 6: power-law proprietary vs client impact overlay (paper label fig:impact_vs_size_pw).
+  power_law_prop_vs_nonprop:
+    <<: *impact_fit_single_panel
+
+  # Figure 7: logarithmic proprietary vs client impact overlay (paper label fig:impact_vs_size_log).
+  logarithmic_prop_vs_nonprop:
+    <<: *impact_fit_single_panel
+
+  # Figure 8a-b: participation-rate-conditioned impact fits; used once for client and once for proprietary.
+  power_law_fits_by_participation_rate:
+    <<: *participation_fit_panel
+
+  # Figure 9a: aggregate proprietary normalized impact path, overall (paper label fig:normalized_impact_paths).
   normalized_impact_path_member_proprietary:
     <<: *impact_path_2x2_panel
 
+  # Figure 9b: aggregate proprietary normalized impact path, buy vs sell.
   normalized_impact_path_member_proprietary_by_side:
     <<: *impact_path_2x2_panel
     buy_color: "#2E7D32"
     sell_color: "#C06C84"
 
+  # Figure 9c: aggregate client normalized impact path, overall.
   normalized_impact_path_member_non_proprietary:
     <<: *impact_path_2x2_panel
 
+  # Figure 9d: aggregate client normalized impact path, buy vs sell.
   normalized_impact_path_member_non_proprietary_by_side:
     <<: *impact_path_2x2_panel
     buy_color: "#2E7D32"
     sell_color: "#C06C84"
 
+  # Figure 10a: Italian-member proprietary normalized impact path, overall (paper label fig:normalized_impact_paths_it).
   normalized_impact_path_member_proprietary_member_nationality_it:
     <<: *impact_path_2x2_panel
 
+  # Figure 10b: Italian-member proprietary normalized impact path, buy vs sell.
   normalized_impact_path_member_proprietary_by_side_member_nationality_it:
     <<: *impact_path_2x2_panel
     buy_color: "#2E7D32"
     sell_color: "#C06C84"
 
+  # Figure 10c: Italian-member client normalized impact path, overall.
   normalized_impact_path_member_non_proprietary_member_nationality_it:
     <<: *impact_path_2x2_panel
 
+  # Figure 10d: Italian-member client normalized impact path, buy vs sell.
   normalized_impact_path_member_non_proprietary_by_side_member_nationality_it:
     <<: *impact_path_2x2_panel
     buy_color: "#2E7D32"
     sell_color: "#C06C84"
 
-  # Figure 5: execution-schedule heatmap; increase fonts a bit.
-  execution_schedule_heatmap_prop_vs_client:
-    <<: *execution_schedule_panel
-  execution_schedule_heatmap_prop_vs_client_median:
-    <<: *execution_schedule_panel
-
-  # Figure 8: 2x1 impact-by-participation figure; increase fonts a bit.
-  power_law_fits_by_participation_rate:
-    <<: *participation_fit_panel
-
-  # Figure 11: 3x1 crowding rolling time series; increase fonts.
+  # Figure 11a: all-vs-all crowding rolling time series (paper label fig:crowding_rolling_timeseries).
   all_vs_all_crowding_rolling_3d:
     <<: *rolling_timeseries_panel
+
+  # Figure 11b: within-group crowding rolling time series.
   daily_crowding_rolling_3d:
     <<: *rolling_timeseries_panel
+
+  # Figure 11c: cross-group crowding rolling time series.
   cross_crowding_rolling_3d:
     <<: *rolling_timeseries_panel
 
-  # Current Figure 13: generated 1x2 local/cross-crowding matrices.
+  # Figure 12a: within-group mean alignment vs participation rate (paper label fig:crowding_vs_eta_local).
   curve_mean_align_vs_eta_local:
     <<: *one_by_two_panel_fig9_minus5
+
+  # Figure 12b: within-group mean absolute imbalance vs participation rate.
   curve_mean_abs_imb_vs_eta_local:
     <<: *one_by_two_panel_fig9_minus5
+
+  # Figure 13a: cross-group mean alignment vs participation rate (paper label fig:crowding_vs_eta_cross).
   curve_mean_align_vs_eta_cross:
     <<: *one_by_two_panel_fig9_minus5
+
+  # Figure 13b: cross-group mean absolute imbalance vs participation rate.
   curve_mean_abs_imb_vs_eta_cross:
     <<: *one_by_two_panel_fig9_minus5
 
-  # Current Figure 17: crowding-impact curves, generated as one 1x2 matrix.
+  # Figure 14: per-member prop-client crowding correlations (paper label fig:hist_imbcorr).
+  member_prop_client_crowding_hist:
+    <<: *member_crowding_hist_panel
+
+  # Figure 15: per-member prop-client crowding heatmap (paper label fig:heatmap_imbcorr).
+  member_prop_client_crowding_heatmap_3d:
+    <<: *member_crowding_heatmap_panel
+
+  # Figure 16: crowding-conditioned impact curves (paper label fig:impact_curves_by_crowding).
   main_crowding_impact_curves:
     <<: *one_by_two_panel_fig9_minus5
 
-  # Current Figure 18: crowding-impact eta robustness, generated as a 2x2 matrix.
+  # Figure 17: eta-robustness crowding-impact curves (paper label fig:impact_curves_by_crowding_and_eta).
   eta_robustness_crowding_impact_curves:
     <<: *crowding_impact_2x2_panel
 
-  # Current Figure 19 bottom panel only: prop-client active-imbalance co-movement.
+  # Figure 18a: active member-level per-member correlations (paper label fig:member_active_overlap_crowding).
+  per_member_correlations_same_isin_all_active:
+    <<: *active_member_correlations_panel
+
+  # Figure 18b: active member-level window co-movement.
   member_comovement_same_isin_all_active:
     <<: *member_comovement_panel
+
+  # Dormant Figure: client impact-surface heatmap inside a disabled \iffalse block in paper/main.tex.
+  impact_surface_qv_participation_heatmap_member_non_proprietary:
+    <<: *impact_surface_heatmap_panel
+
+  # Dormant Figure: proprietary impact-surface heatmap inside a disabled \iffalse block in paper/main.tex.
+  impact_surface_qv_participation_heatmap_member_proprietary:
+    <<: *impact_surface_heatmap_panel

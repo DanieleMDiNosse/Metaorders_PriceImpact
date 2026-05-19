@@ -1378,15 +1378,15 @@ between metaorder direction and orderflow imbalance is
 \begin{equation}
   r^{G|same} = \mathrm{Corr}(\varepsilon_i, \text{imb}^{same}_i(k,d)\mid i\in G),
 \end{equation}
-computed over all metaorders in the group, {\bf all stocks and all days}. We also compute daily
+computed over all metaorders in the group, all stocks and all days. We also compute daily
 correlations $r_d$ by restricting to metaorders on a single date $d$ and
 evaluating 
 \begin{equation}
   r^{G|same}_d = \mathrm{Corr}(\varepsilon_i, \text{imb}_i^{k,d'} \mid  i\in G,~~~ d'=d)
 \end{equation}
-computed for days with at least 100 metaorders {\bf and averaged across stocks}.
+computed for days with at least 100 metaorders and averaged across stocks.
  The time series of the three day rolling average of $r^{G|same}_d$ is plotted for proprietary
-and client flows separately in {\bf the middle panel of}
+and client flows separately in the middle panel of
 Figure~\ref{fig:crowding_rolling_timeseries}.
 
 In our dataset, within-group orderflow imbalance statistics are:
@@ -1473,7 +1473,7 @@ We compute daily correlations
      \,\big|\, i \in client,~~~ d'=d\bigr),
 \end{align}
 where the environment is built from client or proprietary flow,
-respectively, {\bf and the results are averaged across all stocks.}
+respectively, and the results are averaged across all stocks.
 
 Empirically we find
 
@@ -1536,7 +1536,7 @@ The previously defined execution participation rate $\eta_i$ provides a measure 
 absorbed during its own execution window. We use $\eta_i$ as an execution-state variable and ask
 whether crowding becomes stronger at higher participation.
 
-For each group (proprietary and client) {\bf separately}, we partition metaorders into deciles of $\eta_i$ using
+For each group (proprietary and client) separately, we partition metaorders into deciles of $\eta_i$ using
 pooled quantiles (common bin edges across groups). Within each bin $b$ we compute two statistics based on an imbalance proxy $\mathrm{imb}_i$: {\bf Da riscrivere con la nuova notazione}
 \begin{align}
   A_b &= \E[\varepsilon_i\,\mathrm{imb}_i \mid \eta_i \in b],
@@ -1546,7 +1546,9 @@ pooled quantiles (common bin edges across groups). Within each bin $b$ we comput
 where $\mathrm{imb}_i$ is either the within-group leave-one-out imbalance $\text{imb}_i^{k,d}$ from
 Eq.~\eqref{eq:local_imbalance} or the cross-group environment imbalance $\mathrm{imb}^{\text{env}}_i$
 defined above. Confidence bands are obtained via a block bootstrap that resamples trading days with
-replacement (1000 replicates), which accounts for cross-sectional dependence within the same date. {\bf Dove si menziona la Table 6?}
+replacement (1000 replicates), which accounts for cross-sectional dependence within the same date.
+The corresponding top-minus-bottom decile contrasts, which summarize the magnitude of these
+participation-rate gradients, are reported in Table~\ref{tab:crowding_vs_eta_effects}.
 
 \paragraph{Within-group conditioning.}
 Figure~\ref{fig:crowding_vs_eta_local} shows that both groups become more crowded as $\eta$
@@ -1746,9 +1748,8 @@ The previous subsections show that crowding is economically meaningful for both
 groups and, when measured at the daily stock level, often stronger for client
 flow. We now return to the question raised by the impact curves in
 Section~\ref{subsec:impact_models}: why do proprietary metaorders have larger
-impact over the empirically relevant range of $Q/V$? The answer cannot be a
-simple statement that proprietary flow is generically more crowded {\bf Perche' abbiamo mostrato che i proprietary sono piu' crowded?}. In this section, we
-present several analysis that, step by step, give us more intuition regarding the
+impact over the empirically relevant range of $Q/V$?. In this section, we
+present several analysis that, step by step, give us more intuition regarding theThe answer
 source of the impact differences.
 
 We first use a daily, stock-level notion of crowding as done in the previous subsection. To place 
@@ -1767,9 +1768,7 @@ between fitted impact in the highest and lowest crowding terciles at two
 benchmark sizes, while Figure~\ref{fig:impact_curves_by_crowding} shows the
 overall curves. The difference is positive for both groups: metaorders
 that trade with the same-day imbalance have larger fitted impact. The effect,
-however, is larger for clients {\bf and statistical significant as shown in the last row of Table~\ref{tab:crowding_impact_terciles}}. \sout{This rules out the most mechanical explanation
-of the proprietary premium: proprietary metaorders are not simply the group with
-stronger daily aligned crowding} {\bf Di nuovo non capisco: sono i clienti a essere piu' crowded, no?} These results suggest that proprietary metaorders not only exhibit lower average crowding but also demonstrate a reduced sensitivity of market impact to the crowding variable. \textcolor{blue}{Si, ma finora non avevamo ancora analizzato la dipendenza della power law dalla metrica del crowding. Questi risultati ci dicono che, in aggiunta al crowding minore dei proprietari, non c'è nemmeno un aumento maggiore dell'impatto all'aumentare del crowding. Ho modificato la frase che era in effetti poco chiara.}. 
+however, is larger for clients and statistical significant as shown in the last row of Table~\ref{tab:crowding_impact_terciles}. {\bf Di nuovo non capisco: sono i clienti a essere piu' crowded, no?}\textcolor{blue}{Si, ma finora non avevamo ancora analizzato la dipendenza della power law dalla metrica del crowding. Questi risultati ci dicono che, in aggiunta al crowding minore dei proprietari, non c'è nemmeno un aumento maggiore dell'impatto all'aumentare del crowding. Ho modificato la frase che era in effetti poco chiara.}. These results suggest that proprietary metaorders not only exhibit lower average crowding but also demonstrate a reduced sensitivity of market impact to the crowding variable.
 
 {\bf FAB: FIN QUI}
 

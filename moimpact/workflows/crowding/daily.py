@@ -15,7 +15,7 @@ those imbalances:
 - Member-level crowding between proprietary direction and client flow aggregated
   at `(Member, Date)` (optional).
 - Crowding conditioned on participation rate (eta), delegated to the
-  `crowding_vs_part_rate.py` workflow from the same config.
+  `moimpact.workflows.crowding.eta` workflow from the same config.
 
 For each case it reports both global correlations and mean daily correlations,
 with Date-cluster bootstrap confidence intervals (resampling trading dates with
@@ -2447,7 +2447,7 @@ def run_crowding_vs_part_rate_analysis(
     """
     Summary
     -------
-    Run the participation-rate crowding workflow from `crowding_vs_part_rate.py`.
+    Run the participation-rate crowding workflow from `moimpact.workflows.crowding.eta`.
 
     Parameters
     ----------
@@ -2466,7 +2466,7 @@ def run_crowding_vs_part_rate_analysis(
     -------
     None
         Writes the same CSV/Parquet tables and Plotly/Matplotlib figures as
-        `crowding_vs_part_rate.py`.
+        `moimpact.workflows.crowding.eta`.
 
     Notes
     -----
@@ -2510,9 +2510,9 @@ def run_crowding_vs_part_rate_analysis(
         raise ValueError("CROWDING_VS_PART_RATE_REG_SAMPLE_FRAC must be in (0, 1].")
 
     try:
-        from crowding_vs_part_rate import main as crowding_vs_part_rate_main
+        from moimpact.workflows.crowding.eta import main as crowding_vs_part_rate_main
     except Exception as exc:  # pragma: no cover
-        raise RuntimeError("Failed to import crowding_vs_part_rate.py.") from exc
+        raise RuntimeError("Failed to import moimpact.workflows.crowding.eta.") from exc
 
     argv: List[str] = [
         "--config-path",
