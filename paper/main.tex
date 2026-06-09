@@ -128,7 +128,7 @@ is most weakened when controlling for directional active overlap during executio
 proprietary and client metaorders should not be pooled when possible: trading capacity matters for impact, persistence, 
 and the interpretation of crowded order flow.
 
-The remainder of the paper is organized as follows. Section~\ref{sec:data_metaorders} describes the trade-level data and the metaorder reconstruction procedure. Section~\ref{sec:descriptive_properties} documents the descriptive properties of proprietary and client metaorders, including their distributional features, execution schedules, and member-nationality composition. Section~\ref{sec:impact_model} estimates and compares their price-impact laws and dynamic impact paths. Section~\ref{sec:crowding} studies aggregate, cross-group, participation-conditioned, and execution-time crowding, and evaluates whether these mechanisms explain the proprietary--client impact differences. Section~\ref{sec:member_prop_client_alignment} then studies the related but distinct question of member-level alignment between proprietary trading and same-member client flow. Section~\ref{sec:conclusion} concludes, while Appendix~\ref{app:it_member_results} reports additional results for Italian executing members.
+The remainder of the paper is organized as follows. Section~\ref{sec:data_metaorders} describes the trade-level data and the metaorder reconstruction procedure. Section~\ref{sec:descriptive_properties} documents the descriptive properties of proprietary and client metaorders, including their distributional features and execution schedules. Section~\ref{sec:impact_model} estimates and compares their price-impact laws and dynamic impact paths. Section~\ref{sec:crowding} studies aggregate, cross-group, participation-conditioned, and execution-time crowding, and evaluates whether these mechanisms explain the proprietary--client impact differences. Section~\ref{sec:member_prop_client_alignment} then studies the related but distinct question of member-level alignment between proprietary trading and same-member client flow. Section~\ref{sec:conclusion} concludes, while Appendix~\ref{app:member_nationality_results} collects member-nationality diagnostics and Italian-member robustness checks.
 
 \section{Data and Metaorder Reconstruction}
 \label{sec:data_metaorders}
@@ -168,7 +168,7 @@ For each trade $j$ we have:
     \begin{subfigure}[b]{0.45\linewidth}
         \centering
         \includegraphics[width=\linewidth]{images/member_statistics/png/member_isin_coverage_per_member}
-        \caption{ISIN coverage per member (IT: blue, foreign: red).}
+        \caption{ISIN coverage per member.}
         \label{fig:trades_per_member}
     \end{subfigure}
     % \caption{Analysis of member activity and market coverage across ISINs.}
@@ -777,74 +777,7 @@ evidence of a strong statistical separation between the two groups.
 %   \label{fig:interarrival}
 % \end{figure}
 
-\subsection{Nationality composition of executing members}
-\label{subsec:metaorder_nationality}
-
-At the member level, we can assign each metaorder to an Italian (IT) or foreign
-executing broker using the member nationality mapping. The comparison with overall
-trading activity helps clarify the result. In proprietary flow, Italian members are
-already marginal in the market as a whole, accounting for only 1.94\% of traded
-volume, and they are even less represented in the metaorder sample, with 0.36\% of
-metaorders (2,093) and 0.57\% of metaorder volume. Only 11.00\% of Italian proprietary
-volume is executed through detected metaorders, compared with 38.09\% for foreign
-members. In client flow, the message is different: Italian members are not small
-overall, since they account for 52.72\% of traded volume, but they contribute only
-9.40\% of client metaorders (24,111) and 9.77\% of client metaorder volume.
-Equivalently, only 4.15\% of Italian client volume is executed through detected
-metaorders, against 42.69\% for foreign members. Thus, the dominance of foreign
-brokers in the metaorder sample is not merely a reflection of larger aggregate
-activity; it also reflects a much stronger tendency to execute through metaorder-like
-order splitting, especially on the client side. Across both flows combined, Italian
-members account for 26.34\% of traded volume but only 3.10\% of detected metaorders.
-Aggregate distributions, impact estimates, and crowding results reported in this paper
-are therefore driven predominantly by foreign-member execution.\footnote{Nationality
-refers to the executing member (broker), not necessarily to the final investor.}
-
-  
-% At the member level, we can assign each metaorder to an Italian (IT) or foreign executing broker using the member 
-% nationality mapping. We find that the metaorder sample is overwhelmingly dominated by foreign brokers, especially 
-% for proprietary executions: only the 0.36\% (2,093) of proprietary metaorders are executed by Italian members, while 
-% Italian members account for 9.40\% (24,111) of client metaorders. This suggests that Italian brokers rarely engage 
-% in metaorder-like proprietary execution  and that aggregate distributions, impact estimates, and crowding results 
-% reported in this paper are almost entirely driven by foreign-member execution for both proprietary and client 
-% flow.\footnote{Nationality refers to the executing member (broker), not necessarily to the final investor.}
-
-% Source: out_files/ftsemib/logs/pipeline_20260220_190521/metaorder_statistics_*.log (metaorder_statistics.py, run on 2026-02-20).
-\begin{table}[t]
-  \centering
-  \begin{tabular}{lcc}
-    \toprule
-    Flow & IT & Foreign \\
-    \midrule
-    Proprietary & 2,093 (0.36\%) & 586,450 (99.64\%) \\
-    Client (non-proprietary) & 24,111 (9.40\%) & 232,260 (90.60\%) \\
-    \bottomrule
-  \end{tabular}
-  \caption{Member nationality split at the member level (FTSEMIB sample). Percentages are computed on metaorders with 
-  known member nationality.}
-  \label{tab:metaorder_nationality_share}
-\end{table}
-
-% \begin{figure}[t]
-%   \centering
-%   \begin{subfigure}{0.49\textwidth}
-%     \centering
-%     \includegraphics[width=\textwidth]{images/member_proprietary/png/nationality_share_proprietary.png}
-%     \caption{Proprietary}
-%   \end{subfigure}
-%   \hfill
-%   \begin{subfigure}{0.49\textwidth}
-%     \centering
-%     \includegraphics[width=\textwidth]{images/member_non_proprietary/png/nationality_share_non_proprietary.png}
-%     \caption{Client (non-proprietary)}
-%   \end{subfigure}
-%   \caption{Member nationality share (known only) for proprietary and client (non-proprietary) metaorders.}
-%   \label{fig:nationality_share}
-% \end{figure}
-
-Given this extreme skew, nationality-conditioned results must be interpreted cautiously, especially for proprietary
-IT flow. We nevertheless report in Section~\ref{subsec:impact-paths} the dynamic-impact paths for the Italian
-subsample, while the remaining Italian-member summary statistics are collected in Appendix~\ref{app:it_member_results}.
+Member-nationality conditioning is not part of the main empirical specification. We use the member-nationality label only as an executing-broker diagnostic; the composition table, Italian-member dynamic-impact paths, and Italian-member summary statistics are collected in Appendix~\ref{app:member_nationality_results}.
 
 \section{Impact Model}
 \label{sec:impact_model}
@@ -1208,58 +1141,7 @@ time and across investors.
   \label{fig:normalized_impact_paths}
 \end{figure}
 
-Nationality conditioning provides a useful check on how representative these aggregate curves are.
-Figure~\ref{fig:normalized_impact_paths_it} reports the same exercise for the Italian executing-member subsample.
-The picture is materially different from the aggregate one: the pooled Italian paths are much noisier and, in both
-proprietary and client flow, the mean signed impact path is negative for most of the horizon. Taken at face value,
-this means that Italian executing brokers have negative average impact in this subsample, in the sense that prices move
-on average against the direction of their metaorders after execution starts. The buy/sell split also does not recover
-the clean, stable pattern seen in the full sample, especially for proprietary Italian metaorders, whose confidence
-bands are very wide. We therefore read the negative Italian path as a descriptive feature of the sample rather than as
-conclusive evidence of a distinct structural regime.
-
-By contrast, the corresponding foreign-member paths are visually indistinguishable from the overall curves in
-Figure~\ref{fig:normalized_impact_paths}. This is exactly what one should expect from the composition results in
-Section~\ref{subsec:metaorder_nationality}: foreign brokers account for 99.64\% of proprietary metaorders and 90.60\%
-of client metaorders, so the aggregate dynamic-impact estimates are effectively foreign-member estimates.
-
-\begin{figure}[t]
-  \centering
-  \begin{adjustwidth}{0.01\textwidth}{0.01\textwidth}
-    \centering
-    \begin{subfigure}[t]{0.49\linewidth}
-      \centering
-      \includegraphics[width=\linewidth]{images/member_proprietary/png/normalized_impact_path_member_proprietary_member_nationality_it}
-      \caption{Proprietary: overall}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.49\linewidth}
-      \centering
-      \includegraphics[width=\linewidth]{images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side_member_nationality_it}
-      \caption{Proprietary: buy vs sell}
-    \end{subfigure}
-
-    \vspace{0.1em}
-
-    \begin{subfigure}[t]{0.49\linewidth}
-      \centering
-      \includegraphics[width=\linewidth]{images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_member_nationality_it}
-      \caption{Client: overall}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.49\linewidth}
-      \centering
-      \includegraphics[width=\linewidth]{images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side_member_nationality_it}
-      \caption{Client: buy vs sell}
-    \end{subfigure}
-  \end{adjustwidth}
-  \caption{Mean normalised impact paths $\bar I_G(\tau)$ for the Italian executing-member subsample. The analogous
-  foreign-member paths are omitted because they are visually indistinguishable from the overall curves. Time is
-  normalised so that $\tau = 0$ at the start of the metaorder and $\tau = 1$ at its end; the dashed line marks
-  $\tau = 1$. Shaded regions are $\pm$SEM. Left column: overall paths. Right column: buy vs sell paths
-  (green = buys, red = sells).}
-  \label{fig:normalized_impact_paths_it}
-\end{figure}
+Nationality-conditioned dynamic-impact paths are treated as robustness diagnostics rather than main estimates and are reported in Appendix~\ref{app:member_nationality_results}.
 
 \FloatBarrier
 
@@ -2351,17 +2233,13 @@ compare proprietary and client aggressive flow within a common framework. The ma
   proprietary metaorders are executed with systematically higher participation rates than client metaorders
   (Section~\ref{sec:descriptive_properties}, Table~\ref{tab:distribution-means-medians}).
 
-  \item \textbf{The metaorder sample is dominated by foreign executing members.} Foreign brokers account for almost the entire
-  proprietary metaorder sample and for the large majority of client metaorders, so the aggregate results reported in the paper are
-  primarily driven by foreign-member execution (Section~\ref{subsec:metaorder_nationality}, Table~\ref{tab:metaorder_nationality_share}).
-
   \item \textbf{Price impact is concave for both groups, but the impact law differs sharply by trading capacity.} Client flow is
   close to the square-root benchmark, with $\hat\gamma = 0.5082 \pm 0.0228$, whereas proprietary flow is substantially more concave,
   with $\hat\gamma = 0.3662 \pm 0.0083$. In addition, the scale parameter is much larger for client flow
   ($Y_{\mathrm{client}}/Y_{\mathrm{prop}} \approx 1.76$), \textcolor{blue}{but this does not imply that the client fit lies
   uniformly above the proprietary one. Because the proprietary exponent is lower, the fitted proprietary curve lies above the
   client curve over most of the observed $\phi$ range and crosses it only around $\phi \approx 1.9 \times 10^{-2}$.}
-  (Section~\ref{subsec:impact_models}, Figure~\ref{fig:impact_vs_size_pw}, Figure~\ref{fig:impact_vs_size_log}).
+  (Section~\ref{subsec:impact_models}, Figure~\ref{fig:impact_vs_size_pw}).
   
   \item \textbf{The dynamic response also differs across groups.} After execution, proprietary metaorders retain a larger fraction
   of peak impact than client metaorders: at $\tau=3$, $\bar I(\tau{=}3)/\bar I(\tau{=}1)\approx 0.75$ for proprietary flow versus
@@ -2416,14 +2294,126 @@ impact curves, but to show that who trades is itself an essential state variable
 
 \appendix
 
-\section{Italian Executing Members}
+\section{Member-Nationality Diagnostics and Italian-Member Robustness}
+\label{app:member_nationality_results}
 \label{app:it_member_results}
 
-This appendix reports summary statistics for the subsample of member-level metaorders executed by Italian members
+This appendix collects all results conditioned on the member-nationality label.
+The label refers to the executing member (broker), not necessarily to the final
+investor, and is therefore used only as a descriptive diagnostic. The main text
+conditions on trading capacity---proprietary versus client flow---and reports
+aggregate estimates.
+
+\subsection{Nationality composition of executing members}
+\label{subsec:metaorder_nationality}
+
+At the member level, we can assign each metaorder to an Italian (IT) or foreign
+executing broker using the member nationality mapping. The comparison with overall
+trading activity helps clarify the result. In proprietary flow, Italian members are
+already marginal in the market as a whole, accounting for only 1.94\% of traded
+volume, and they are even less represented in the metaorder sample, with 0.36\% of
+metaorders (2,093) and 0.57\% of metaorder volume. Only 11.00\% of Italian proprietary
+volume is executed through detected metaorders, compared with 38.09\% for foreign
+members. In client flow, the message is different: Italian members are not small
+overall, since they account for 52.72\% of traded volume, but they contribute only
+9.40\% of client metaorders (24,111) and 9.77\% of client metaorder volume.
+Equivalently, only 4.15\% of Italian client volume is executed through detected
+metaorders, against 42.69\% for foreign members. Thus, the dominance of foreign
+brokers in the metaorder sample is not merely a reflection of larger aggregate
+activity; it also reflects a much stronger tendency to execute through metaorder-like
+order splitting, especially on the client side. Across both flows combined, Italian
+members account for 26.34\% of traded volume but only 3.10\% of detected metaorders.
+Aggregate distributions, impact estimates, and crowding results are therefore driven
+predominantly by foreign-member execution.
+
+% Source: out_files/ftsemib/logs/pipeline_20260220_190521/metaorder_statistics_*.log (metaorder_statistics.py, run on 2026-02-20).
+\begin{table}[t]
+  \centering
+  \begin{tabular}{lcc}
+    \toprule
+    Flow & IT & Foreign \\
+    \midrule
+    Proprietary & 2,093 (0.36\%) & 586,450 (99.64\%) \\
+    Client (non-proprietary) & 24,111 (9.40\%) & 232,260 (90.60\%) \\
+    \bottomrule
+  \end{tabular}
+  \caption{Member nationality split at the member level (FTSEMIB sample). Percentages are computed on metaorders with
+  known member nationality.}
+  \label{tab:metaorder_nationality_share}
+\end{table}
+
+Given this extreme skew, the nationality-conditioned results below must be interpreted cautiously, especially for
+proprietary IT flow.
+
+\FloatBarrier
+
+\subsection{Italian-member dynamic impact paths}
+\label{app:it_member_impact_paths}
+
+As a robustness diagnostic, Figure~\ref{fig:normalized_impact_paths_it} reports the dynamic-impact exercise for the
+Italian executing-member subsample. The picture is materially different from the aggregate one: the pooled Italian paths
+are much noisier and, in both proprietary and client flow, the mean signed impact path is negative for most of the horizon.
+Taken at face value, this means that Italian executing brokers have negative average impact in this subsample, in the sense
+that prices move on average against the direction of their metaorders after execution starts. The buy/sell split also does
+not recover the clean, stable pattern seen in the full sample, especially for proprietary Italian metaorders, whose
+confidence bands are very wide. We therefore read the negative Italian path as a descriptive feature of the sample rather
+than as conclusive evidence of a distinct structural regime.
+
+By contrast, the corresponding foreign-member paths are visually indistinguishable from the overall curves in
+Figure~\ref{fig:normalized_impact_paths}. This is exactly what one should expect from the composition results in
+Section~\ref{subsec:metaorder_nationality}: foreign brokers account for 99.64\% of proprietary metaorders and 90.60\%
+of client metaorders, so the aggregate dynamic-impact estimates are effectively foreign-member estimates.
+
+\begin{figure}[t]
+  \centering
+  \begin{adjustwidth}{0.01\textwidth}{0.01\textwidth}
+    \centering
+    \begin{subfigure}[t]{0.49\linewidth}
+      \centering
+      \includegraphics[width=\linewidth]{images/member_proprietary/png/normalized_impact_path_member_proprietary_member_nationality_it}
+      \caption{Proprietary: overall}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\linewidth}
+      \centering
+      \includegraphics[width=\linewidth]{images/member_proprietary/png/normalized_impact_path_member_proprietary_by_side_member_nationality_it}
+      \caption{Proprietary: buy vs sell}
+    \end{subfigure}
+
+    \vspace{0.1em}
+
+    \begin{subfigure}[t]{0.49\linewidth}
+      \centering
+      \includegraphics[width=\linewidth]{images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_member_nationality_it}
+      \caption{Client: overall}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\linewidth}
+      \centering
+      \includegraphics[width=\linewidth]{images/member_non_proprietary/png/normalized_impact_path_member_non_proprietary_by_side_member_nationality_it}
+      \caption{Client: buy vs sell}
+    \end{subfigure}
+  \end{adjustwidth}
+  \caption{Mean normalised impact paths $\bar I_G(\tau)$ for the Italian executing-member subsample. The analogous
+  foreign-member paths are omitted because they are visually indistinguishable from the overall curves. Time is
+  normalised so that $\tau = 0$ at the start of the metaorder and $\tau = 1$ at its end; the dashed line marks
+  $\tau = 1$. Shaded regions are $\pm$SEM. Left column: overall paths. Right column: buy vs sell paths
+  (green = buys, red = sells).}
+  \label{fig:normalized_impact_paths_it}
+\end{figure}
+
+\FloatBarrier
+
+\subsection{Italian-member summary statistics}
+\label{app:it_member_summary_statistics}
+
+This subsection reports summary statistics for the subsample of member-level metaorders executed by Italian members
 (member nationality tag = IT). As discussed in Section~\ref{subsec:metaorder_nationality}, the proprietary IT
 subsample is small, so estimates should be interpreted cautiously.
 
 \input{tables/appendix_it_metaorder_stats.tex}
+
+\FloatBarrier
 
 \begin{thebibliography}{99}
 

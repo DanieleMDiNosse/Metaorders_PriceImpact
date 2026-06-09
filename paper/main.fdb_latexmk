@@ -1,10 +1,9 @@
 # Fdb version 4
-["pdflatex"] 1781018759.53995 "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/main.tex" "main.pdf" "main" 1781018761.46392 0
+["pdflatex"] 1781020454.62494 "main.tex" "main.pdf" "main" 1781020456.56331 0
   "/etc/texmf/web2c/texmf.cnf" 1769361868.29643 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0800.600pk" 1769362290.78819 9268 87791122d3f27e491953217389a3fb03 ""
-  "/home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk" 1769362290.52355 10448 442ff10d92e20ec81e5ef5c19a9ccf0d ""
-  "/home/danielemdn/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk" 1769362290.2558 12644 6325a57144dd94f70514a8f8f8a8504e ""
-  "/home/danielemdn/Documents/repositories/Metaorders_PriceImpact/paper/main.tex" 1781018757.38471 139326 3b6c1ba7e9b17fa4c4d91abf597196b8 ""
+  "/home/danielemdn/.hermes/profiles/faraday/home/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0800.600pk" 1778075644.18546 9268 07714174060ef6f60ebb97041dc8374d ""
+  "/home/danielemdn/.hermes/profiles/faraday/home/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk" 1778075643.63839 10448 0c8375c5c1a806beb53fab2487299f78 ""
+  "/home/danielemdn/.hermes/profiles/faraday/home/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk" 1778170107.54277 12644 3a9bec337de0399a23b92c99a7146885 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/tcrm0800.tfm" 1136768653 1536 05df9db6aeccc4eea94fec15c9024f79 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/tcrm0900.tfm" 1136768653 1536 c4f439db76ef96a9c53bc437f35ffe20 ""
@@ -172,9 +171,9 @@
   "images/prop_vs_nonprop/png/member_prop_client_crowding_heatmap_3d.pdf" 1779350260.37794 16100 d17b002c4018f4088fd000a670e4cf90 ""
   "images/prop_vs_nonprop/png/member_prop_client_crowding_hist.pdf" 1779350256.85521 13240 def467a9fd7db342ff2a9c7f362630ec ""
   "images/prop_vs_nonprop/png/power_law_prop_vs_nonprop.pdf" 1779290884.26817 12761 34fa1399ab3322cb0f3ca5e1ba204b1a ""
-  "main.aux" 1781018761.4058 30009 d23aab36bf3fce9dfeb87bd83e1ed5bc "pdflatex"
-  "main.out" 1781018761.4068 5129 e969848c3bc872f5ff82b7c18678ef7a "pdflatex"
-  "main.tex" 1781018757.38471 139326 3b6c1ba7e9b17fa4c4d91abf597196b8 ""
+  "main.aux" 1781020456.47561 30652 47466b7fe84034c5a9ea75832e00d4af "pdflatex"
+  "main.out" 1781020456.47661 5784 1665e479888ca3de331760afdfa93211 "pdflatex"
+  "main.tex" 1781020428.80179 138138 af106d9f75f79932a7e0569ad9fdfe28 ""
   "tables/appendix_it_metaorder_stats.tex" 1777298736.22615 1323 01934ddbe02dee253050739c1a34bfd8 ""
   (generated)
   "main.aux"
