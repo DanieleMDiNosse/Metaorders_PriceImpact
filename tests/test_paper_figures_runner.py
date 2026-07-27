@@ -27,6 +27,26 @@ class TestPaperFiguresRunnerStyleArgs(unittest.TestCase):
         self.assertEqual(args.paper_style_config, "config_ymls/paper_figure_styles_large.yml")
 
 
+class TestPaperFigurePathDiscovery(unittest.TestCase):
+    def test_ignores_commented_and_iffalse_figures(self) -> None:
+        tex = """\
+\\includegraphics{images/active_before}
+% \\includegraphics{images/commented}
+\\iffalse
+\\includegraphics{images/disabled}
+\\iffalse
+\\includegraphics{images/nested_disabled}
+\\fi
+\\fi
+\\includegraphics{images/active_after} % trailing comment
+"""
+
+        with mock.patch.object(Path, "read_text", return_value=tex):
+            figures = paper_figures._paper_figure_paths(Path("paper/main.tex"))
+
+        self.assertEqual(figures, ("images/active_before", "images/active_after"))
+
+
 class TestPaperFiguresCrowdingConfig(unittest.TestCase):
     def test_crowding_analysis_disables_nested_eta(self) -> None:
         captured: dict[str, object] = {}

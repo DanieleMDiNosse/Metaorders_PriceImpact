@@ -424,13 +424,25 @@ def _resolve_max_workers(requested: int) -> int:
 
 def _paper_figure_paths(paper_tex_path: Path) -> tuple[str, ...]:
     figures: list[str] = []
+    disabled_depth = 0
     for raw_line in paper_tex_path.read_text(encoding="utf-8").splitlines():
-        stripped = raw_line.lstrip()
-        if stripped.startswith("%"):
-            continue
-        match = INCLUDEGRAPHICS_RE.search(raw_line)
-        if match is not None:
-            figures.append(match.group(1).strip())
+        line = raw_line.split("%", maxsplit=1)[0]
+        cursor = 0
+        for conditional in re.finditer(r"\\iffalse\b|\\fi\b", line):
+            active_segment = line[cursor : conditional.start()]
+            if disabled_depth == 0:
+                figures.extend(
+                    match.group(1).strip() for match in INCLUDEGRAPHICS_RE.finditer(active_segment)
+                )
+            if conditional.group() == r"\iffalse":
+                disabled_depth += 1
+            elif disabled_depth:
+                disabled_depth -= 1
+            cursor = conditional.end()
+        if disabled_depth == 0:
+            figures.extend(
+                match.group(1).strip() for match in INCLUDEGRAPHICS_RE.finditer(line[cursor:])
+            )
     return tuple(dict.fromkeys(figures))
 
 

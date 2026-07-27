@@ -49,7 +49,7 @@ def format_member_label(
     value: object,
     mapping: Mapping[str, str] | None = None,
     *,
-    fallback: FallbackMode = "original",
+    fallback: FallbackMode = "unknown",
 ) -> str:
     """Return the anonymized display label for one member identifier."""
     labels = mapping if mapping is not None else load_member_label_map()
@@ -65,7 +65,7 @@ def label_member_series(
     series: pd.Series,
     mapping: Mapping[str, str] | None = None,
     *,
-    fallback: FallbackMode = "original",
+    fallback: FallbackMode = "unknown",
 ) -> pd.Series:
     """Map a Series of raw member identifiers to anonymized display labels."""
     labels = mapping if mapping is not None else load_member_label_map()

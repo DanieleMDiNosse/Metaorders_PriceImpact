@@ -220,6 +220,9 @@ metaorder_scripts/
 # data
 data/
 
+# Confidential raw-member-ID crosswalk (keep local; never publish)
+/config_ymls/member_label_map.json
+
 # CSV, parquet, pkl, pickle
 *.csv
 *.parquet

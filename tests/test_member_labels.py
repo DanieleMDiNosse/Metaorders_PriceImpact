@@ -28,9 +28,10 @@ def test_format_member_label_handles_numeric_and_string_ids(tmp_path: Path) -> N
     assert format_member_label(96862.0, mapping) == "Member 30"
 
 
-def test_format_member_label_fallback_is_explicit() -> None:
+def test_format_member_label_defaults_to_non_leaking_fallback() -> None:
     mapping = {"96862": "Member 30"}
 
+    assert format_member_label("99999", mapping) == "Member ?"
     assert format_member_label("99999", mapping, fallback="original") == "99999"
     assert format_member_label("99999", mapping, fallback="unknown") == "Member ?"
 
