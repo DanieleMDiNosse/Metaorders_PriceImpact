@@ -311,6 +311,72 @@ class TestMetaorderDistributionsReview(unittest.TestCase):
         self.assertTrue(any("Best fit = lognormal" in text for text in annotation_texts))
         self.assertTrue(any("95% CI [0.1, 0.15]" in text for text in annotation_texts))
 
+    def test_saved_output_figure_omits_fit_annotation_boxes_when_paper_style_disables_them(self) -> None:
+        fit_rows = []
+        for metric in metaorder_distributions._distribution_metric_specs():
+            for group in ("client", "proprietary"):
+                fit_rows.append(
+                    {
+                        "metric": metric.field_name,
+                        "panel_title": metric.panel_title,
+                        "group": group,
+                        "sample_size": 0,
+                        "fit_success": True,
+                        "alpha": 2.3,
+                        "xmin": 0.1,
+                        "ks_stat": 0.02,
+                        "n_tail": 5,
+                        "best_fit_model": "lognormal",
+                        "best_fit_aic": 11.2,
+                        "powerlaw_compare_summary": "lognormal=lognormal",
+                        "bootstrap_full_pipeline_enabled": True,
+                        "bootstrap_alpha": 0.05,
+                        "bootstrap_xmin_ci_low": 0.1,
+                        "bootstrap_xmin_ci_high": 0.15,
+                        "power_law_alpha_ci_low": 2.1,
+                        "power_law_alpha_ci_high": 2.6,
+                    }
+                )
+
+        plot_data = pd.DataFrame(
+            [
+                {
+                    "metric": "q_over_v",
+                    "panel_title": "Relative size",
+                    "group": "client",
+                    "label": "Client",
+                    "row_idx": 4,
+                    "col_idx": 1,
+                    "trace_kind": "density",
+                    "point_index": 0,
+                    "x": 0.1,
+                    "y": 10.0,
+                }
+            ]
+        )
+
+        fit_summary = pd.DataFrame(fit_rows)
+        fit_summary.loc[
+            (fit_summary["metric"] == "q_over_v") & (fit_summary["group"] == "client"),
+            "sample_size",
+        ] = 10
+
+        with mock.patch.object(
+            metaorder_distributions,
+            "paper_figure_style",
+            return_value={"show_fit_annotations": False},
+        ):
+            fig = build_distribution_figure_from_saved_outputs(
+                fit_summary,
+                plot_data,
+                show_progress=False,
+            )
+
+        annotation_texts = [str(annotation.text) for annotation in fig.layout.annotations]
+        self.assertNotIn("Best fit = lognormal", "\n".join(annotation_texts))
+        self.assertIn("Client", annotation_texts)
+        self.assertIn("Proprietary", annotation_texts)
+
 
 class TestMetaorderDistributionsParallelism(unittest.TestCase):
     @mock.patch("moimpact.workflows.metaorders.distributions.os.cpu_count", return_value=8)

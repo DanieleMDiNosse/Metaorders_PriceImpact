@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from dataclasses import replace
 from unittest import mock
 from pathlib import Path
 
@@ -331,6 +332,59 @@ class TestCrowdingImpactHelpers(unittest.TestCase):
         self.assertIn("Proprietary", annotation_texts)
         self.assertNotIn("Benchmarks: 1e-03, 1e-02", annotation_texts)
         self.assertEqual(fig.layout.legend.title.text, "Crowding quantile")
+        legend_names = [trace.name for trace in fig.data if trace.showlegend]
+        self.assertEqual(legend_names, ["Low", "Mid", "High"])
+        self.assertEqual(fig.layout.legend.orientation, "h")
+        self.assertLess(fig.layout.legend.y, 0.0)
+        self.assertEqual(fig.layout.legend.xanchor, "center")
+        self.assertEqual(fig.layout.legend.yanchor, "top")
+
+    def test_eta_robustness_legend_keeps_failed_first_panel_crowding_label(self) -> None:
+        working = _build_working_frame()
+        outputs = crowding_impact._analyse_eta_variant(
+            working,
+            n_eta_bins=2,
+            n_crowding_quantiles=3,
+            benchmark_phis=(1.0e-3, 1.0e-2),
+            n_logbins=5,
+            min_count=2,
+            store_binned=True,
+        )
+        fit_summary = outputs.fit_summary.copy()
+        binned_curve_data = outputs.binned_curve_data.copy()
+
+        missing_low_mask = (
+            (fit_summary[crowding_impact.COL_GROUP] == "client")
+            & (fit_summary[crowding_impact.COL_ETA_BIN] == 0)
+            & (fit_summary[crowding_impact.COL_CROWDING_BIN] == 0)
+        )
+        fit_summary.loc[missing_low_mask, "status"] = "fit_failed"
+        binned_curve_data = binned_curve_data.loc[
+            ~(
+                (binned_curve_data[crowding_impact.COL_GROUP] == "client")
+                & (binned_curve_data[crowding_impact.COL_ETA_BIN] == 0)
+                & (binned_curve_data[crowding_impact.COL_CROWDING_BIN] == 0)
+            )
+        ].copy()
+        outputs = replace(outputs, fit_summary=fit_summary, binned_curve_data=binned_curve_data)
+        dirs = crowding_impact.make_plot_output_dirs(Path("images/test_crowding_eta_legend"))
+
+        with mock.patch.object(crowding_impact, "_export_plotly_figure") as export_mock:
+            crowding_impact._plot_eta_robustness(
+                outputs,
+                dirs,
+                write_html=False,
+                write_png=False,
+            )
+
+        fig = export_mock.call_args.args[0]
+        legend_names = [trace.name for trace in fig.data if trace.showlegend]
+        self.assertEqual(legend_names, ["Low", "Mid", "High"])
+        self.assertEqual(fig.layout.legend.title.text, "Crowding quantile")
+        self.assertEqual(fig.layout.legend.orientation, "h")
+        self.assertLess(fig.layout.legend.y, 0.0)
+        self.assertEqual(fig.layout.legend.xanchor, "center")
+        self.assertEqual(fig.layout.legend.yanchor, "top")
 
     def test_multi_panel_figures_share_axes_for_comparison(self) -> None:
         working = _build_working_frame()

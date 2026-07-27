@@ -106,10 +106,11 @@ Outputs:
 The figure combines:
 
 - a descending rank plot of metaorder counts
-- a scatter of total child orders vs total filtered trades
+- a zero-preserving log-scaled scatter of total child orders versus total filtered trades
 
-Members with filtered trades but zero detected metaorders remain in the member
-table and in the scatter plot.
+Members with filtered trades but zero detected child orders remain in the member
+table and are drawn at the axis origin. Both scatter coordinates use
+`log10(1 + count)`, while tick labels and hover text report the original counts.
 
 ## Mean daily metaorder-volume share by ISIN
 

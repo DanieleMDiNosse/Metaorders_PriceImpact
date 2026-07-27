@@ -15,6 +15,18 @@ def _ts(value: str) -> pd.Timestamp:
     return pd.Timestamp(value)
 
 
+def test_attach_member_labels_uses_anonymized_display_labels() -> None:
+    frame = pd.DataFrame({"Member": ["96862", "91149"], "r": [0.4, 0.2]})
+
+    out = member_overlap._attach_member_labels(
+        frame,
+        {"96862": "Member 30", "91149": "Member 11"},
+    )
+
+    assert list(out["MemberLabel"]) == ["Member 30", "Member 11"]
+    assert list(out["Member"]) == ["96862", "91149"]
+
+
 def _base_rows() -> pd.DataFrame:
     return pd.DataFrame(
         [

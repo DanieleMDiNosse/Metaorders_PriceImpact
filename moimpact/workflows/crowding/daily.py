@@ -70,6 +70,7 @@ from moimpact.config import (
     resolve_repo_path,
 )
 from moimpact.logging_utils import PrintTee, setup_file_logger
+from moimpact.member_labels import label_member_series, load_member_label_map
 from moimpact.paper_figure_styles import apply_plotly_paper_figure_style, plotly_size_from_paper_style
 from moimpact.plot_style import (
     THEME_COLORWAY,
@@ -2040,7 +2041,11 @@ def run_member_level_prop_client_crowding_analysis(
             # Sort members by correlation for a more informative plot
             plot_df = stats_filtered.dropna(subset=["r"]).copy()
             plot_df = plot_df.sort_values("r").reset_index(drop=True)
-            members = plot_df["Member"].astype(str).tolist()
+            member_label_map = load_member_label_map()
+            plot_df["MemberLabel"] = label_member_series(
+                plot_df["Member"], member_label_map, fallback="unknown"
+            )
+            members = plot_df["MemberLabel"].astype(str).tolist()
             r_sorted = plot_df["r"].to_numpy()
             p_sorted = plot_df["p"].to_numpy(dtype=float, copy=True)
             p_labels = [
@@ -2048,7 +2053,7 @@ def run_member_level_prop_client_crowding_analysis(
                 for p in p_sorted
             ]
             hover_text = [
-                f"Member {m}<br>corr={r:.3f}<br>p={p:.3g}" if np.isfinite(p) else f"Member {m}<br>corr={r:.3f}<br>p=NA"
+                f"{m}<br>corr={r:.3f}<br>p={p:.3g}" if np.isfinite(p) else f"{m}<br>corr={r:.3f}<br>p=NA"
                 for m, r, p in zip(members, r_sorted, p_sorted)
             ]
             fig = go.Figure(
@@ -2184,32 +2189,122 @@ def run_member_level_prop_client_crowding_analysis(
         if window_stats.empty:
             print("[Member crowding] No data available to build member–window heatmap.")
         else:
-            # Order windows by their start date using window_order
+            # Order windows by their start date using window_order, then plot only
+            # valid member-window cells. The old dense heatmap had 45 member
+            # columns and long date-range labels, but only a few cells were
+            # finite; plotting the sparse cells on a date axis makes the figure
+            # interpretable in the paper.
             window_cat = pd.CategoricalDtype(categories=window_order, ordered=True)
             window_stats["Window"] = window_stats["Window"].astype(window_cat)
-            pivot = window_stats.pivot(index="Window", columns="Member", values="r")
-            pivot = pivot.sort_index()
+            valid_window_stats = window_stats[np.isfinite(window_stats["r"])].copy()
 
-            if pivot.empty:
-                print("[Member crowding] Member–window heatmap pivot is empty; skipping plot.")
+            if valid_window_stats.empty:
+                print("[Member crowding] No finite member–window correlations to plot; skipping heatmap.")
             else:
+                window_bounds: dict[str, tuple[pd.Timestamp, pd.Timestamp, pd.Timestamp, str]] = {}
+                for label in window_order:
+                    start_raw, end_raw = str(label).split("_to_", maxsplit=1)
+                    start_ts = pd.to_datetime(start_raw)
+                    end_ts = pd.to_datetime(end_raw)
+                    midpoint = start_ts + (end_ts - start_ts) / 2
+                    if start_ts.year == end_ts.year:
+                        display = f"{start_ts:%b %d}–{end_ts:%b %d, %Y}"
+                    else:
+                        display = f"{start_ts:%b %d, %Y}–{end_ts:%b %d, %Y}"
+                    window_bounds[str(label)] = (start_ts, end_ts, midpoint, display)
+
+                valid_window_stats["WindowLabel"] = valid_window_stats["Window"].astype(str)
+                valid_window_stats = valid_window_stats[
+                    valid_window_stats["WindowLabel"].isin(window_bounds)
+                ].copy()
+                valid_window_stats["WindowMid"] = valid_window_stats["WindowLabel"].map(
+                    lambda w: window_bounds[w][2]
+                )
+                valid_window_stats["WindowDisplay"] = valid_window_stats["WindowLabel"].map(
+                    lambda w: window_bounds[w][3]
+                )
+                member_label_map = load_member_label_map()
+                valid_window_stats["MemberLabel"] = label_member_series(
+                    valid_window_stats["Member"],
+                    member_label_map,
+                    fallback="unknown",
+                )
+
+                member_order = (
+                    valid_window_stats.assign(abs_r=valid_window_stats["r"].abs())
+                    .groupby("MemberLabel", sort=False)
+                    .agg(
+                        max_abs_r=("abs_r", "max"),
+                        n_cells=("r", "size"),
+                    )
+                    .sort_values(["max_abs_r", "n_cells"], ascending=[False, False])
+                    .index.tolist()
+                )
+
+                customdata = np.column_stack(
+                    [
+                        valid_window_stats["WindowDisplay"].to_numpy(dtype=object),
+                        valid_window_stats["n_prop"].to_numpy(dtype=int),
+                        valid_window_stats["n_client"].to_numpy(dtype=int),
+                        valid_window_stats["n_used"].to_numpy(dtype=int),
+                        valid_window_stats["r"].to_numpy(dtype=float),
+                    ]
+                )
                 fig = go.Figure(
-                    data=go.Heatmap(
-                        z=pivot.to_numpy(dtype=float),
-                        x=[str(x) for x in pivot.columns],
-                        y=[str(y) for y in pivot.index],
-                        colorscale="RdBu",
-                        zmin=-1.0,
-                        zmax=1.0,
-                        zmid=0.0,
-                        colorbar=dict(title="Corr(ε_i, member client imbalance)"),
-                        hovertemplate="Window=%{y}<br>Member=%{x}<br>corr=%{z:.3f}<extra></extra>",
+                    data=go.Scatter(
+                        x=valid_window_stats["WindowMid"],
+                        y=valid_window_stats["MemberLabel"],
+                        mode="markers",
+                        showlegend=False,
+                        marker=dict(
+                            symbol="square",
+                            size=18,
+                            color=valid_window_stats["r"],
+                            colorscale="RdBu",
+                            cmin=-1.0,
+                            cmax=1.0,
+                            cmid=0.0,
+                            colorbar=dict(
+                                title="Correlation",
+                                tickvals=[-1, -0.5, 0, 0.5, 1],
+                                len=0.82,
+                            ),
+                            line=dict(color="rgba(31,41,55,0.45)", width=0.5),
+                        ),
+                        customdata=customdata,
+                        hovertemplate=(
+                            "Window=%{customdata[0]}<br>"
+                            "Member=%{y}<br>"
+                            "corr=%{customdata[4]:.3f}<br>"
+                            "n_prop=%{customdata[1]}<br>"
+                            "n_client=%{customdata[2]}<br>"
+                            "n_used=%{customdata[3]}"
+                            "<extra></extra>"
+                        ),
                     )
                 )
+                min_x = min(v[0] for v in window_bounds.values())
+                max_x = max(v[1] for v in window_bounds.values())
                 fig.update_layout(
                     title="Member-window prop/client crowding heatmap",
-                    xaxis_title="Member",
-                    yaxis_title=f"{member_window_days}-day window (non-overlapping)",
+                    xaxis_title=f"{member_window_days}-day window",
+                    yaxis_title="Member",
+                    xaxis=dict(
+                        type="date",
+                        tickformat="%b<br>%Y",
+                        dtick="M2",
+                        range=[min_x, max_x],
+                        showgrid=True,
+                        gridcolor="rgba(148,163,184,0.35)",
+                        zeroline=False,
+                    ),
+                    yaxis=dict(
+                        categoryorder="array",
+                        categoryarray=list(reversed(member_order)),
+                        showgrid=True,
+                        gridcolor="rgba(148,163,184,0.28)",
+                        zeroline=False,
+                    ),
                 )
                 _, heatmap_path = save_plotly_figure(
                     fig,

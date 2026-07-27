@@ -491,6 +491,56 @@ def _eta_label_map(n_bins: int) -> Dict[int, str]:
     return {idx: f"η Q{idx + 1}" for idx in range(n_bins)}
 
 
+def _crowding_legend_entries(fit_summary: pd.DataFrame) -> List[Tuple[int, str]]:
+    """Return all intended crowding legend entries, including failed fit slices."""
+    if fit_summary.empty or COL_CROWDING_BIN not in fit_summary.columns:
+        return []
+
+    rows = fit_summary.loc[fit_summary[COL_CROWDING_BIN].notna(), [COL_CROWDING_BIN, COL_CROWDING_LABEL]].copy()
+    if rows.empty:
+        return []
+
+    rows[COL_CROWDING_BIN] = rows[COL_CROWDING_BIN].astype(int)
+    rows = rows.drop_duplicates(subset=[COL_CROWDING_BIN]).sort_values(COL_CROWDING_BIN)
+    fallback_labels = _crowding_label_map(int(rows[COL_CROWDING_BIN].max()) + 1)
+    entries: List[Tuple[int, str]] = []
+    for _, row in rows.iterrows():
+        bin_idx = int(row[COL_CROWDING_BIN])
+        raw_label = row.get(COL_CROWDING_LABEL)
+        label = str(raw_label) if pd.notna(raw_label) else fallback_labels.get(bin_idx, f"Q{bin_idx + 1}")
+        entries.append((bin_idx, label))
+    return entries
+
+
+def _add_crowding_legend_placeholders(
+    fig: go.Figure,
+    legend_entries: Sequence[Tuple[int, str]],
+    *,
+    marker_size: int,
+    row: int,
+    col: int,
+) -> None:
+    """Add data-free traces so the legend lists every crowding quantile label."""
+    for legend_rank, (crowding_bin, label) in enumerate(legend_entries):
+        color = CROWDING_COLORS.get(int(crowding_bin), BENCHMARK_COLORS[int(crowding_bin) % len(BENCHMARK_COLORS)])
+        fig.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode="lines+markers",
+                marker=dict(size=marker_size, color=color),
+                line=dict(color=color, width=2),
+                name=label,
+                legendgroup=label,
+                legendrank=legend_rank,
+                showlegend=True,
+                hoverinfo="skip",
+            ),
+            row=row,
+            col=col,
+        )
+
+
 def _quantile_edges(values: pd.Series, n_bins: int, label: str) -> np.ndarray:
     if n_bins < 1:
         raise ValueError("n_bins must be >= 1.")
@@ -2278,6 +2328,15 @@ def _plot_main_curves(
     fig.update_yaxes(type="log", title_text="I/σ")
     legend = plotly_legend_layout(PLOT_STYLE)
     legend["title"] = {"text": "Crowding quantile"}
+    legend.update(
+        {
+            "orientation": "h",
+            "x": 0.5,
+            "y": -0.16,
+            "xanchor": "center",
+            "yanchor": "top",
+        }
+    )
     fig.update_layout(
         legend=legend,
         **plotly_layout_size_kwargs(figure_size, default_width=1050, default_height=560),
@@ -2480,6 +2539,9 @@ def _plot_eta_robustness(
         shared_yaxes="all",
     )
 
+    legend_entries = _crowding_legend_entries(outputs.fit_summary)
+    _add_crowding_legend_placeholders(fig, legend_entries, marker_size=6, row=1, col=1)
+
     for row_idx, eta_bin in enumerate(eta_bins, start=1):
         for col_idx, group in enumerate(GROUP_ORDER, start=1):
             group_fit = outputs.fit_summary[
@@ -2507,7 +2569,7 @@ def _plot_eta_robustness(
                         error_y=dict(type="data", array=binned["sem_imp"], visible=True, color=COLOR_NEUTRAL),
                         name=label,
                         legendgroup=label,
-                        showlegend=(row_idx == 1 and col_idx == 1),
+                        showlegend=False,
                     ),
                     row=row_idx,
                     col=col_idx,
@@ -2536,8 +2598,19 @@ def _plot_eta_robustness(
         fig.update_xaxes(type="log", title_text="φ", row=row_idx, col=2)
         fig.update_yaxes(type="log", title_text="I/σ", row=row_idx, col=1)
         fig.update_yaxes(type="log", title_text="I/σ", row=row_idx, col=2)
+    legend = plotly_legend_layout(PLOT_STYLE)
+    legend["title"] = {"text": "Crowding quantile"}
+    legend.update(
+        {
+            "orientation": "h",
+            "x": 0.5,
+            "y": -0.13,
+            "xanchor": "center",
+            "yanchor": "top",
+        }
+    )
     fig.update_layout(
-        legend=plotly_legend_layout(PLOT_STYLE),
+        legend=legend,
         **plotly_layout_size_kwargs(
             figure_size,
             default_width=1080,

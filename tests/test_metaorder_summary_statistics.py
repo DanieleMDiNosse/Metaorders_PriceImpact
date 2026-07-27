@@ -8,6 +8,7 @@ import pandas as pd
 
 from moimpact.plotting import COLOR_CLIENT, COLOR_PROPRIETARY
 from moimpact.workflows.metaorders.summary import (
+    _build_member_metaorder_profile_figure,
     _daily_metaorder_volume,
     build_daily_metaorder_share_table,
     build_mean_daily_metaorder_share_figure,
@@ -90,6 +91,37 @@ class TestMetaorderSummaryStatisticsHelpers(unittest.TestCase):
         self.assertTrue(bool(fig.layout.showlegend))
         np.testing.assert_allclose(traces["Proprietary"].customdata[:, 0], [22.5, 15.0])
         np.testing.assert_array_equal(traces["Proprietary"].customdata[:, 1], [2, 1])
+
+    def test_member_metaorder_profile_scatter_uses_zero_preserving_log_coordinates(self) -> None:
+        member_table = pd.DataFrame(
+            {
+                "Member": ["zero_child", "active"],
+                "n_metaorders": [0, 3],
+                "total_child_orders": [0, 30],
+                "total_trades": [5, 300],
+                "flow": ["all_metaorders", "all_metaorders"],
+            }
+        )
+
+        fig = _build_member_metaorder_profile_figure(
+            ((member_table, "All metaorders", COLOR_CLIENT),),
+            show_legend=False,
+            member_label_map={"active": "Member 1", "zero_child": "Member 2"},
+        )
+
+        rank_trace = fig.data[0].to_plotly_json()
+        scatter_trace = fig.data[1].to_plotly_json()
+        self.assertEqual(fig.layout.xaxis2.type, "linear")
+        self.assertEqual(fig.layout.yaxis2.type, "linear")
+        self.assertEqual(rank_trace["text"], ["Member 1"])
+        self.assertEqual(scatter_trace["text"], ["Member 2", "Member 1"])
+        self.assertNotIn("active", scatter_trace["text"])
+        self.assertEqual(scatter_trace["x"][0], 0.0)
+        self.assertAlmostEqual(scatter_trace["y"][0], np.log10(6.0))
+        self.assertEqual(scatter_trace["customdata"][0][0], 0.0)
+        self.assertEqual(fig.layout.xaxis2.title.text, "# Child orders")
+        self.assertIn("0", list(fig.layout.xaxis2.ticktext))
+        self.assertNotIn("0 shown at 1", fig.layout.xaxis2.title.text)
 
 
 if __name__ == "__main__":

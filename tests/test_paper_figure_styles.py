@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 import plotly.graph_objects as go
+import yaml
 
 from moimpact.paper_figure_styles import (
     PAPER_FIGURE_STYLES_ENV,
@@ -161,6 +162,18 @@ figures:
 
         self.assertEqual(fig.data[0].line.width, 0)
         self.assertEqual(fig.data[1].line.width, 5)
+
+
+    def test_repository_paper_figures_all_have_explicit_legend_boolean(self) -> None:
+        cfg_path = Path(__file__).resolve().parents[1] / "config_ymls" / "paper_figure_styles.yml"
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+        figures = cfg["figures"]
+
+        missing = [name for name, style in figures.items() if "showlegend" not in style]
+        non_bool = [name for name, style in figures.items() if "showlegend" in style and not isinstance(style["showlegend"], bool)]
+
+        self.assertEqual(missing, [])
+        self.assertEqual(non_bool, [])
 
 
 if __name__ == "__main__":

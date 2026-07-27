@@ -31,7 +31,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -44,6 +44,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from moimpact.config import format_path_template, load_yaml_mapping, resolve_repo_path
+from moimpact.member_labels import format_member_label, label_member_series, load_member_label_map
 from moimpact.paper_figure_styles import apply_plotly_paper_figure_style, plotly_size_from_paper_style
 from moimpact.plot_style import apply_shared_plotly_style, load_plot_style
 from moimpact.plotting import (
@@ -74,6 +75,7 @@ COL_DATE = "Date"
 COL_MEMBER = "Member"
 COL_DIRECTION = "target_direction"
 COL_IMBALANCE = "active_client_imbalance"
+COL_MEMBER_LABEL = "MemberLabel"
 
 PLOT_STYLE = load_plot_style()
 try:
@@ -736,6 +738,16 @@ def _write_table(df: pd.DataFrame, path: Path) -> None:
     print(f"[Member active overlap] Wrote table: {path}")
 
 
+def _attach_member_labels(frame: pd.DataFrame, mapping: Mapping[str, str] | None = None) -> pd.DataFrame:
+    """Return a copy with anonymized member labels for figure display."""
+    out = frame.copy()
+    if COL_MEMBER in out.columns:
+        out[COL_MEMBER_LABEL] = label_member_series(
+            out[COL_MEMBER], mapping, fallback="unknown"
+        )
+    return out
+
+
 def _plot_global_lead_lag(global_correlations: pd.DataFrame, plot_dirs, options: RuntimeOptions) -> None:
     if global_correlations.empty:
         return
@@ -779,30 +791,63 @@ def _plot_global_lead_lag(global_correlations: pd.DataFrame, plot_dirs, options:
 def _plot_per_member(per_member: pd.DataFrame, plot_dirs, options: RuntimeOptions) -> None:
     if per_member.empty:
         return
+    member_label_map = load_member_label_map()
     for (scope, bucket), group in per_member.groupby(["scope", "lead_lag_bucket"], sort=False):
-        group = group.copy()
+        group = _attach_member_labels(group, member_label_map)
         group["r"] = pd.to_numeric(group["r"], errors="coerce")
+        group["lo"] = pd.to_numeric(group["lo"], errors="coerce")
+        group["hi"] = pd.to_numeric(group["hi"], errors="coerce")
+        group["n_valid"] = pd.to_numeric(group["n_valid"], errors="coerce").fillna(0).astype(int)
+        group["n_dates"] = pd.to_numeric(group["n_dates"], errors="coerce").fillna(0).astype(int)
         plot_df = group[(group["passes_min_obs"]) & (np.isfinite(group["r"].to_numpy(dtype=float)))].copy()
         if plot_df.empty:
             continue
         plot_df = plot_df.sort_values("r").reset_index(drop=True)
-        fig = go.Figure(
-            data=[
-                go.Bar(
-                    x=plot_df["Member"].astype(str),
-                    y=plot_df["r"],
-                    marker_color=COLOR_PROPRIETARY,
-                    customdata=np.column_stack([plot_df["n_valid"], plot_df["n_dates"]]),
-                    hovertemplate="Member=%{x}<br>r=%{y:.3f}<br>n=%{customdata[0]}<br>dates=%{customdata[1]}<extra></extra>",
-                )
-            ]
+        plot_df["member_label"] = plot_df.apply(
+            lambda row: f"{row[COL_MEMBER_LABEL]} (n={int(row['n_valid'])})",
+            axis=1,
         )
-        fig.add_hline(y=0.0, line=dict(color=COLOR_NEUTRAL, width=1, dash="dot"))
+        ci_lo = plot_df["lo"].where(np.isfinite(plot_df["lo"]), plot_df["r"])
+        ci_hi = plot_df["hi"].where(np.isfinite(plot_df["hi"]), plot_df["r"])
+        error_plus = (ci_hi - plot_df["r"]).clip(lower=0.0)
+        error_minus = (plot_df["r"] - ci_lo).clip(lower=0.0)
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=plot_df["r"],
+                y=plot_df["member_label"],
+                mode="markers",
+                name="Member correlation",
+                marker=dict(size=15, color=COLOR_PROPRIETARY, line=dict(color="white", width=1.5)),
+                error_x=dict(
+                    type="data",
+                    array=error_plus,
+                    arrayminus=error_minus,
+                    visible=True,
+                    color=COLOR_NEUTRAL,
+                    thickness=2.2,
+                    width=6,
+                ),
+                customdata=np.column_stack(
+                    [plot_df[COL_MEMBER_LABEL].astype(str), plot_df["n_valid"], plot_df["n_dates"]]
+                ),
+                hovertemplate=(
+                    "Member=%{customdata[0]}<br>r=%{x:.3f}"
+                    "<br>n=%{customdata[1]}<br>dates=%{customdata[2]}<extra></extra>"
+                ),
+                showlegend=False,
+            )
+        )
+        x_min = max(-1.0, float(ci_lo.min()) - 0.06)
+        x_max = min(1.0, float(ci_hi.max()) + 0.06)
+        fig.add_vline(x=0.0, line=dict(color=COLOR_NEUTRAL, width=1, dash="dot"))
         fig.update_layout(
-            title=f"Per-member active-overlap correlation ({scope}, {bucket})",
-            xaxis_title="Member",
-            yaxis_title="Corr(prop direction, active client imbalance)",
-            xaxis=dict(tickangle=90),
+            title="Active prop-client alignment by member",
+            xaxis_title="Correlation",
+            yaxis_title="",
+            xaxis=dict(range=[x_min, x_max], zeroline=False),
+            yaxis=dict(categoryorder="array", categoryarray=plot_df["member_label"].tolist()),
         )
         save_plotly_figure(
             fig,
@@ -818,7 +863,8 @@ def _plot_member_comovement_series(comovement: pd.DataFrame, plot_dirs, options:
     if comovement.empty:
         return
 
-    plot_df = comovement.copy()
+    member_label_map = load_member_label_map()
+    plot_df = _attach_member_labels(comovement, member_label_map)
     plot_df["window_mid"] = pd.to_datetime(plot_df["window_mid"], errors="coerce")
     plot_df["prop_target_imbalance"] = pd.to_numeric(plot_df["prop_target_imbalance"], errors="coerce")
     plot_df["active_client_imbalance"] = pd.to_numeric(plot_df["active_client_imbalance"], errors="coerce")
@@ -845,6 +891,7 @@ def _plot_member_comovement_series(comovement: pd.DataFrame, plot_dirs, options:
         member_df = plot_df[plot_df["Member"].astype(str) == member].sort_values("window_mid").copy()
         if member_df.empty:
             continue
+        member_label = str(member_df[COL_MEMBER_LABEL].iloc[0])
         custom = np.column_stack(
             [
                 member_df["Window"].astype(str),
@@ -857,15 +904,15 @@ def _plot_member_comovement_series(comovement: pd.DataFrame, plot_dirs, options:
                 x=member_df["window_mid"],
                 y=member_df["prop_target_imbalance"],
                 mode="lines+markers",
-                name="Proprietary target imbalance",
+                name="Prop. target",
                 legendgroup="prop",
                 showlegend=row_idx == 1,
-                marker=dict(size=7, color=COLOR_PROPRIETARY),
+                marker=dict(size=8, color=COLOR_PROPRIETARY),
                 line=dict(color=COLOR_PROPRIETARY, width=2.2),
                 customdata=custom,
                 hovertemplate=(
                     "Member="
-                    + member
+                    + member_label
                     + "<br>Window=%{customdata[0]}<br>n=%{customdata[1]}"
                     + "<br>prop imbalance=%{y:.3f}<br>mean alignment=%{customdata[2]:.3f}<extra></extra>"
                 ),
@@ -878,15 +925,15 @@ def _plot_member_comovement_series(comovement: pd.DataFrame, plot_dirs, options:
                 x=member_df["window_mid"],
                 y=member_df["active_client_imbalance"],
                 mode="lines+markers",
-                name="Active client imbalance",
+                name="Active client",
                 legendgroup="client",
                 showlegend=row_idx == 1,
-                marker=dict(size=7, color=COLOR_CLIENT),
+                marker=dict(size=8, color=COLOR_CLIENT),
                 line=dict(color=COLOR_CLIENT, width=2.2, dash="dash"),
                 customdata=custom,
                 hovertemplate=(
                     "Member="
-                    + member
+                    + member_label
                     + "<br>Window=%{customdata[0]}<br>n=%{customdata[1]}"
                     + "<br>client imbalance=%{y:.3f}<br>mean alignment=%{customdata[2]:.3f}<extra></extra>"
                 ),
@@ -898,32 +945,26 @@ def _plot_member_comovement_series(comovement: pd.DataFrame, plot_dirs, options:
         fig.update_yaxes(range=[-1.05, 1.05], title_text="Imbalance", row=row_idx, col=1)
 
     fig.update_layout(
-        title=dict(
-            text=(
-                "Prop-client active-imbalance co-movement"
-                f"<br><sup>{options.comovement_scope}, {options.comovement_lead_lag_bucket}; "
-                f"{options.comovement_window_days}-trading-day windows</sup>"
-            ),
-            x=0.5,
-            xanchor="center",
-        ),
+        title=dict(text=""),
         width=1200,
         height=max(540, 300 * len(members)),
         font=dict(size=14),
         title_font=dict(size=18),
         legend=dict(
             title_text="",
-            orientation="v",
-            x=1.01,
-            xanchor="left",
-            y=1.0,
-            yanchor="top",
+            orientation="h",
+            x=0.5,
+            xanchor="center",
+            y=1.11,
+            yanchor="bottom",
             font=dict(size=13),
+            bgcolor="rgba(255,255,255,0)",
+            borderwidth=0,
         ),
         margin=dict(l=70, r=260, t=120, b=70),
     )
     fig.update_annotations(font_size=14)
-    fig.update_xaxes(tickfont=dict(size=12), title_font=dict(size=13))
+    fig.update_xaxes(tickfont=dict(size=12), title_font=dict(size=13), tickformat="%b %Y", dtick="M2", tickangle=35)
     fig.update_yaxes(tickfont=dict(size=12), title_font=dict(size=13))
     fig.update_xaxes(title_text="Window midpoint", row=len(members), col=1)
     stem = f"member_comovement_{options.comovement_scope}_{options.comovement_lead_lag_bucket}"
@@ -952,25 +993,31 @@ def _plot_member_comovement_series(comovement: pd.DataFrame, plot_dirs, options:
 def _comovement_subplot_title(plot_df: pd.DataFrame, member: str) -> str:
     member_df = plot_df[plot_df["Member"].astype(str) == member]
     if member_df.empty:
-        return f"Member {member}"
+        return format_member_label(member, fallback="unknown")
+    member_label = (
+        str(member_df[COL_MEMBER_LABEL].iloc[0])
+        if COL_MEMBER_LABEL in member_df
+        else format_member_label(member, fallback="unknown")
+    )
     global_r = pd.to_numeric(member_df["member_global_r"], errors="coerce").dropna()
     n_total = int(pd.to_numeric(member_df["n_valid"], errors="coerce").sum())
-    pieces = [f"Member {member} (n={n_total})"]
+    summary = f"n={n_total}"
     if not global_r.empty:
-        pieces.append(f"target r={float(global_r.iloc[0]):.3f}")
+        summary += f", target r={float(global_r.iloc[0]):.3f}"
     # The window-level correlation is descriptive and can be unstable with
     # short windows; keep it in the exported table rather than the plot title.
-    return " | ".join(pieces)
+    return f"{member_label}<br><sup>{summary}</sup>"
 
 
 def _plot_member_window_heatmaps(member_window: pd.DataFrame, plot_dirs, options: RuntimeOptions) -> None:
     if member_window.empty:
         return
+    member_label_map = load_member_label_map()
     for (scope, bucket), group in member_window.groupby(["scope", "lead_lag_bucket"], sort=False):
-        plot_df = group.copy()
+        plot_df = _attach_member_labels(group, member_label_map)
         if plot_df["r"].notna().sum() == 0:
             continue
-        pivot = plot_df.pivot(index="Window", columns="Member", values="r")
+        pivot = plot_df.pivot(index="Window", columns=COL_MEMBER_LABEL, values="r")
         pivot = pivot.sort_index()
         fig = go.Figure(
             data=go.Heatmap(

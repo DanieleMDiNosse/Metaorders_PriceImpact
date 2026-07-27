@@ -594,7 +594,7 @@ def plot_fit(
             )
         )
 
-    fig.update_xaxes(type="log", title_text="φ", title_font=dict(size=label_size), tickfont=dict(size=tick_size))
+    fig.update_xaxes(type="log", title_text="ϕ", title_font=dict(size=label_size), tickfont=dict(size=tick_size))
     fig.update_yaxes(
         type="log",
         title_text="I/σ",

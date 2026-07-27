@@ -99,6 +99,7 @@ from moimpact.plot_style import (
     load_plot_style,
 )
 from moimpact.config import format_path_template, resolve_repo_path
+from moimpact.member_labels import label_member_series, load_member_label_map
 from moimpact.plotting import (
     COLOR_CLIENT,
     COLOR_PROPRIETARY,
@@ -380,6 +381,7 @@ def main():
     activity_parts: List[pd.Series] = []
     # date -> member -> isin -> {"buy": n_buy, "sell": n_sell}
     per_day_member_isin: Dict[str, Dict[str, Dict[str, Dict[str, int]]]] = defaultdict(lambda: defaultdict(dict))
+    member_label_map = load_member_label_map()
 
     for path in paths:
         isin = path.stem
@@ -478,7 +480,11 @@ def main():
         grouped_side = df[df["side"].isin({"buy", "sell"})].groupby(["date", "ID Member", "side"]).size()
         for (date, member, trade_side), trades in grouped_side.items():
             date_key = pd.to_datetime(date).strftime("%Y-%m-%d")
-            member_key = str(member)
+            member_key = str(
+                label_member_series(
+                    pd.Series([member]), member_label_map, fallback="unknown"
+                ).iloc[0]
+            )
             isin_entry = per_day_member_isin[date_key][member_key].setdefault(isin, {"buy": 0, "sell": 0})
             isin_entry[str(trade_side)] += int(trades)
 
@@ -587,6 +593,9 @@ def main():
         )
 
     coverage_df["member_str"] = coverage_df["member"].astype(str)
+    coverage_df["member_label"] = label_member_series(
+        coverage_df["member"], member_label_map, fallback="unknown"
+    )
     coverage_df["member_nationality"] = coverage_df["member"].map(member_to_nationality)
 
     nationality_color_map = {
@@ -597,15 +606,15 @@ def main():
     }
     fig_cov = px.bar(
         coverage_df,
-        x="member_str",
+        x="member_label",
         y="coverage",
         color="member_nationality",
         labels={
-            "member_str": "Member ID",
+            "member_label": "Member",
             "coverage": "Fraction of ISINs traded",
             "member_nationality": "Member nationality",
         },
-        category_orders={"member_str": coverage_df["member_str"].tolist()},
+        category_orders={"member_label": coverage_df["member_label"].tolist()},
         color_discrete_map=nationality_color_map,
     )
     fig_cov.update_layout(xaxis_tickangle=90, xaxis_tickfont=dict(size=max(TICK_FONT_SIZE - 2, 14)), bargap=0.2)
@@ -621,7 +630,12 @@ def main():
     activity_pivot = activity_pivot.sort_index()
     activity_pivot = activity_pivot[sorted(activity_pivot.columns)]
     iso_dates = [pd.to_datetime(d).strftime("%Y-%m-%d") for d in activity_pivot.index]
-    members_sorted = [str(m) for m in activity_pivot.columns]
+    members_sorted = [
+        format_label
+        for format_label in label_member_series(
+            pd.Series(activity_pivot.columns), member_label_map, fallback="unknown"
+        )
+    ]
 
     heatmap = go.Figure(
         data=go.Heatmap(

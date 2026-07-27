@@ -36,7 +36,7 @@ _FONT_KEYS = {
     "annotation_font_size",
 }
 _FLOAT_KEYS = {"line_width", "reference_line_width"}
-_BOOL_KEYS = {"showlegend"}
+_BOOL_KEYS = {"showlegend", "show_fit_annotations"}
 _COLOR_KEYS = {"buy_color", "sell_color", "mean_color", "line_color"}
 _UNIT_INTERVAL_KEYS = {"band_alpha"}
 _MARGIN_KEYS = {"l", "r", "t", "b", "pad"}
@@ -326,7 +326,11 @@ def apply_plotly_paper_figure_style(
     if title_size is not None:
         layout_updates["title_font"] = {"size": int(title_size)}
     if "showlegend" in style:
-        layout_updates["showlegend"] = bool(style["showlegend"])
+        showlegend = bool(style["showlegend"])
+        layout_updates["showlegend"] = showlegend
+        if not showlegend:
+            for trace in fig.data:
+                trace.showlegend = False
     if "margin" in style:
         layout_updates["margin"] = dict(style["margin"])
     if layout_updates:

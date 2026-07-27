@@ -22,6 +22,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -180,6 +181,124 @@ def _read_yaml_mapping(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise TypeError(f"Config must be a YAML mapping: {path}")
     return data
+
+
+_ANSI_TITLE = "\033[1;36m"
+_ANSI_RESET = "\033[0m"
+
+
+def _should_color_titles() -> bool:
+    """Return whether console section titles should use ANSI color."""
+    if os.environ.get("NO_COLOR") is not None:
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    isatty = getattr(sys.stdout, "isatty", None)
+    return bool(callable(isatty) and isatty())
+
+
+def _format_print_title(text: str) -> str:
+    """Apply terminal color to a title when stdout supports it."""
+    if not _should_color_titles():
+        return text
+    return f"{_ANSI_TITLE}{text}{_ANSI_RESET}"
+
+
+def _print_section(title: str) -> None:
+    rule = "=" * max(24, min(88, len(title) + 8))
+    print()
+    print(rule)
+    print(_format_print_title(f"  {title}"))
+    print(rule)
+
+
+def _print_subsection(title: str) -> None:
+    print()
+    print(_format_print_title(f"-- {title} --"))
+
+
+def _print_kv(label: str, value: object, *, indent: int = 2) -> None:
+    prefix = " " * indent
+    print(f"{prefix}{label:<18} {value}")
+
+
+def _format_list_value(values: Sequence[object] | object, *, empty: str = "none") -> str:
+    if isinstance(values, str):
+        return values or empty
+    if not isinstance(values, Sequence):
+        return str(values)
+    cleaned = [str(item) for item in values]
+    return ", ".join(cleaned) if cleaned else empty
+
+
+def _quote_command(cmd: Sequence[str]) -> str:
+    return " ".join(shlex.quote(str(part)) for part in cmd)
+
+
+def _display_path(path: str | Path) -> str:
+    candidate = Path(path)
+    try:
+        return candidate.resolve().relative_to(_REPO_ROOT).as_posix()
+    except Exception:
+        return str(path)
+
+
+def _print_run_overview(manifest: Mapping[str, Any], manifest_path: Path) -> None:
+    _print_section("Paper figure run")
+    _print_kv("Mode", "dry-run" if manifest.get("dry_run") else "execute")
+    _print_kv("Dataset", manifest.get("dataset_name", "<unknown>"))
+    _print_kv("Targets", _format_list_value(manifest.get("targets", ())))
+    _print_kv("Selected figures", len(manifest.get("selected_figures", ())))
+    _print_kv("Tasks", _format_list_value(manifest.get("tasks", ())))
+    _print_kv("Stages", f"all={manifest.get('stage_all')}, it={manifest.get('stage_it')}")
+    _print_kv("Max workers", manifest.get("max_workers"))
+    _print_kv("Write PDF", manifest.get("write_pdf"))
+
+    _print_subsection("Paths")
+    _print_kv("Paper tex", _display_path(str(manifest.get("paper_tex", ""))))
+    _print_kv("Image root", _display_path(str(manifest.get("img_output_root", ""))))
+    _print_kv("Manifest", _display_path(manifest_path))
+
+    _print_subsection("Style")
+    _print_kv("Mode", manifest.get("style_mode", "<unknown>"))
+    _print_kv("Config", _display_path(str(manifest.get("paper_style_config", ""))))
+    style_updates = manifest.get("style_updates") or {}
+    _print_kv("Overrides", _format_list_value([f"{k}={v}" for k, v in sorted(style_updates.items())]))
+
+
+def _print_selected_figures_grouped(figures: Sequence[str]) -> None:
+    _print_section("Selected figures")
+    grouped: dict[str, list[str]] = defaultdict(list)
+    for figure in figures:
+        grouped[_classify_figure(figure)].append(figure)
+    for task_name in sorted(grouped):
+        items = grouped[task_name]
+        print(f"  {task_name} ({len(items)})")
+        for figure in items:
+            print(f"    - {figure}")
+
+
+def _paper_figure_candidates(paper_dir: Path, figure_path: str | Path) -> tuple[Path, ...]:
+    rel = Path(figure_path)
+    if rel.suffix.lower() in KNOWN_FIGURE_SUFFIXES:
+        return (paper_dir / rel,)
+    return tuple(paper_dir / rel.with_suffix(suffix) for suffix in (".pdf", ".png", ".jpg", ".jpeg"))
+
+
+def _assert_selected_figures_exist(figures: Sequence[str], *, paper_dir: Path) -> None:
+    missing: list[str] = []
+    for figure in figures:
+        candidates = _paper_figure_candidates(paper_dir, figure)
+        if not any(candidate.exists() for candidate in candidates):
+            missing.append(figure)
+    if missing:
+        details = "\n".join(f"  - {figure}" for figure in missing)
+        raise FileNotFoundError(
+            "Missing generated paper figure(s) after paper-figure run:\n"
+            f"{details}\n"
+            "Check the workflow log above; the paper runner expected these paths under "
+            f"{paper_dir}."
+        )
 
 
 def _write_yaml_mapping(path: Path, data: Mapping[str, Any]) -> None:
@@ -528,11 +647,16 @@ def _run_logged_command(
     dry_run: bool,
 ) -> None:
     env_updates = dict(env_updates or {})
-    printable_env = " ".join(f"{key}={value}" for key, value in sorted(env_updates.items()))
-    printable_cmd = " ".join(cmd)
-    print(f"[run] {printable_env} {printable_cmd}".strip())
-    print(f"[log] {log_path}")
+    printable_cmd = _quote_command(cmd)
+    _print_subsection("Command")
+    if env_updates:
+        print("  env:")
+        for key, value in sorted(env_updates.items()):
+            print(f"    {key}={value}")
+    print(f"  cmd: {printable_cmd}")
+    print(f"  log: {_display_path(log_path)}")
     if dry_run:
+        print("  status: dry-run only")
         return
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -566,25 +690,27 @@ def _run_task_batch(
 
     worker_count = min(max_workers, len(task_specs))
     if worker_count <= 1:
-        for task_name, task in task_specs:
-            print(f"[task] {task_name}")
+        for index, (task_name, task) in enumerate(task_specs, start=1):
+            _print_subsection(f"Task {index}/{len(task_specs)}: {task_name}")
             task()
         return
 
-    print(f"[parallel] Running {len(task_specs)} task(s) with max_workers={worker_count}")
+    _print_subsection("Parallel task batch")
+    print(f"  tasks: {len(task_specs)}")
+    print(f"  max_workers: {worker_count}")
     first_failure: tuple[str, Exception] | None = None
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         future_to_name = {executor.submit(task): task_name for task_name, task in task_specs}
         for future in as_completed(future_to_name):
             task_name = future_to_name[future]
             if future.cancelled():
-                print(f"[cancelled] {task_name}")
+                print(f"  cancelled: {task_name}")
                 continue
             try:
                 future.result()
-                print(f"[done] {task_name}")
+                print(f"  done: {task_name}")
             except Exception as exc:
-                print(f"[failed] {task_name}: {exc}")
+                print(f"  failed: {task_name}: {exc}")
                 if first_failure is None:
                     first_failure = (task_name, exc)
                 for pending in future_to_name:
@@ -613,18 +739,22 @@ def _copy_if_exists(src: Path, dst: Path, *, dry_run: bool) -> None:
 
 
 def _summary_compatibility_copy(img_output_root: Path, *, dry_run: bool) -> None:
-    src_png = img_output_root / "member_metaorder_summary_statistics" / "png" / "mean_daily_metaorder_volume_share.png"
-    dst_png = img_output_root / "prop_vs_nonprop" / "png" / "mean_daily_metaorder_volume_share.png"
-    _copy_if_exists(src_png, dst_png, dry_run=dry_run)
-
-    src_html = (
-        img_output_root
-        / "member_metaorder_summary_statistics"
-        / "html"
-        / "mean_daily_metaorder_volume_share.html"
-    )
-    dst_html = img_output_root / "prop_vs_nonprop" / "html" / "mean_daily_metaorder_volume_share.html"
-    _copy_if_exists(src_html, dst_html, dry_run=dry_run)
+    pairs = [
+        (
+            img_output_root / "member_metaorder_summary_statistics" / "png" / "mean_daily_metaorder_volume_share.png",
+            img_output_root / "prop_vs_nonprop" / "png" / "mean_daily_metaorder_volume_share.png",
+        ),
+        (
+            img_output_root / "member_metaorder_summary_statistics" / "html" / "mean_daily_metaorder_volume_share.html",
+            img_output_root / "prop_vs_nonprop" / "html" / "mean_daily_metaorder_volume_share.html",
+        ),
+        (
+            img_output_root / "member_metaorder_summary_statistics" / "png" / "mean_daily_metaorder_volume_share.pdf",
+            img_output_root / "prop_vs_nonprop" / "png" / "mean_daily_metaorder_volume_share.pdf",
+        ),
+    ]
+    for src, dst in pairs:
+        _copy_if_exists(src, dst, dry_run=dry_run)
 
 
 def _run_metaorder_intro(
@@ -980,6 +1110,9 @@ def _run_metaorder_execution_schedule(
         "IMG_OUTPUT_PATH": str(img_output_root),
         "LEVEL": "member",
         "MEMBER_NATIONALITY": None,
+        # paper/main.tex references execution_schedule_heatmap_prop_vs_client_median;
+        # the execution-schedule workflow only emits that stem when this is median.
+        "CURVE_OVERLAY_STAT": "median",
     }
     updates.update(style_updates)
     with _temporary_yaml_copy(METAORDER_EXECUTION_SCHEDULE_CFG, updates) as cfg_path:
@@ -1244,30 +1377,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     }
     manifest_path = log_dir / "run_manifest.json"
     if args.dry_run:
-        print(json.dumps(manifest, indent=2))
+        _print_run_overview(manifest, manifest_path)
     else:
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-        print(f"[manifest] {manifest_path}")
+        _print_run_overview(manifest, manifest_path)
 
-    print("[selection] Figures to generate:")
-    for figure in work.figures:
-        print(f"  - {figure}")
-
-    print(
-        "[stages] "
-        f"stage_all={work.stage_all.name}, "
-        f"stage_it={work.stage_it.name}, "
-        f"tasks={', '.join(sorted(work.tasks))}, "
-        f"max_workers={max_workers}, "
-        f"write_pdf={write_pdf}, "
-        f"style_mode={style_mode}"
-    )
-
-    print(
-        "[style] "
-        f"mode={style_mode}, "
-        f"paper_style_config={paper_style_config_path}"
-    )
+    _print_selected_figures_grouped(work.figures)
 
     original_plotly_write_pdf = os.environ.get("PLOTLY_WRITE_PDF")
     original_style_mode = os.environ.get(PAPER_FIGURE_STYLE_MODE_ENV)
@@ -1478,6 +1593,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             style_updates=style_updates,
             dry_run=args.dry_run,
         )
+
+        if not args.dry_run:
+            _assert_selected_figures_exist(work.figures, paper_dir=paper_tex_path.parent)
     finally:
         if original_plotly_write_pdf is None:
             os.environ.pop("PLOTLY_WRITE_PDF", None)
@@ -1492,7 +1610,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             os.environ[PAPER_FIGURE_STYLES_ENV] = original_paper_style_config
 
-    print("[done] Paper-figure generation plan completed.")
+    _print_section("Complete")
+    print("  Paper-figure generation plan completed.")
     return 0
 
 

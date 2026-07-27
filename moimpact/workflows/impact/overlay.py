@@ -711,7 +711,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 )
             fit_fig.update_xaxes(
                 type="log",
-                title_text="φ",
+                title_text="ϕ",
                 title_font=dict(size=LABEL_FONT_SIZE),
                 tickfont=dict(size=TICK_FONT_SIZE),
             )
@@ -753,7 +753,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 )
             log_fit_fig.update_xaxes(
                 type="log",
-                title_text="φ",
+                title_text="ϕ",
                 title_font=dict(size=LABEL_FONT_SIZE),
                 tickfont=dict(size=TICK_FONT_SIZE),
             )

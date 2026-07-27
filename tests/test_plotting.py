@@ -107,12 +107,14 @@ figures:
     tick_font_size: 33
     label_font_size: 44
     line_width: 6
+    showlegend: false
 """,
                 encoding="utf-8",
             )
             dirs = make_plot_output_dirs(base / "plots", use_subdirs=True)
             ensure_plot_dirs(dirs)
-            fig = go.Figure(data=[go.Scatter(x=[1, 2], y=[3, 4], mode="lines")])
+            fig = go.Figure(data=[go.Scatter(x=[1, 2], y=[3, 4], mode="lines", showlegend=True)])
+            fig.update_layout(showlegend=True)
 
             with mock.patch.dict(
                 os.environ,
@@ -134,6 +136,8 @@ figures:
         self.assertIsNone(png_path)
         self.assertEqual(fig.layout.width, 777)
         self.assertEqual(fig.layout.height, 555)
+        self.assertFalse(bool(fig.layout.showlegend))
+        self.assertFalse(bool(fig.data[0].showlegend))
         self.assertEqual(fig.layout.xaxis.tickfont.size, 33)
         self.assertEqual(fig.layout.xaxis.title.font.size, 44)
         self.assertEqual(fig.data[0].line.width, 6)

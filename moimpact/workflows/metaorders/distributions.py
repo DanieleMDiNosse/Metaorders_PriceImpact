@@ -85,6 +85,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from moimpact.config import cfg_require, format_path_template, load_yaml_mapping, resolve_repo_path
 from moimpact.logging_utils import PrintTee, setup_file_logger
+from moimpact.paper_figure_styles import paper_figure_style
 from moimpact.metaorder_distribution_samples import (
     MetaorderDistributionSamples,
     collect_metaorder_distribution_samples,
@@ -223,6 +224,11 @@ def _default_dict_path(
 def _figure_stem() -> str:
     """Return the canonical figure stem for the current nationality slice."""
     return with_member_nationality_tag("metaorder_distributions_prop_vs_client", MEMBER_NATIONALITY)
+
+
+def _show_fit_annotations() -> bool:
+    """Return whether distribution fit-summary annotation boxes should be drawn."""
+    return bool(paper_figure_style(_figure_stem()).get("show_fit_annotations", True))
 
 
 def _fit_summary_stem() -> str:
@@ -1671,8 +1677,14 @@ def _compute_panel_fit_results(
     return results
 
 
-def _apply_panel_fit_result(fig: go.Figure, *, panel: PanelSpec, result: PanelFitResult) -> None:
-    """Add one fitted tail overlay, cutoff line, and annotation to the figure."""
+def _apply_panel_fit_result(
+    fig: go.Figure,
+    *,
+    panel: PanelSpec,
+    result: PanelFitResult,
+    show_fit_annotations: bool,
+) -> None:
+    """Add one fitted tail overlay, cutoff line, and optional annotation to the figure."""
     if result.draw_best_fit:
         fig.add_trace(
             go.Scatter(
@@ -1726,13 +1738,14 @@ def _apply_panel_fit_result(fig: go.Figure, *, panel: PanelSpec, result: PanelFi
             col=panel.col_idx,
         )
 
-    _add_panel_annotation(
-        fig,
-        row_idx=panel.row_idx,
-        col_idx=panel.col_idx,
-        text=result.annotation_text,
-        color=panel.color,
-    )
+    if show_fit_annotations:
+        _add_panel_annotation(
+            fig,
+            row_idx=panel.row_idx,
+            col_idx=panel.col_idx,
+            text=result.annotation_text,
+            color=panel.color,
+        )
 
 
 def _collect_group_samples(metaorders_dict_path: Path, proprietary: bool) -> MetaorderDistributionSamples:
@@ -1792,6 +1805,7 @@ def build_distribution_figure(
     )
 
     fig = _build_distribution_figure_shell()
+    show_fit_annotations = _show_fit_annotations()
 
     fit_rows_by_panel: dict[int, dict[str, object]] = {}
     panels_to_fit: list[PanelSpec] = []
@@ -1822,12 +1836,13 @@ def build_distribution_figure(
                 )
 
             if panel_values.size == 0:
-                _add_panel_annotation(
-                    fig,
-                    row_idx=row_idx,
-                    col_idx=col_idx,
-                    text="No positive finite data",
-                )
+                if show_fit_annotations:
+                    _add_panel_annotation(
+                        fig,
+                        row_idx=row_idx,
+                        col_idx=col_idx,
+                        text="No positive finite data",
+                    )
                 fit_rows_by_panel[panel_idx] = _build_fit_row(
                     metric=metric,
                     group_tag=group_tag,
@@ -1881,7 +1896,12 @@ def build_distribution_figure(
     for panel in ordered_panels:
         result = fit_results.get(panel.panel_idx)
         if result is not None:
-            _apply_panel_fit_result(fig, panel=panel, result=result)
+            _apply_panel_fit_result(
+                fig,
+                panel=panel,
+                result=result,
+                show_fit_annotations=show_fit_annotations,
+            )
             fit_rows_by_panel[panel.panel_idx] = result.fit_row
             plot_rows.extend(
                 _curve_rows_from_xy(
@@ -1983,6 +2003,7 @@ def build_distribution_figure_from_saved_outputs(
         )
 
     fig = _build_distribution_figure_shell()
+    show_fit_annotations = _show_fit_annotations()
     fit_rows = {
         (str(row["metric"]), str(row["group"])): row
         for _, row in fit_summary.iterrows()
@@ -2102,13 +2123,14 @@ def build_distribution_figure_from_saved_outputs(
                         col=col_idx,
                     )
 
-            _add_panel_annotation(
-                fig,
-                row_idx=row_idx,
-                col_idx=col_idx,
-                text=_annotation_text_from_fit_row(fit_row),
-                color=color,
-            )
+            if show_fit_annotations:
+                _add_panel_annotation(
+                    fig,
+                    row_idx=row_idx,
+                    col_idx=col_idx,
+                    text=_annotation_text_from_fit_row(fit_row),
+                    color=color,
+                )
             if show_progress:
                 print(
                     "[Metaorder distributions] Rebuilt panel from saved outputs — "

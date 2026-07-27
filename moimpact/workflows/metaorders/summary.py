@@ -63,6 +63,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from moimpact.config import cfg_require, format_path_template, load_yaml_mapping, resolve_repo_path
 from moimpact.logging_utils import PrintTee, setup_file_logger
+from moimpact.member_labels import label_member_series, load_member_label_map
 from moimpact.metaorder_distribution_samples import (
     AGGRESSIVE_MEMBER_NATIONALITY_COL,
     MetaorderDistributionSamples,
@@ -115,6 +116,24 @@ def _format_path_template(template: str, context: Mapping[str, str]) -> str:
 
 def _axis_ref_name(plotly_axis_name: str) -> str:
     return plotly_axis_name.replace("axis", "")
+
+
+def _zero_preserving_log10(values: object) -> np.ndarray:
+    """Map non-negative counts to ``log10(1 + x)`` so zeros stay at zero."""
+    arr = np.asarray(values, dtype=float)
+    return np.log10(np.clip(arr, 0.0, None) + 1.0)
+
+
+def _zero_preserving_log_ticks(max_value: float) -> Tuple[List[float], List[str]]:
+    """Return tick positions/text for a zero-preserving log10(1+x) count axis."""
+    if not np.isfinite(max_value) or max_value <= 0.0:
+        return [0.0], ["0"]
+    max_power = int(np.ceil(np.log10(max(1.0, max_value))))
+    raw_ticks = [0.0] + [float(10**power) for power in range(0, max_power + 1)]
+    raw_ticks = [tick for tick in raw_ticks if tick <= max_value * 1.08 or tick in (0.0, 1.0)]
+    tickvals = _zero_preserving_log10(np.asarray(raw_ticks, dtype=float)).tolist()
+    ticktext = ["0" if tick == 0.0 else f"{tick:g}" for tick in raw_ticks]
+    return tickvals, ticktext
 
 
 def _default_dict_path(
@@ -1709,6 +1728,7 @@ def build_nationality_share_figure(
 def _build_member_metaorder_profile_figure(
     member_table_specs: Sequence[Tuple[pd.DataFrame, str, str]],
     show_legend: bool = True,
+    member_label_map: Mapping[str, str] | None = None,
 ) -> go.Figure:
     """
     Summary
@@ -1731,8 +1751,9 @@ def _build_member_metaorder_profile_figure(
     Notes
     -----
     The left panel shows the descending rank plot of detected metaorders per
-    member. The right panel keeps members with trades but no detected
-    metaorders at `x = 0`, so that subplot remains on the original count scale.
+    member. The right panel uses zero-preserving log-scaled count coordinates,
+    ``log10(1 + x)``, so zero counts remain at the axis origin while positive
+    counts retain logarithmic spacing at ordinary powers of ten.
     """
     fig = make_subplots(
         rows=1,
@@ -1742,14 +1763,22 @@ def _build_member_metaorder_profile_figure(
 
     max_child_orders = 0.0
     max_trades = 0.0
+    min_child_orders = np.inf
+    min_trades = np.inf
     max_rank = 0.0
     max_metaorders = 0.0
     rank_panel_has_data = False
     scatter_panel_has_data = False
 
+
+    labels = member_label_map if member_label_map is not None else load_member_label_map()
+
     for table, label, color in member_table_specs:
         rank_table = _build_member_metaorder_rank_table(table)
         if not rank_table.empty:
+            rank_table["MemberLabel"] = label_member_series(
+                rank_table["Member"], labels, fallback="unknown"
+            )
             rank_panel_has_data = True
             max_rank = max(max_rank, float(rank_table["rank"].max()))
             max_metaorders = max(max_metaorders, float(rank_table["n_metaorders"].max()))
@@ -1760,7 +1789,7 @@ def _build_member_metaorder_profile_figure(
                     mode="lines+markers",
                     line=dict(color=color, width=2.4),
                     marker=dict(color=color, size=6),
-                    text=rank_table["Member"].tolist(),
+                    text=rank_table["MemberLabel"].tolist(),
                     name=label,
                     legendgroup=label,
                     hovertemplate=(
@@ -1779,20 +1808,28 @@ def _build_member_metaorder_profile_figure(
 
         plot_table = table.copy()
         plot_table["Member"] = plot_table["Member"].astype(str)
+        plot_table["MemberLabel"] = label_member_series(
+            plot_table["Member"], labels, fallback="unknown"
+        )
         plot_table["n_metaorders"] = pd.to_numeric(plot_table["n_metaorders"], errors="coerce").fillna(0.0)
         plot_table["total_child_orders"] = pd.to_numeric(plot_table["total_child_orders"], errors="coerce").fillna(0.0)
         plot_table["total_trades"] = pd.to_numeric(plot_table["total_trades"], errors="coerce").fillna(0.0)
         if plot_table.empty:
             continue
 
+        plot_table["total_child_orders_plot"] = _zero_preserving_log10(plot_table["total_child_orders"])
+        plot_table["total_trades_plot"] = _zero_preserving_log10(plot_table["total_trades"])
+
         scatter_panel_has_data = True
         max_child_orders = max(max_child_orders, float(plot_table["total_child_orders"].max()))
         max_trades = max(max_trades, float(plot_table["total_trades"].max()))
+        min_child_orders = min(min_child_orders, float(plot_table["total_child_orders"].min()))
+        min_trades = min(min_trades, float(plot_table["total_trades"].min()))
 
         fig.add_trace(
             go.Scatter(
-                x=plot_table["total_child_orders"].tolist(),
-                y=plot_table["total_trades"].tolist(),
+                x=plot_table["total_child_orders_plot"].tolist(),
+                y=plot_table["total_trades_plot"].tolist(),
                 mode="markers",
                 marker=dict(
                     color=color,
@@ -1800,7 +1837,7 @@ def _build_member_metaorder_profile_figure(
                     opacity=0.75,
                     line=dict(width=0.5, color=THEME_BG_COLOR),
                 ),
-                text=plot_table["Member"].tolist(),
+                text=plot_table["MemberLabel"].tolist(),
                 name=label,
                 legendgroup=label,
                 customdata=np.column_stack(
@@ -1851,14 +1888,26 @@ def _build_member_metaorder_profile_figure(
             font=dict(size=ANNOTATION_FONT_SIZE),
         )
     else:
-        # Give points lying on the axes a small visual margin so they do not
-        # overlap the plot frame.
-        x_lower = -0.03 * max_child_orders if max_child_orders > 0.0 else -0.05
-        x_upper = max_child_orders * 1.05 if max_child_orders > 0.0 else 1.0
-        y_lower = -0.03 * max_trades if max_trades > 0.0 else -0.05
-        y_upper = max_trades * 1.05 if max_trades > 0.0 else 1.0
-        fig.update_xaxes(range=[x_lower, x_upper], row=1, col=2)
-        fig.update_yaxes(range=[y_lower, y_upper], row=1, col=2)
+        x_lower_value = max(0.0, min_child_orders / 1.15 if np.isfinite(min_child_orders) else 0.0)
+        x_upper_value = max(
+            x_lower_value * 1.01,
+            max_child_orders * 1.08 if max_child_orders > 0.0 else 1.0,
+        )
+        y_lower_value = max(0.0, min_trades / 1.15 if np.isfinite(min_trades) else 0.0)
+        y_upper_value = max(
+            y_lower_value * 1.01,
+            max_trades * 1.08 if max_trades > 0.0 else 1.0,
+        )
+        fig.update_xaxes(
+            range=_zero_preserving_log10(np.asarray([x_lower_value, x_upper_value], dtype=float)).tolist(),
+            row=1,
+            col=2,
+        )
+        fig.update_yaxes(
+            range=_zero_preserving_log10(np.asarray([y_lower_value, y_upper_value], dtype=float)).tolist(),
+            row=1,
+            col=2,
+        )
 
     fig.update_xaxes(
         title_text="Rank",
@@ -1878,12 +1927,29 @@ def _build_member_metaorder_profile_figure(
         row=1,
         col=1,
     )
+    child_orders_title = "# Child orders"
+    trades_title = "# Trades"
+    child_tickvals, child_ticktext = _zero_preserving_log_ticks(max_child_orders)
+    trade_tickvals, trade_ticktext = _zero_preserving_log_ticks(max_trades)
+
     fig.update_xaxes(
-        title_text="# Child orders",
+        title_text=child_orders_title,
+        type="linear",
+        tickmode="array",
+        tickvals=child_tickvals,
+        ticktext=child_ticktext,
         row=1,
         col=2,
     )
-    fig.update_yaxes(title_text="# Trades", row=1, col=2)
+    fig.update_yaxes(
+        title_text=trades_title,
+        type="linear",
+        tickmode="array",
+        tickvals=trade_tickvals,
+        ticktext=trade_ticktext,
+        row=1,
+        col=2,
+    )
     fig.update_xaxes(
         title_font=dict(size=LABEL_FONT_SIZE),
         tickfont=dict(size=TICK_FONT_SIZE),
@@ -1907,6 +1973,7 @@ def _build_member_metaorder_profile_figure(
         tickfont=dict(size=TICK_FONT_SIZE),
         title_standoff=12,
         automargin=True,
+        minorloglabels="none",
         row=1,
         col=2,
     )
@@ -1915,6 +1982,7 @@ def _build_member_metaorder_profile_figure(
         tickfont=dict(size=TICK_FONT_SIZE),
         title_standoff=12,
         automargin=True,
+        minorloglabels="none",
         row=1,
         col=2,
     )
@@ -2233,6 +2301,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             fig = _build_member_metaorder_profile_figure(
                 member_profile_specs,
                 show_legend=condition_on_client_proprietary,
+                member_label_map=load_member_label_map(),
             )
             html_path, png_path = save_plotly_figure(
                 fig,

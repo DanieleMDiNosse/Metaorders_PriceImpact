@@ -2826,13 +2826,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 perm_summary.to_csv(paths.out_dir / f"permutation_summary_{group}_{imb_kind}.csv", index=False)
 
         # Plots: curves for mean_align, mean_abs_imb, corr_dir_imb.
+        # Use the notation introduced in Section 5: bins indexed by b,
+        # groups by G, and reference environments by R.  The workflow keeps the
+        # historical filename key "local", but the paper notation calls this
+        # same-group reference environment "same".
         if want_plotly or want_mpl:
-            for metric, ylab in [
-                ("mean_align", "E[Direction * imbalance]"),
-                ("mean_abs_imb", "E[|imbalance|]"),
-                ("corr_dir_imb", "Corr(Direction, imbalance)"),
-            ]:
-                title = f"{imb_kind}: {ylab} vs participation rate"
+            env_label = {"local": "same", "cross": "cross", "all": "all"}.get(imb_kind, imb_kind)
+            metric_labels = {
+                "mean_align": f"Mean alignment A_b^{{G,{env_label}}}",
+                "mean_abs_imb": f"Mean absolute imbalance U_b^{{G,{env_label}}}",
+                "corr_dir_imb": f"Corr(ε_i, m_i^{{G,{env_label}}})",
+            }
+            metric_titles = {
+                "mean_align": "mean alignment",
+                "mean_abs_imb": "mean absolute imbalance",
+                "corr_dir_imb": "direction--imbalance correlation",
+            }
+            for metric in ["mean_align", "mean_abs_imb", "corr_dir_imb"]:
+                ylab = metric_labels[metric]
+                title = f"{env_label}: {metric_titles[metric]} vs participation rate"
                 prop_noise_lo, prop_noise_hi = bootstrap_centered_noise_band(
                     None if prop_res.boot_date is None else prop_res.boot_date.get(f"rep_{metric}"),
                     alpha=float(args.alpha),
